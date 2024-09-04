@@ -1,0 +1,110 @@
+\section{Appendix}
+\label{sec:appendix}
+
+Figure~\ref{fig:notation:nonstandard} introduces non-standard syntax we use throughout.
+
+\begin{figure}[htb]
+  \begin{align*}
+    \H{}
+    & =~\bigcup_{n=0}^{\infty}\{0,1\}^{8n}
+    & \mbox{the type of bytestrings }
+    \\
+    (a, b)
+    & :~\Interval{A}
+    & \text{intervals over a totally-ordered set $A$}
+    \\
+    \var{Key} \mapsto \var{Value}
+    & \subseteq \{~ k \mapsto v ~\mid~ k \in \var{Key},~v \in \var{Value}~ \}
+    & \text{finite map with unique keys}
+    \\
+    [a1 ; ...; ak]
+    & :~[C]
+    & \text{finite list with terms of type $C$}
+    \\
+    h :: t
+    & :~[C]
+    & \text{list with head $h$ and tail $t$}
+  \end{align*}
+  \caption{Notation}
+  \label{fig:notation:nonstandard}
+\end{figure}
+
+Figure~\ref{fig:eutxo-types} lists the primitives and derived types
+that comprise the foundations of the EUTxO model,
+along with some ancillary definitions.
+(Outputs normally refer to transaction IDs by hash,
+but we simplify here for clarity.)
+
+\begin{figure}
+
+\textsc{Ledger primitives}
+\begin{displaymath}
+\begin{array}{rlll}
+  \checkSig &:&
+  \Tx \to \pubkey \to \H \to \B \\
+  & &\mbox{\emph{checks that a given key signed a transaction}}
+\end{array}
+\end{displaymath}
+
+\textsc{Helper functions}
+    \begin{align*}
+        &\fun{toMap} : \N \to [\TxOut] \to (\N \mapsto \TxOut) \\
+        &\fun{toMap}(\_,~[~]) ~~~~~~~~~~~~~= [~] \\
+        &\fun{toMap}(\var{ix},~u~::~\var{outs}) = \{~\var{ix}\mapsto u~\} \cup \fun{toMap}(\var{ix}+1,~\var{outs}) \\
+        & \mbox{\emph{constructs a map from a list of outputs}}
+        \nextdef
+        &\fun{mkOuts} : \Tx \to \UTxO \\
+        &\fun{mkOuts}(tx) = \{~(\var{tx},~\var{ix}) \mapsto o~ \mid~(\var{ix} \mapsto o)\in~\fun{toMap}(0,~\var{tx}.\outputs)~\} \\
+        &\mbox{\emph{constructs a UTxO set from a list of outputs of a given transaction}}
+        \nextdef
+        &\fun{MOf} : \N \to \N \to (A \to \B) \to [A] \to \B \\
+        &\fun{MOf}~k~m~f~[~] = m~\leq~k \\
+        &\fun{MOf}~k~m~f~( h~ ::~ t) = \fun{if}~ (m~\leq~k)~\fun{then}~\true~\fun{else}~(\fun{MOf}~(k~+~a)~m~f~t) \\
+        &~~\where~~a~=~\fun{if}~ (f~(h))~\fun{then}~1~\fun{else}~0 \\
+        &\mbox{\emph{returns $\true$ if enough elements of a list satisfy given function}}
+    \end{align*}
+\caption{Primitives and basic types for the $\UTxO_{ma}$ model}
+\label{fig:eutxo-types}
+\end{figure}
+
+\subsection{Transaction Validation Rules}
+\label{sec:check-tx}
+
+
+\begin{itemize}
+    \item[(i)] \textbf{The transaction has at least one input:}
+  \[
+  \var{tx}.\inputs~\neq~\{\}
+  \]
+    \item[(ii)] \textbf{The current slot is within transaction validity interval:}
+  \[
+  \var{slot} \in \var{tx}.\fun{validityInterval}
+  \]
+    \item[(iii)] \textbf{All outputs have positive values:}
+  \[
+  \forall o \in \var{tx}.\outputs,~\var{o}.\val > \emptyset
+  \]
+    \item[(iv)] \textbf{All output references of transaction inputs exist in the UTxO:}
+  \[
+  \var{tx}.\inputs~ \subseteq~ \fun{dom}~\var{utxo}
+  \]
+    \item[(v)] \textbf{Value is preserved:}
+  \[
+  \var{tx}.\mint +
+  \sum_{i \in~\var{tx}.\inputs,~(i~\mapsto~o) \in~\var{utxo}} \var{o}.\val =
+  \sum_{o \in~\var{tx}.\outputs} \var{o}.\val
+  \]
+    \item[(vii)] \textbf{All inputs validate:}
+  \[
+  \forall~ i \in \var{tx}.\inputs,~i \mapsto (s, v) \in \var{utxo},~
+     \applyScript{s}(\fun{dom}~(\var{tx}.\sigs),~\var{tx}.\validityInterval) = \true
+  \]
+    \item[(ix)] \textbf{All minting scripts validate:}
+  \[
+  \forall~ p\mapsto \_ \in \var{tx}.\mint,~ \applyScript{p} (\fun{dom}~(\var{tx}.\sigs),~\var{tx}.\validityInterval) = \true
+  \]
+    \item[(x)] \textbf{All signatures are correct:}
+  \[
+  \forall~ (pk \mapsto s) \in \var{tx}.\sigs,~ \checkSig (\var{tx}, pk, s) = \true
+  \]
+  \end{itemize}

@@ -1,11 +1,15 @@
 \documentclass[runningheads]{llncs}
 %
 \usepackage[T1]{fontenc}
+\usepackage{amssymb}
 % T1 fonts will be used to generate the final print and online PDFs,
 % so please use T1 fonts in your manuscript whenever possible.
 % Other font encondings may result in incorrect characters.
 %
 \usepackage{graphicx}
+\usepackage{stmaryrd}
+\usepackage{amsmath}
+\usepackage{caption}
 % Used for displaying a sample figure. If possible, figure files should
 % be included in EPS format.
 %
@@ -14,7 +18,127 @@
 %\usepackage{color}
 %\renewcommand\UrlFont{\color{blue}\rmfamily}
 %\urlstyle{rm}
-%
+
+%formatting
+\newcommand{\var}[1]{\ensuremath{\mathit{#1}}}
+\newcommand{\fun}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand{\type}[1]{\ensuremath{\mathsf{#1}}}
+\renewcommand\H{\mathbb{H}}
+\newcommand{\Interval}[1]{\type{Interval}[#1]}
+\newcommand{\nextdef}{\ensuremath{\\[1em]}}
+\newcommand{\where}{\ensuremath{~ ~ \mathbf{where}~ ~ }}
+
+% Macros for eutxo things.
+\newcommand{\tx}{\fun{tx}}
+\newcommand{\TxId}{\type{TxId}}
+\newcommand{\TxIn}{\type{TxIn}}
+\newcommand{\Tx}{\type{Tx}}
+\newcommand{\Slot}{\type{Slot}}
+\newcommand{\B}{\mathbb{B}}
+\newcommand{\TxOut}{\type{TxOut}}
+\newcommand{\UTxO}{\type{UTxO}}
+\newcommand{\txId}{\msf{txId}}
+\newcommand{\txrefid}{\fun{id}}
+\newcommand{\Address}{\ensuremath{\s{Address}}}
+\newcommand{\DataHash}{\ensuremath{\s{DataHash}}}
+\newcommand{\hashData}{\fun{dataHash}}
+\newcommand{\idx}{\fun{index}}
+\newcommand{\inputs}{\fun{inputs}}
+\newcommand{\outputs}{\fun{outputs}}
+\newcommand{\Out}{\type{Output}}
+\newcommand{\validityInterval}{\fun{validityInterval}}
+\newcommand{\scripts}{\fun{scripts}}
+\newcommand{\mint}{\fun{mint}}
+\newcommand{\mintScripts}{\fun{mintScripts}}
+\newcommand{\mintScsRdmrs}{\fun{mintRdmrs}}
+\newcommand{\mintRdmrs}{\fun{mintRdmrs}}
+\newcommand{\sigs}{\fun{sigs}}
+\newcommand{\fee}{\fun{fee}}
+\newcommand{\addr}{\fun{addr}}
+\newcommand{\pubkey}{\fun{PubKey}}
+\newcommand{\val}{\fun{value}}  %% \value is already defined
+\newcommand{\Value}{\type{Value}}
+\newcommand{\Redeemer}{\type{Redeemer}}
+\newcommand{\TxOutRef}{\type{TxIn}}
+\newcommand{\ScriptContext}{\type{ScriptContext}}
+\newcommand{\ScriptPurpose}{\type{ScriptPurpose}}
+\newcommand{\Datum}{\type{Datum}}
+\newcommand{\DCert}{\type{DCert}}
+\newcommand{\LCTx}{\type{LCTx}}
+\newcommand{\TxInInfo}{\type{TxInInfo}}
+
+
+\newcommand{\validator}{\fun{validator}}
+\newcommand{\redeemer}{\fun{redeemer}}
+\newcommand{\datum}{\fun{datum}}
+\newcommand{\datumHash}{\fun{datumHash}}
+\newcommand{\datumWits}{\fun{datumWitnesses}}
+\newcommand{\Data}{\ensuremath{\s{Data}}}
+\newcommand{\Input}{\ensuremath{\s{Input}}}
+\newcommand{\Output}{\type{Output}}
+\newcommand{\OutputRef}{\fun{OutputRef}}
+\newcommand{\Signature}{\type{Signature}}
+\newcommand{\Ledger}{\ensuremath{\s{Ledger}}}
+
+\newcommand{\outputref}{\fun{outputRef}}
+\newcommand{\outputrefs}{\fun{outputRefs}}
+\newcommand{\txin}{\fun{in}}
+\newcommand{\id}{\fun{id}}
+\newcommand{\lookupTx}{\msf{lookupTx}}
+\newcommand{\getSpent}{\msf{getSpentOutput}}
+
+% \newcommand{\Tick}{\ensuremath{\s{Tick}}}
+\newcommand{\Tick}{\type{Slot}}
+\newcommand{\Script}{\type{Script}}
+\newcommand{\spent}{\msf{spentOutputs}}
+\newcommand{\unspent}{\msf{unspentOutputs}}
+\newcommand{\txunspent}{\msf{unspentTxOutputs}}
+\newcommand{\eutxotx}{\msf{Tx}}
+
+\newcommand{\consumes}[1]{\msf{consumes(#1)}}
+\newcommand{\consumesOne}[1]{\msf{consumesOne(#1)}}
+\newcommand{\cid}{\fun{cid}}
+\newcommand{\inputValue}{\fun{inputValue}}
+\newcommand{\rMin}{r_{\fun{min}}}
+\newcommand{\rMax}{r_{\fun{max}}}
+
+\newcommand{\utxotx}{\msf{Tx}}
+
+\newcommand{\N}{\mathbb{N}}
+
+\newcommand{\Quantity}{\type{Quantity}}
+\newcommand{\TokenName}{\type{TokenName}}
+\newcommand{\Asset}{\ensuremath{\s{Asset}}}
+\newcommand{\AssetID}{\type{AssetID}}
+\newcommand{\Policy}{\type{Policy}}
+\newcommand{\Quantities}{\ensuremath{\s{Quantities}}}
+\newcommand{\nativeCur}{\ensuremath{\mathrm{nativeC}}}
+\newcommand{\nativeTok}{\ensuremath{\mathrm{nativeT}}}
+\newcommand{\valC}{\mkValidator{\mathcal{C}}}
+\newcommand{\polC}{\mkPolicy{\mathcal{C}}}
+\newcommand\mkValidator[1]{\msf{validator}_#1}
+\newcommand\mkPolicy[1]{\msf{policy}_#1}
+
+\newcommand{\PublicKey}{\ensuremath{\s{PubKey}}}
+\newcommand{\PubKey}{\ensuremath{\s{PubKey}}}
+\newcommand{\PrivateKey}{\ensuremath{\s{PrivateKey}}}
+
+\newcommand{\mkContext}{\ensuremath{\s{mkContext}}}
+\newcommand{\mkTxInfo}{\ensuremath{\s{mkTxInfo}}}
+\newcommand{\mkVlContext}{\ensuremath{\s{mkValidatorContext}}}
+\newcommand{\mkMpsContext}{\ensuremath{\s{mkPolicyContext}}}
+\newcommand{\checkSig}{\type{checkSig}}
+
+\newcommand{\applyScript}[1]{\ensuremath{\llbracket#1\rrbracket}}
+\newcommand{\applyMPScript}[1]{\ensuremath{\llbracket#1\rrbracket}}
+
+\newcommand{\true}{\type{True}}
+\newcommand{\false}{\type{False}}
+\newcommand{\True}{\type{True}}
+\newcommand{\False}{\type{False}}
+
+\newcommand{\leteq}{:=}
+
 \begin{document}
 %
 \title{Light Clients for Building UTxO Ledger Transactions}
@@ -80,10 +204,8 @@ Compare our approach  with :
 \subsection{Technical Background}
 \end{itemize}
 
-\section{Ledger Model}
+\input{model.tex}
 
-We take as our ledger model the UTxOma model, which is UTxO with multi-assets.
-Explain why we chose this over the basic UTxO and the full EUTxO models.
 
 \section{Light Client Specification}
  
@@ -135,6 +257,13 @@ Can we have viewing keys?
 \section{Intent Specification}
 Intent (DSL or predicate to describe intent of the client, ie what they want to do to the ledger state).
 
+Give example of :
+
+\begin{itemize}
+    \item intent to mint some tokens before a deadline
+    \item intent to pay x from key k1 to k2 (ie script $\fun{RequireSig}~k1$ to $\fun{RequireSig}~k2$)
+\end{itemize}
+
 \section{Light Client Protocols}
 
 \section{Analysis}
@@ -168,6 +297,9 @@ Company X and owns stock in Company Y. Author C is a member of committee Z.
 %
 \bibliographystyle{splncs04}
 \bibliography{lcbib}
+
+\appendix
+\input{appendix.tex}
 %
 
 \end{document}
