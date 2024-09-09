@@ -177,6 +177,8 @@ What sets us apart?
 
 \begin{itemize}
     \item Atomicity of payment+service
+    
+    \item permission-less, decentralized
 
     \item Model for (trustless) 2-party transaction construction rather than proving things about chain/ledger state
 
@@ -191,6 +193,22 @@ We use blind signatures \cite{blindsigs}
 
 \section{Related Work}
 
+
+Our approach provides facilitates transaction submission for a light client that is not aware of the entire history of a blockchain. 
+Therefore, we compare our work with existing solutions for light clients as well as mechanisms that allow the interaction with a blockchain when in resource constrained operation.
+Our approach is different from a more ``traditional'' (i.e., what commonly is referred to) light client that has the primary goal of syncing to the blockchain in order to acquire the information necessary to interact with a smart contract such as to submit a transaction. We summarize here the most important concepts and works in the area of light clients below:
+
+
+
+Most related works and ideas are \emph{intents and solver networks} that attempt to establish a relationship between solvers and users via their (light) clients~\cite{ethresearch_solvers}.
+A light client issues an intent via as an abstracted transaction object and solvers process the intent incentivized by transaction fee or intent execution reward. The users are then free to accept or reject a solver’s proposal.
+Outsourcing transaction creation to a solver does not need for user to bridge assets cross-chain, as chains are abstracted away. In case the solvers are required to provide a deposit, slashing guarantees honest behavior of a rational actor.
+While concepts around solver networks are relatively new there is currently no universal standard governing the specification of intents processing of 
+
+We also briefly cover \emph{payment channels}, which also constitute a concept similar to our approach:
+
+
+
 Compare our approach  with :
 \begin{itemize}
     \item "Free" websites monitoring the chain -- mention they lack long-term sustainability.
@@ -202,6 +220,7 @@ Compare our approach  with :
     \item Solver networks
 
 \subsection{Technical Background}
+UTxO model
 \end{itemize}
 
 \input{model.tex}
