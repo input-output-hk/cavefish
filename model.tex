@@ -37,7 +37,7 @@ is computed by $\fun{updateState}~(s, b)$. We do not give full specifications of
 $\fun{checkBlock}$ or $\fun{updateState}$, as they are not required to model our light client approach.
 We assume that a \emph{full node} is one that is able to, given some verified state $s_0$ (e.g. a genesis state, 
 or a verified checkpoint state), and a list of blocks $[b_0, ..., b_k]$ that have been disseminated across the 
-network since the time of $s_0$, is able to compute the current state $s_{k-1}$ by applying 
+network since the time of $s_0$, is able to compute the current state $s_{k}$ by applying 
 them in sequence, i.e. computing $s_{i+1} = \fun{updateState}~(s_i, b_i)$ for $0 \leq i < k$,
 and is able to determine if any of the blocks in the list are invalid. If all the 
 blocks result in valid updates (i.e. $\fun{checkBlock}~(s_i, b_i) = \true$), we say 
@@ -130,32 +130,12 @@ For each transaction in the list, $\fun{checkTx}~((\fun{slot}~b, \fun{fee}~s), \
 and the entire block is considered invalid if this check fails.
 As part of checking transaction validity, constraints of every $\Script$ run by the transaction are checked. 
 The constructors and evaluation of $\Script$ is given in Figure \ref{fig:script}, 
-and $\fun{MOf}$ is given in \ref{fig:eutxo-types}.
+and $\fun{MOf}$ is given in \ref{fig:eutxo-types}. A script, for a given set of 
+signer keys $\var{khs}$ and slot numbers $s1, s2$, can be defined to check that 
+(some specific) $m$ of them have signed the transaction (are included in the domain of $\Signature$), 
+and/or that the validity interval of the transaction starts after $s1$ and/or ends before $s2$.
 
-\begin{figure}
-    \textsc{Constructors of $\Script$} 
-\begin{displaymath}
-\begin{array}{rlll}
-    \fun{RequireMOf}         &: \N \to [\Script] &\to~ \Script \\
-    \fun{RequireSig}         &: \pubkey      &\to~ \Script \\
-    \fun{RequireTimeStart}   &: \Slot        &\to~ \Script \\
-    \fun{RequireTimeExpire}  &: \Slot        &\to~ \Script \\
-\end{array}
-\end{displaymath}
-\nextdef
-\textsc{Evaluation of $\Script$} 
-\begin{displaymath}
-\begin{array}{rlll}
-  \applyScript{\_} &:& \Script \to ((\type{Set} \pubkey) \times (Slot \times Slot)) \to \B \\
-  \applyScript{\fun{RequireMOf}~n~ls} (\var{khs}, (t1, t2)) &=&  \fun{MOf}~0~ n ~(\applyScript{\_}~(\var{khs}, (t1, t2))) ~ls \\
-  \applyScript{\fun{RequireSig}~k} (\var{khs}, (t1, t2)) &=& k~\in~\var{khs} \\
-  \applyScript{\fun{RequireTimeStart}~t1'} (\var{khs}, (t1, t2)) &=& t1'~\leq~t1 \\
-  \applyScript{\fun{RequireTimeExpire}~t2'} (\var{khs}, (t1, t2)) &=& t2~\leq~t2' 
-\end{array}
-\end{displaymath}
-\caption{$\Script$ constructors and evaluation}
-\label{fig:script}
-\end{figure}
+
 
 
 
