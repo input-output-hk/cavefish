@@ -273,6 +273,9 @@ Can we have viewing keys?
     \item Suboptimal transactions possibility : 
     Do we want to let users specify what they want optimized for in their intents (e.g. minimize fee or find best price on exchange offer)? 
     Can we assume that competition across SPs will enable client to get a better response?
+    
+    \item Arbitrary delay caused by SP: SP can offer to execute an intent and provide the crafted TX, but never publish it on the chain.
+    For this reason, SP should provide the hashes of the UTxO references (or similar) to the light client, s.t. the LC can reuse those references in another transaction. This avoids the case where SP hangs on to the TX indefinitely or posts it at an arbitrary point in time causing two or more TXs being executed if the LC resubmits its intent/TX.
 \end{itemize}
 
 
