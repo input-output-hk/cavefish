@@ -37,6 +37,7 @@
 \newcommand{\LState}{\type{LState}}
 \newcommand{\Tx}{\type{Tx}}
 \newcommand{\Slot}{\type{Slot}}
+\newcommand{\TxData}{\type{TxData}}
 \newcommand{\B}{\mathbb{B}}
 \newcommand{\TxOut}{\type{TxOut}}
 \newcommand{\UTxO}{\type{UTxO}}
@@ -108,6 +109,7 @@
 \newcommand{\utxotx}{\msf{Tx}}
 
 \newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
 
 \newcommand{\Quantity}{\type{Quantity}}
 \newcommand{\TokenName}{\type{TokenName}}
@@ -166,8 +168,22 @@ Polina Vinogradova\inst{1}\orcidID{0000-0003-3271-3841}}
 \maketitle              % typeset the header of the contribution
 %
 \begin{abstract}
-The abstract should briefly summarize the contents of the paper in
-150--250 words.
+Blockchain light clients (LCs) are platform users that do not have the capacity to locally maintain current, 
+fully-validated ledger state. For this reason, light clients rely on service providers (SPs, which 
+are full nodes) for obtaining the 
+blockchain data they require, e.g. for transaction construction or running off-chain apps. 
+This work focuses on a model in which a light client of a UTxO-style platform has the goal of submitting a 
+transaction with minimal local state and minimal local processing. We propose a 2-party computation 
+protocol between the LC and the SP. First, the light client creates a specification for the transaction 
+they would like the SP to construct, then the SP builds such a transaction, including in it a payment to themselves. 
+The SP sends the LC a modified version of this transaction for signing and checking. It is modified in a way 
+that makes it impossible for the LC to use the data in this transaction to construct a distinct new (valid) 
+transaction without guessing pre-images of transaction hashes, but has enough information to allow the LC to 
+check that it meets their specification. Using a secure partially-blind 
+signature scheme, the SP is able to obtain a signature on the original (unmodified) transaction, 
+which is then submitted to the network for inclusion in a block. This 2-PC protocol constitutes a trustless 
+interaction between the LC and the SP resulting in the LC's desired transaction being applied 
+to the ledger state, and the SP receiving payment for their work. 
 
 \keywords{First keyword  \and Second keyword \and Another keyword.}
 \end{abstract}
@@ -191,6 +207,8 @@ What sets us apart?
     their tip. This is in contrast with the possibility of stale info provided from old Mithril snapshots in other LC models
 \end{itemize}
 
+The core of our design is an answer to the question of "how can a user request and approve payment (e.g. from their wallet) without knowing anything about the chain except what the transaction spending their money is doing with their money"?
+
 We claim that our work can be used by any UTxO or EUTxO blockchain (with some adjustments to the details of intent specification). 
 We use blind signatures \cite{blindsigs}
 
@@ -204,11 +222,11 @@ We summarize the most important concepts and works in the area of light clients 
 
 We first describe the common idea of a light client and then outline concepts related to our work that complement light clients. 
 
-A summary of \textbf{light client research} can be found in~\cite{cryptoeprint:2021/1657}, listing the main functionalities a light client is expected to perform: (1) issue queries, such as for the balance of an account, or the state of a transaction, and (2) safeguard secrecy information and submit transactions to the blockchain.
-In order to implement these functionalities, light clients use several generic techniques, most notably: header verification and consensus evolution verification. Compared to a \emph{full node} a light client only verifies the headers of blocks and skips the verification of transactions and account balances, a technique made popular with SPV in Bitcoin~\cite{} and nearly adopted by most practical approaches for light clients, e.g.,~\cite{Ethereumlc}.
+A summary of \textbf{light client research} can be found in~\cite{soklc}, listing the main functionalities a light client is expected to perform: (1) issue queries, such as for the balance of an account, or the state of a transaction, and (2) safeguard secrecy information and submit transactions to the blockchain.
+In order to implement these functionalities, light clients use several generic techniques, most notably: header verification and consensus evolution verification. Compared to a \emph{full node} a light client only verifies the headers of blocks and skips the verification of transactions and account balances, a technique made popular with SPV in Bitcoin~\cite{spv} and nearly adopted by most practical approaches for light clients, e.g.,~\cite{Ethereumlc}.
 In addition to that, consensus evolution verification is needed for proof-of-stake based blockchains as the validator set can change. 
-Another common technique is to compress blockchain and/or ledger state to reduce the information a light client has to download to verify proofs and synchronize to the blockchain (see, e.g.,~\cite{cryptoeprint:2019/226}).
-Some light clients use game-theoretic assumptions to implement the slashing of previously deposited collateral in case of misbehavior, for example~\cite{cryptoeprint:2020/844}.
+Another common technique is to compress blockchain and/or ledger state to reduce the information a light client has to download to verify proofs and synchronize to the blockchain (see, e.g.,~\cite{flyclient}).
+Some light clients use game-theoretic assumptions to implement the slashing of previously deposited collateral in case of misbehavior, for example~\cite{superlight}.
 The main cryptographic building blocks that are used to realize those techniques are succinct representation and proofs, such as data accumulators (often Merkle trees) and commitments and SNARKs.
 Furthermore, suitable signatures and hash functions are needed, for example, aggregate signatures and threshold signatures. 
 
@@ -217,8 +235,41 @@ A light client issues an intent via as an abstracted transaction object and solv
 Outsourcing transaction creation to a solver does not need for user to bridge assets cross-chain, as chains are abstracted away. In case the solvers are required to provide a deposit, slashing guarantees honest behavior of a rational actor.
 While concepts around solver networks are relatively new there is currently no universal standard governing the specification for intents and abstract transaction objects. To the best of our knowledge, this is the first work describing 
 
-We also briefly cover \textbf{payment channels}, which also constitute a concept similar to our approach: 
-Payment channels describe a type of off-chain mechanism for blockchains. They allow to establish a private payment channel between two parties. The channel can be used to conduct a series of (similar) transactions without interacting with the main blockchain. The creation of a payment channel requires locking funds in a smart contract, which is used to conduct the transactions~\cite{10.1145/3133956.3134096}.
+\textbf{Payment channels}. 
+We also briefly cover \textbf{payment channels} (also called \textbf{state channels}), which also constitute 
+a concept similar to our approach: 
+payment channels describe a type of off-chain mechanism for blockchains. They allow to establish a private payment 
+channel between two parties. The channel can be used to conduct a series of (similar) transactions without interacting 
+with the main blockchain. The creation of a payment channel requires locking funds in a smart contract, which is used 
+to conduct the transactions~\cite{payment-channel}. Some state channels, such as Hydra \cite{hydra}, not only allow 
+for simple payments between users, but simulate the majority of the on-chain transaction processing mechanism internally. 
+
+Participation in a payment channel usually presumes that a user is able to predict, to some degree, the nature of the 
+anticipated payments they will send or receive, and accepts that interactions within the channel will be limited 
+to users, contracts, and tokens, available in that channel (i.e. locked by the channel's smart contract).
+Due to the specifics of the channel setup process, and the limited nature of these interactions, payment channels 
+are capable of greatly improving scalability 
+and reducing transaction processing times. The target user base for our light client design, however, are ones 
+that do not wish to engage in establishing relationships with other chain users, or participating 
+in an on-chain setup process. They also may not have (or choose 
+not to disclose) information about intended future interactions. For these reasons, it does not make sense to limit themselves 
+to a specific payment channel. 
+
+\textbf{API and Explorer Services}. 
+Many realistic UTxO ledger implementations (e.g. Ergo \footnote{\url{https://ergoplatform.org/}}, 
+Cardano \footnote{\url{https://cardano.org/}}, and BitCoin \footnote{\url{https://bitcoin.org/}}) are set up 
+in a way that a badly constructed transaction will, in many cases, not result in any update to the ledger 
+state. So, even if a transaction is constructed by an LC based on ledger or block data that is incorrect or 
+old, the worst-case scenario is that it will be rejected. This makes 
+services such as blockchain explorers \footnote{\url{https://beta.explorer.cardano.org/}} or Blockfrost (API 
+as a service for accessing the Cardano blockchain) \footnote{\url{https://blockfrost.dev/}} are some of the 
+strongest competitors with our proposal, as they provide the data needed 
+for the LC to construct their transaction, often with a relatively high degree of reliability. 
+With this in mind, what sets our design apart is the SP compensation structure. Revenue from services such as those above is 
+either ad-based, requires users to create an account paid for with fiat currency, or is free in order to 
+promote use of the specific service/blockchain. We, on the other hand, propose that SPs are compensated 
+in assets on the same blockchain as the one to which their transaction gets applied, and the payment structure 
+consists of a one-time, no-setup atomic exchange of assets for services.
 
 
 
@@ -250,7 +301,17 @@ UTxO model
  In order to provide answers to queries by the user, a light client participates in a number of protocols between itself and a set of full nodes. These protocols may be one to one or one to many, depending on the design of the light client. We will expand on the syntax and operation of such protocols in the following subsection.
  
  Lastly, a light client is characterized in terms of restrictions placed on the resources it has available (without restrictions, we could treat a a full node of a chain as a light client). These restrictions can relate to the  communication cost to answer a series of queries, available storage, and assumptions about connectivity. On the other side, a particular light client design might limit the intents contained in $\mathcal{I}_\mathsf{read}$, $\mathcal{I}_\mathsf{post}$ to simplify its design.
- 
+
+
+ \subsection{Intent Specification}
+Intent (DSL or predicate to describe intent of the client, ie what they want to do to the ledger state).
+
+Give example of :
+
+\begin{itemize}
+    \item intent to mint some tokens before a deadline
+    \item intent to pay x from key k1 to k2 (ie script $\fun{RequireSig}~k1$ to $\fun{RequireSig}~k2$)
+\end{itemize}
  
  \subsection{Light Client Interactions}
  
@@ -280,42 +341,105 @@ deterministic way?
 \end{itemize}
  \end{itemize}
  
+ \textbf{Optimization Function}. We assume that all specification-meeting 
+ transactions are acceptable to the LC. However, the LC may have a preferred optimization function 
+ $\fun{opt} : \TxData \to \Z$  which they (optionally) send alongside their request 
+ to the SP, such that a transaction $\var{tx}$ is \emph{optimal} in a set $S \in \type{Set}~\TxData$ when 
+ 
+ \[ \fun{opt}~\var{tx} = \fun{min}~\{~\fun{opt}~\var{tx'}~\|~\var{tx'}~\in~S~\} \]
+ 
+ For example, an optimal transaction may be one that minimizes the total amount of primary tokens 
+ spent by the transaction, i.e. $\fun{opt}~\var{tx} = \fun{coinValue}~(\sum_{o \in~\var{txd}.\fun{spentOuts}} \var{o}.\val)$.
+ This optimization function cannot be part of the specification, since a proof of optimality is not 
+ required.  The kind of 
+ sophisticated optimization (such as what is required, e.g., for order-matching) is not a well-suited 
+ task for an LC to outsource to an SP, and would require an entirely distinct set of tools for 
+ demonstrating the optimality result. For example, such tools may include zero-knowledge proofs 
+ that there are no better offers for a specific token available on the ledger. We do not assume that 
+ either the SP or the LC are necessarily capable of performing or verifying (resp.) optimality according to the 
+ function LC requested be optimized. One of the major obstacles to this is the difficulty of demonstrating that 
+ the response is optimal in a non-stale ledger state (see Section \ref{sec:stale-state}).
+
 Can we describe the differences between light wallets, bridges and light nodes in our framework? (Probably yes). 
 
 How can we formalize the intent of a light client without revealing secret key?
 
 Can we have viewing keys?
 
-
-\section{Threat Model}
-
-\begin{itemize}
-    \item Client finds out too much from SP answer and can submit tx without payment to SP (that’s why the inputs must be hidden)
-
-    \item SP lies to client about the UTxOs being spent by the tx, and tricks them into doing something they didn’t want to do (that’s why 0-knowledge proof that outputs were correctly specified)
-
-    \item Suboptimal transactions possibility : 
-    Do we want to let users specify what they want optimized for in their intents (e.g. minimize fee or find best price on exchange offer)? 
-    Can we assume that competition across SPs will enable client to get a better response?
-    
-    \item Arbitrary delay caused by SP: SP can offer to execute an intent and provide the crafted TX, but never publish it on the chain.
-    For this reason, SP should provide the hashes of the UTxO references (or similar) to the light client, s.t. the LC can reuse those references in another transaction. This avoids the case where SP hangs on to the TX indefinitely or posts it at an arbitrary point in time causing two or more TXs being executed if the LC resubmits its intent/TX.
-\end{itemize}
-
-
-\section{Intent Specification}
-Intent (DSL or predicate to describe intent of the client, ie what they want to do to the ledger state).
-
-Give example of :
-
-\begin{itemize}
-    \item intent to mint some tokens before a deadline
-    \item intent to pay x from key k1 to k2 (ie script $\fun{RequireSig}~k1$ to $\fun{RequireSig}~k2$)
-\end{itemize}
-
 \section{Light Client Protocols}
 
+\section{Threat Model and Threat Mitigation}
+
+\textbf{Suboptimal Transactions.}  In response to an LC query, it is possible for an SP to construct a 
+\emph{sub-optimal} transaction which nevertheless matches the LC's specification. For example, the LC may 
+include a larger-than-necessary system fee in the transaction, or not provide the LC with the best 
+available exchange price for a specific token.
+Our model assumes that an LC is able to submit their transaction to multiple SPs, and will have pick one 
+transaction to sign from the resulting set $S$ of responses received within some pre-defined amount of 
+waiting time. Alternatively, the LC may simply choose the first valid transaction sent by an SP.
+Assuming such a competitive SP environment, the suboptimal transaction threat is mitigated by 
+the incentive, in the form of a service fee for the SP, to provide both quickest and the most optimal 
+response. Note that the SP is not a-priori aware of how the LC will make 
+the choice of what transaction to sign, and how long their waiting period is.
+
+\textbf{Response Delays and Stale State.}
+\label{sec:stale-state}
+
+Arbitrary delay caused by SP: SP can offer to execute an intent and provide the crafted TX, but never publish it on the chain.
+    For this reason, SP should provide the hashes of the UTxO references (or similar) to the light client, s.t. the LC can reuse those references in another transaction. This avoids the case where SP hangs on to the TX indefinitely or posts it at an arbitrary point in time causing two or more TXs being executed if the LC resubmits its intent/TX.
+
+\textbf{Non-submission of Transactions.}
+
+\textbf{Falsified or Unsafe Transaction Data}. SP lies to client about the UTxOs being spent by the tx, and tricks them into doing something they didn’t want to do (that’s why 0-knowledge proof that outputs were correctly specified)
+
+\textbf{Data Leakage.} The 2-PC protocol we propose is one that has leakage. In particular, 
+the co-construction of a transaction by the LC and the SP allows the LC to learn certain information 
+about the chain state, such as, e.g. the upper and lower bound of the interval containing the current blockchain 
+time. In fact, under certain circumstances, after several iterations of our SP-LC protocol, the LC 
+may gain the capacity to construct certain kinds of transactions themselves. As noted above, this 
+information can also be gained from blockchain explorer services. The 
+reason an LC may engage in our protocol that it allows all transaction-construction,
+and state-tracking and querying logic to be off-loaded to the SP. If the LC can do all this themselves, 
+engaging in the protocol does not benefit them in any way. 
+
+However, there is a specific kind of 
+data leakage threat we have have built the protocol to be resilient against : leakage of $\UTxO$ entry 
+identifiers, i.e. the inputs of a transaction. It is impossible to construct a valid transaction 
+without knowing the the inputs that need to be included in it for it to match the specification,
+and this information cannot be guessed without knowledge of blockchain state. If this information 
+is somehow leaked to the LC along with the modified transaction, it makes it possible to for the 
+LC to not pay the SP for their work.  
+
+Specifically, the full transaction (including the correct inputs) can be modified locally to 
+replace the output containing the SP's fee with one returning it as change to the LC, signed, and 
+submitted to the network by the LC. As part of our protocol, the SP replaces the inputs of a 
+transaction with outputs that correspond to those inputs in the UTxO set. 
+We have demonstrated that guessing inputs without access to either the inputs themselves, or 
+the transactions that have placed them into the UTxO set, is sufficiently difficult to not be considered a 
+vector of attack. 
+This data may also be leaked by getting recorded in a script, datum, or redeemer. E.g., a script 
+may require that its redeemer also list the inputs of the transaction. The responsibility of mitigating 
+this type of leakage rests on the SP, who can address this by limiting the kinds of specifications 
+they agree to fulfill. 
+
+[TODO : make sure we have shown that "We have demonstrated that guessing inputs without access to either the inputs themselves, or 
+the transactions that have placed them into the UTxO set, is sufficiently difficult to not be considered a 
+vector of attack."]
+
+
 \section{Analysis}
+
+\textbf{Asset and Non-Asset Compensation.} In our model, we have so far assumed that an SP performs its 
+services in exchange for a fee. This fee may be either flat, or calculated on the basis of transaction size, 
+or complexity of transaction specification, etc. - the details of this fee calculation are dependent on the 
+specifics of the implementation of our protocol, the marketplace, and SPs preferences. 
+The fee may also be specified in either an amount of primary tokens, 
+or some other user-defined tokens. A fee requirement in user-defined tokens could be useful in the case 
+of the SP service for LCs being associated with another type of service trading in such tokens, such as a 
+videogame token marketplace. Yet another option for SPs is to request non-monetary compensation 
+for their services, such as requiring engagement with a specific smart contract, voting for a specific update, 
+delegating stake, etc. All these actions can be performed by the very transaction that SP constructed 
+according to LC's specification. 
 
 
 \section{Conclusion}
