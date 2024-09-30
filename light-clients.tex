@@ -10,6 +10,8 @@
 \usepackage{stmaryrd}
 \usepackage{amsmath}
 \usepackage{caption}
+\usepackage{xcolor}
+
 % Used for displaying a sample figure. If possible, figure files should
 % be included in EPS format.
 %
@@ -27,6 +29,8 @@
 \newcommand{\Interval}[1]{\type{Interval}[#1]}
 \newcommand{\nextdef}{\ensuremath{\\[1em]}}
 \newcommand{\where}{\ensuremath{~ ~ \mathbf{where}~ ~ }}
+
+\newcommand{\todobox}[1]{ \fcolorbox{black}{gray!50} {\textbf{TODO:} \parbox{.7\textwidth}{#1}}}
 
 % Macros for eutxo things.
 \newcommand{\tx}{\fun{tx}}
@@ -191,7 +195,7 @@ to the ledger state, and the SP receiving payment for their work.
 %
 %
 \section{Introduction}
-
+\todobox{
 What sets us apart?
 
 \begin{itemize}
@@ -205,7 +209,7 @@ What sets us apart?
     
     \item inherent timeliness of transaction construction incentivized by SPs desired to earn 
     their tip. This is in contrast with the possibility of stale info provided from old Mithril snapshots in other LC models
-\end{itemize}
+\end{itemize}}
 
 The core of our design is an answer to the question of "how can a user request and approve payment (e.g. from their wallet) without knowing anything about the chain except what the transaction spending their money is doing with their money"?
 
@@ -272,7 +276,7 @@ in assets on the same blockchain as the one to which their transaction gets appl
 consists of a one-time, no-setup atomic exchange of assets for services.
 
 
-
+\todobox{
 Compare our approach  with :
 \begin{itemize}
     \item "Free" websites monitoring the chain -- mention they lack long-term sustainability.
@@ -281,9 +285,9 @@ Compare our approach  with :
     \item LCs that operate on single-prover model (eg. with an established relationship via deposit)
     \item LCs that operate on multi-prover model
 
+\end{itemize}}
 \subsection{Technical Background}
 UTxO model
-\end{itemize}
 
 \input{model.tex}
 
@@ -295,8 +299,8 @@ UTxO model
  
  We describe functionality of a light client in terms of reading and posting \emph{intents} denoted as two sets of predicates $\mathcal{I}_\mathsf{read}$, $\mathcal{I}_\mathsf{post}$. When queried on a reading predicate $\mathsf{int_{read}} \in \mathcal{I}_\mathsf{read}$ at time $t_0$, the light client replies with all transactions $tx$ such that $\mathsf{int_{read}}(tx,\LState_t)=1$, where  $\LState_t$ is the state of the blockchain at time $t \geq t_0$. When queried on a posting predicate $\mathsf{int_{post}} \in \mathcal{I}_\mathsf{post}$ at time $t_0$, the light client prepares a transaction $tx_p$ such that $\mathsf{int_{post}}(tx_p,\LState_t)=1$, where $t \geq t_0$ and broadcasts it to the blockchain.
  
- [TODO: revisit time]
- [TODO: can we do the LC part of bridges with these intents?]
+\todobox{ [TODO: revisit time]
+ [TODO: can we do the LC part of bridges with these intents?]}
  
  In order to provide answers to queries by the user, a light client participates in a number of protocols between itself and a set of full nodes. These protocols may be one to one or one to many, depending on the design of the light client. We will expand on the syntax and operation of such protocols in the following subsection.
  
@@ -306,20 +310,23 @@ UTxO model
  \subsection{Intent Specification}
 Intent (DSL or predicate to describe intent of the client, ie what they want to do to the ledger state).
 
-Give example of :
+\todobox{Give example of :
 
 \begin{itemize}
     \item intent to mint some tokens before a deadline
     \item intent to pay x from key k1 to k2 (ie script $\fun{RequireSig}~k1$ to $\fun{RequireSig}~k2$)
-\end{itemize}
+\end{itemize}}
  
  \subsection{Light Client Interactions}
  
 The light client interacts with a number of full nodes. We assume that all parties know the current time up to an allowable deviation $\delta_t$. We allow for protocols featuring a single or multiple full nodes, and (orthogonally) protocols that are supported by a smart contract at the cost of additional setup. An important difference between the single and multi-node model is that existential honesty trivialises the single-node case. As such, single-node protocols are usually required to operate under more stringent security assumptions.
  
+The end result of such protocols are typically one of the following: an update to the light client's state or the creation of a transaction to be posted on the blockchain.  In  Section \ref{sec:threats} we give an informal treatment of potential threats and in Section \ref{sec:protocols} we describe a number of such protocols and formalize the corresponding security notions.
+ 
+\todobox{
  \begin{itemize}
  
- \item User - LC interface
+\item User - LC interface
  
  \item LC characteristics/ limitations
    \begin{itemize}
@@ -339,7 +346,7 @@ deterministic way?
   \item Protocols to support user requests
   \item Security reqs (protecting integrity/ privacy/ SPO revenue?)
 \end{itemize}
- \end{itemize}
+ \end{itemize}}
  
  \textbf{Optimization Function}. We assume that all specification-meeting 
  transactions are acceptable to the LC. However, the LC may have a preferred optimization function 
@@ -360,15 +367,23 @@ deterministic way?
  function LC requested be optimized. One of the major obstacles to this is the difficulty of demonstrating that 
  the response is optimal in a non-stale ledger state (see Section \ref{sec:stale-state}).
 
-Can we describe the differences between light wallets, bridges and light nodes in our framework? (Probably yes). 
+\todobox{Can we describe the differences between light wallets, bridges and light nodes in our framework? (Probably yes). 
 
 How can we formalize the intent of a light client without revealing secret key?
 
-Can we have viewing keys?
+Can we have viewing keys?}
 
-\section{Light Client Protocols}
 
 \section{Threat Model and Threat Mitigation}
+\label{sec:threats}
+
+\textbf{Erroneous User Balance.} A common threat vector is convincing the user of an erroneous balance on their account. This can lead a user to
+complete a transaction outside the blockchain based on wrong information (e.g. accept an invalid transaction as payment for goods, or exchange his private key
+in the understanding that is controls $x$ stake instead of $y$.)
+
+\textbf{Invalid Transactions.}  In response to an LC query, it may be desirable for an SP to construct a transaction that does not meet the intent specified by the user. For example, the created transaction may pay the wrong recipient, or pay an amount over and above the one specified by the user.   
+
+\textbf{Protocol Failures.}  In a multi-node protocol, a malicious user may wish to force the protocol to abort even though there exist a number of honest nodes who would otherwise ensure the protocol completes successfully. In the single node, a malicious node can always cause a protocol to fail by not replying.
 
 \textbf{Suboptimal Transactions.}  In response to an LC query, it is possible for an SP to construct a 
 \emph{sub-optimal} transaction which nevertheless matches the LC's specification. For example, the LC may 
@@ -388,7 +403,7 @@ the choice of what transaction to sign, and how long their waiting period is.
 Arbitrary delay caused by SP: SP can offer to execute an intent and provide the crafted TX, but never publish it on the chain.
     For this reason, SP should provide the hashes of the UTxO references (or similar) to the light client, s.t. the LC can reuse those references in another transaction. This avoids the case where SP hangs on to the TX indefinitely or posts it at an arbitrary point in time causing two or more TXs being executed if the LC resubmits its intent/TX.
 
-\textbf{Non-submission of Transactions.}
+\textbf{Non-submission of Transactions.} A class of protocols deals with the joint creation of transactions by the light client and node, with the transaction submission being left to the full node. It is possible for the full node to not post such a transaction in a timely manner, potentially leading the user to retry at a different time. As intents are not necessarily satisfied by a unique transaction, it is possible that the first full node may be able to post the first transaction (which is purposefully delayed) after the posting of the second one. This can cause the user to e.g. double pay for a service as well as the full node fee.
 
 \textbf{Falsified or Unsafe Transaction Data}. SP lies to client about the UTxOs being spent by the tx, and tricks them into doing something they didn’t want to do (that’s why 0-knowledge proof that outputs were correctly specified)
 
@@ -422,10 +437,14 @@ may require that its redeemer also list the inputs of the transaction. The respo
 this type of leakage rests on the SP, who can address this by limiting the kinds of specifications 
 they agree to fulfill. 
 
-[TODO : make sure we have shown that "We have demonstrated that guessing inputs without access to either the inputs themselves, or 
-the transactions that have placed them into the UTxO set, is sufficiently difficult to not be considered a 
-vector of attack."]
+\todobox{TODO : make sure we have shown that "We have demonstrated that guessing inputs 
+without access to either the inputs themselves, or 
+the transactions that have placed them into the UTxO set,
+ is sufficiently difficult to not be considered a 
+vector of attack."}
 
+\section{Light Client Protocols}
+\label{sec:protocols}
 
 \section{Analysis}
 
