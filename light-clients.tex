@@ -574,14 +574,14 @@ define state is abstract :
 \end{itemize}}
 
 
-\begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\TxAbs'$ produced by the SP is such that $\fun{txLCheck}(LState, \TxAbs')=1$. \end{definition}
+\begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\Tx('$ produced by the SP is such that $\fun{\fun{checkTxL}~}(LState, \Tx(')=1$. \end{definition}
 
-\todobox{ Does $\fun{txLCheck}(LState, \TxAbs'$ make sense ?? }
+\todobox{ Let ${\fun{checkTxL}~}(LState, \Tx)$  be shorthand for  $\fun{checkTx}~((\var{slot}, \var{fee}), \var{utxo},~\var{tx})$ }.
 
 
-\begin{definition}[Safety] A transaction building protocol is \textbf{safe} if for an honest light client and any service provider SP we have that: if transaction $\TxAbs'$ is produced by the SP is such that  $\fun{txLCheck}(LState, \TxAbs')=1$  
+\begin{definition}[Safety] A transaction building protocol is \textbf{safe} if for an honest light client and any service provider SP we have that: if transaction $\Tx('$ is produced by the SP is such that  $\fun{\fun{checkTxL}~}(LState, \Tx(')=1$  
 %against the client's key (XXX note: maybe we can ommit this)
-, then it must be that $\fun{chkSpec}(\mathcal{I}_\mathsf{post} , \TxAbs')=1$. \end{definition}
+, then it must be that $\fun{chkSpec}(\mathcal{I}_\mathsf{post} , \Tx(')=1$. \end{definition}
 
 \begin{definition}[Private until posted] A transaction building protocol has the  \textbf{private until posted} property if a PPT adversarial client $C_\mathcal{A}$ cannot win the following experiment with probability significantly higher than $1\over 2$.
 
