@@ -56,6 +56,9 @@ but we simplify here for clarity.)
 
 \textsc{Helper functions}
     \begin{align*}
+        &\fun{txid} : \Tx \to \TxId \\
+        &\fun{txid}~\var{tx} = \fun{hash}~(\var{tx} ~\{ ~\fun{sigKeys} = ~\fun{dom}~(\var{tx} . \sigs)~\})
+        \nextdef
         &\fun{toMap} : \N \to [\TxOut] \to (\N \mapsto \TxOut) \\
         &\fun{toMap}(\_,~[~]) ~~~~~~~~~~~~~= [~] \\
         &\fun{toMap}(\var{ix},~u~::~\var{outs}) = \{~\var{ix}\mapsto u~\} \cup \fun{toMap}(\var{ix}+1,~\var{outs}) \\
@@ -197,4 +200,28 @@ but we simplify here for clarity.)
 \end{displaymath}
 \caption{Building transactions according to the specific intent}
 \label{fig:mktospec}
+\end{figure}
+
+
+\begin{figure}
+\begin{displaymath}
+\begin{array}{rlll}
+  \TxAbs &=&(\inputs: \type{Set}~{\TxIn},\\
+  & &\ \fun{validityInterval}: \Interval{\Tick},\\
+  & &\ \mint: \Value,\\
+  & &\ \fun{fee}: \N \\
+  & &\ \fun{sigKeys}: \fun{Set}~\pubkey) \\
+  & &\ \text{Abstract transaction type}
+  \nextdef 
+  \fun{mkAbs} &:& \Tx \to \TxAbs \\
+  \fun{mkAbs}~\var{tx} &=& \var{tx} ~\{ ~\inputs = \var{tx} . \inputs,\\
+  & &\ \fun{validityInterval}  = \var{tx} . \fun{validityInterval},\\
+  & &\ \mint  = \var{tx} . \mint ,\\
+  & &\ \fun{fee}  = \var{tx} . \fun{fee} \\
+  & &\ \fun{sigKeys}  = \fun{dom}~(\var{tx} . \sigs)~\} \\
+  & &\ \text{Abstract transaction constructor}
+\end{array}
+\end{displaymath}
+\caption{Abstract transaction type and constructor}
+\label{fig:script}
 \end{figure}

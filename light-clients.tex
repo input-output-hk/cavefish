@@ -67,6 +67,7 @@
 \newcommand{\fee}{\fun{fee}}
 \newcommand{\addr}{\fun{addr}}
 \newcommand{\pubkey}{\fun{PubKey}}
+\newcommand{\privkey}{\fun{PrivKey}}
 \newcommand{\val}{\fun{value}}  %% \value is already defined
 \newcommand{\Value}{\type{Value}}
 \newcommand{\Redeemer}{\type{Redeemer}}
@@ -218,12 +219,12 @@ What sets us apart?
 The core of our design is an answer to the question of "how can a user request and approve payment (e.g. from their wallet) without knowing anything about the chain except what the transaction spending their money is doing with their money"?
 
 We claim that our work can be used by any UTxO or EUTxO blockchain (with some adjustments to the details of intent specification). 
-We use blind signatures \cite{blindsigs}
+We use blind signatures~\cite{blindsigs}.
 
 \section{Related Work}
 
 
-Our approach provides facilitates transaction submission for a light client that is not aware of the entire history of a blockchain. 
+Our approach facilitates transaction submission for a light client that is not aware of the history of a blockchain. 
 Therefore, we compare our work with existing solutions for light clients as well as mechanisms that allow the interaction with a blockchain when in resource constrained operation.
 Our approach is different from a more ``traditional'' (i.e., what commonly is referred to) light client that has the primary goal of syncing to the blockchain in order to acquire the information necessary to interact with a smart contract or to submit a transaction. 
 We summarize the most important concepts and works in the area of light clients below.
@@ -330,7 +331,8 @@ and assume that each SP can have its own domain-specific language to express the
 
 However, for the purpose of discussing the usecases our design can have, we present an example DSL
 for defining these function. In a realistic system, more constraints need to be 
-included in the DSL, e.g. a way to limits transaction size. We define the checking function in 
+included in the DSL, e.g. a way to limits transaction size, or support for specifying
+desired token exchanges. We define the checking function in 
 Figure \ref{fig:dsl}, and the transaction-building $\fun{mkToSpec}$ in Figure \ref{fig:mktospec}.
 
 \begin{figure}
@@ -364,7 +366,7 @@ Figure \ref{fig:dsl}, and the transaction-building $\fun{mkToSpec}$ in Figure \r
 \label{fig:dsl}
 \end{figure}
 
-Let us define two examples of intents :
+Let us define two examples of intent specifications :
 
 \begin{itemize}
     \item[($i_1$)] Intent to mint some token $t$ within an interval of length $j$ and maximum fee $f$ :
@@ -375,6 +377,7 @@ Let us define two examples of intents :
 \end{itemize}
 
 The resulting transactions are given in Figure \ref{fig:txs}.
+
 
 \todobox{
     define fig:txs, and fix fig:mktospec
@@ -438,6 +441,7 @@ Can we have viewing keys?}
 
 \section{Threat Model and Threat Mitigation}
 \label{sec:threats}
+
 
 \textbf{Erroneous User Balance.} A common threat vector is convincing the user of an erroneous balance on their account. This can lead a user to
 complete a transaction outside the blockchain based on wrong information (e.g. accept an invalid transaction as payment for goods, or exchange his private key
@@ -511,7 +515,7 @@ vector of attack."}
 The following computations are performed in the protocol
 
 \begin{itemize}
-    \item[(i)] See Section \ref{sec:dsl} intents that may be generated
+    \item[(i)] Intent specification is generated (see Section \ref{sec:dsl})
     \item[(ii)] Signature is generated as follows :
     \[\var{sig} = \fun{sign}~(\var{int_{post}}, sk_{\mathrm{client}})\]
     \item[(iii)] The signature is checked as follows : 
@@ -522,12 +526,12 @@ The following computations are performed in the protocol
     \[ \var{tx}_A = \fun{mkAbs}~\var{tx}  \]
     \item[(vi)] Intent specification check (see Section \ref{sec:dsl}) :
     \[ \chkSpec{(\var{int_{post}})}(\var{tx}_A )= \true \]
-    \item[(vii)] Blind signatures are computed by (see Section \ref{sec:blind} for details), with $\var{vks} = \fun{getVKs}~\fun{dom}~(\var{tx} . \fun{sigs})$ :
-    \[ \var{sigs} = \{~(s,~\fun{blindSign}~(h,~\var{tx}_A,~ s)) \vert s \in vk_{\mathrm{client}} \cup ~\var{vks}~\} \]
+    \item[(vii)] Blind signatures are computed by (see Section \ref{sec:blind} for details), with $\var{sks} = \fun{getSKs}~\fun{dom}~(\var{tx} . \fun{sigs})$ :
+    \[ \var{sigs} = \{~(s,~\fun{blindSign}~(h,~\var{tx}_A,~ s)) \vert s \in sk_{\mathrm{client}} \cup ~\var{sks}~\} \]
     \item[(vii)] Signatures are computed from blind signatures (see Section \ref{sec:blind} for details) :
     \[ \var{sigs'} = \{~(s,~\fun{mkRealSig}~(s,~h,~\var{tx}_A,~k)) ~\vert~(s, k) \in \var{sigs}~\} \]
     \item[(viii)] Signatures are added to the transaction 
-    \[ \var{tx'} = \fun{addSigs}~(\var{tx}, \var{sigs'}) \]
+    \[ \var{tx'} = \var{tx}~\{~\sigs = \var{sigs'}~\} \]
 \end{itemize}
 
 \subsection{Protocol Description}
@@ -560,18 +564,8 @@ The following computations are performed in the protocol
 	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-11-2.south west)--(m-11-2.south east);
 \end{tikzpicture}
 
-\todobox{
-define state is abstract :
-\begin{itemize}
-    \item $\TxAbs$
-    \item $\fun{blindSign} : \H \times \TxAbs \times \pubkey \to \H$
-    \item $\fun{txid} : \Tx \to \TxId$
-    \item $\fun{sign} : (\H, \pubkey) \to \H$
-    \item $\fun{mkAbs} : \Tx \to \TxAbs$
-    \item $\fun{mkRealSig} : (\pubkey \times \TxId \times \TxAbs \times \H) \to \H$
-    \item $\fun{addSigs} : (\Tx \times \Signature) \to \Tx$
+\newpage
 
-\end{itemize}}
 
 
 \begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\Tx('$ produced by the SP is such that $\fun{\fun{checkTxL}~}(LState, \Tx(')=1$. \end{definition}
@@ -624,6 +618,44 @@ to LC's query, LC will engage in the rest of the protocol only with the sender o
  produced a response to the LC. We do not assume that 
  either the SP or the LC are necessarily capable of performing or verifying (resp.) optimality according to the 
  function LC requested be optimized, but an LC is capable to comparing transactions using $\fun{opt}$.
+
+ 
+ \section{Blind Signatures for Abstract Transactions}
+ \label{sec:blind}
+ In order to allow the LC to sign an abstract transaction artifacts we implement blind signatures on (partially) blinded transaction objects.
+ At the minimum the SP hides the inputs to the transaction, i.e., the references to UTxO objects which are present in the ledger and required to cover the transaction.
+
+ In Bitcoin, for example, UTxOs are captured in the ledger as follows:
+ For Cardano, the structure looks as follows:
+
+ \todobox{ Describe UTxO briefly for all chains we support?  }.
+
+
+ The specific ledger implementation might require slight adaptations in terms of signature type and used hash functions---in this work, we give a very general construction that can be tailored to specific blockchains.
+
+ Our construction is inspired by the predicate blind signature mechanism in~\cite{blindsigs}. 
+ It realizes a concurrently secure blind and partially blind signing protocol resulting in  standard Schnorr signatures.
+ The signature scheme builds upon the original protocol proposed in~\cite{10.1007/3-540-48071-4_7} with the addition of a commitment phase that binds the signer to her secrets (blinding value and message), preventing a forgery attack (described in~\cite{bibid}) and making the scheme unforgeable under concurrent sessions. 
+
+ We describe how this protocol can be applied and simplified for abstract transaction signing.
+ The proposed simplification is applicable in our setting due to the fact that our protocol does not rely on concurrent singing sessions.
+ Furthermore, unlinkability of signatures and artifacts.
+ Once the SP publishes final (unblinded) transactions on the chain, the LC can in theory download recent blocks and observe the transaction that was posted by the SP on behalf of the light client. If downloading is too resource-intensive, the LC might also consult an online block explorer for said purpose. As a consequence, abstract transactions, published transactions and signatures are assumed to be ``linkable'' and unlinkability provided by the signature scheme is redundant in our scenario.
+
+
+
+ \todobox{ 
+    \begin{itemize}
+ \item Do we consider TLS connection between LC and SP? A network adversary could otherwise link/localize abstract transactions and transactions posted on the ledger. 
+ \item specify the signing algorithm : $\fun{sign} : (\H, \privkey) \to \H$
+ \item specify the function to make real sigs from blind sigs $\fun{mkRealSig} : (\pubkey \times \TxId \times \TxAbs \times \H) \to \H$
+\item specify the blind signing algorithm $\fun{blindSign} : \H \times \TxAbs \times \privkey \to \H$
+\end{itemize} }.
+
+ 
+
+
+
 
 
 \section{Analysis}

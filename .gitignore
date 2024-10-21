@@ -3,3 +3,7 @@ light-clients.synctex.gz
 light-clients.pdf
 light-clients.log
 light-clients.aux
+light-clients.fls
+light-clients.fdb_latexmk
+light-clients.bbl
+light-clients.blg
