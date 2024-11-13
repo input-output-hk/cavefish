@@ -79,6 +79,7 @@ A transaction updates the UTxO set by either adding and removing entries.
         & &\ \fun{validityInterval}: \Interval{\Tick},\\
         & &\ \mint: \Value,\\
         & &\ \fun{fee}: \N \\
+        & &\ \fun{auxData} : \B \\
         & &\ \sigs: \Signature)
     \end{array}
 \end{displaymath}
@@ -106,11 +107,14 @@ is a set of public keys, associated with their
 signatures on the the transaction (excluding $\sigs$ itself). 
 The $\fun{fee}$ is the amount of primary currency a transaction pays as a system fee,
 which is checked to be at least the required fee $\fun{minfee}$.
+
 The $\mint$ field represents the assets being minted or burned by the transaction. 
 Assets with positive quantities are said to be minted, while those with negative quantities 
 are burned. When a transaction is applied, the constraints specified by every 
 $p \in \Policy \leteq \Script$ of each type of asset specified in this field are 
 checked to make sure minting/burning of this type and quantity of asset is allowed. 
+The $\fun{auxData}$ is a field for arbitrary extra data encoded as a bytestring, 
+e.g. a "note".
 
 \textbf{Ledger State Update. } Given a UTxO set $\var{utxo}$ and a transaction $\var{tx}$, the function 
 $\fun{updateUTxO} : \UTxO \times \Tx \to \UTxO$

@@ -57,7 +57,7 @@ but we simplify here for clarity.)
 \textsc{Helper functions}
     \begin{align*}
         &\fun{txid} : \Tx \to \TxId \\
-        &\fun{txid}~\var{tx} = \fun{hash}~(\var{tx} ~\{ ~\fun{sigKeys} = ~\fun{dom}~(\var{tx} . \sigs)~\})
+        &\fun{txid}~\var{tx} = \fun{hash}~(\var{tx} ~\{ ~\fun{sigKeys} = ~\fun{dom}~(\var{tx} . \sigs) ,~\sigs = ~\emptyset~\})
         \nextdef
         &\fun{toMap} : \N \to [\TxOut] \to (\N \mapsto \TxOut) \\
         &\fun{toMap}(\_,~[~]) ~~~~~~~~~~~~~= [~] \\
@@ -161,6 +161,7 @@ but we simplify here for clarity.)
   & &\ \fun{validityInterval} = (0, 0),\\
   & &\ \mint = 0,\\
   & &\ \fun{fee} = 0 \\
+  & &\ \fun{auxData} = \fun{c}~\\
   & &\ \sigs = \emptyset~ \}
 \end{array}
 \end{displaymath}
