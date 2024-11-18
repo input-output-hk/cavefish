@@ -319,8 +319,13 @@ UTxO model
 \subsection{Intent Specification}
 \label{sec:dsl}
 
-For the protocol definition we present in this work, we leave the following functions abstract, 
-and assume that each SP can have its own domain-specific language to express these :
+We define the type of \emph{abstract transaction}, $\TxAbs$,
+which is the data structure a light client receives from the service provider instead of 
+the full plaintext transaction, see \ref{fig:abs-tx}. This type does not contain 
+the $\fun{auxData}$ or the $\outputs$ transaction fields, and instead of the $\Signature$ 
+field, it contains only the signing keys $\fun{sigKeys}$ and not the corresponding signatures.
+For the implementing some example the usecases of our design, we require the definition of the 
+following functions, given in Figure \ref{fig:dsl}, and Figure \ref{fig:mktospec}, respectively :
 
 \begin{itemize}
     \item[(i)] The function that construct a transaction based on the specification 
@@ -328,12 +333,6 @@ and assume that each SP can have its own domain-specific language to express the
     \item[(ii)] The function that checks that a given abstract transaction matches the specification  
     \[\fun{chkSpec}~(\mathcal{I}_\mathsf{post} \times \TxAbs) \to \B\]
 \end{itemize}
-
-However, for the purpose of discussing the usecases our design can have, we present an example DSL
-for defining these function. In a realistic system, more constraints need to be 
-included in the DSL, e.g. a way to limits transaction size, or support for specifying
-desired token exchanges. We define the checking function in 
-Figure \ref{fig:dsl}, and the transaction-building $\fun{mkToSpec}$ in Figure \ref{fig:mktospec}.
 
 \begin{figure}
     \textsc{$\mathcal{I}_\mathsf{post}$ Constructors} 
@@ -366,7 +365,12 @@ Figure \ref{fig:dsl}, and the transaction-building $\fun{mkToSpec}$ in Figure \r
 \label{fig:dsl}
 \end{figure}
 
-Let us define two examples of intent specifications :
+We these functions are defined such that for any $l,~i$, such that $\fun{mkToSpec}~l~i~\var{tx}_t \neq \fun{nothing}$,
+necessarily $\chkSpec{i}~(\fun{mkAbs}~(\fun{mkToSpec}~l~i~\var{tx}_t))$, 
+see Appendix \ref{sec:chk-mk} for a proof sketch.
+Note that in a realistic system, however, more constraints need to be 
+included in this DSL, e.g. a way to limits transaction size, or support for specifying
+desired token exchanges. Let us define two examples of intent specifications :
 
 \begin{itemize}
     \item[($i_1$)] Intent to mint some token $t$ within an interval of length $j$ and maximum fee $f$ :
@@ -378,9 +382,8 @@ Let us define two examples of intent specifications :
 
 The resulting transactions are given in Figure \ref{fig:txs}.
 
-
 \todobox{
-    define fig:txs, and fix fig:mktospec
+    define fig:txs,  Appendix \ref{sec:chk-mk}
 }
 
 
@@ -525,7 +528,7 @@ The following computations are performed in the protocol
     \[ \var{tx} = \fun{mkToSpec}~(\var{ls},~\var{int_{post}},~\var{tx}_t)~\{~\fun{auxData}~=~\fun{random}~\} \]
     \item[(v)] Abstract transaction is generated as : 
     \[ \var{tx}_A = \fun{mkAbs}~\var{tx}  \]
-    \item[(vi)] Blind Signature Commitment (see Section \ref{sec:blind} for details) :
+    \item[(vi)] Blind Signature Commitment (see Section \ref{sec:blind} for details)
 
     \item[(vii)] Intent specification Proof (see Section \ref{sec:dsl}) :
     \[ \chkSpec{(\var{int_{post}})}(\var{tx}_A )= \true \]
@@ -583,7 +586,6 @@ The following computations are performed in the protocol
 \end{tikzpicture}
 
 \newpage
-
 
 
 \begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\Tx'$ produced by the SP is such that $\fun{\fun{checkTxL}~}(LState, \Tx')=1$. \end{definition}
