@@ -10,7 +10,7 @@
 \usepackage{stmaryrd}
 \usepackage{amsmath}
 \usepackage{tikz}
-\usetikzlibrary{matrix,shapes,arrows,positioning,chains, calc}
+\usetikzlibrary{matrix,shapes,arrows,positioning,chains, calc,fit}
 
 \usepackage{caption}
 \usepackage{xcolor}
@@ -581,8 +581,9 @@ The following computations are performed in the protocol
 		&  $(\var{int_{post}}, vk_{\mathrm{client}}, \var{sig})$ & \\[-7mm] %\fun{opt}(\ ),\
 		& & (iii) Check signature \\[-7mm]
 		& & (iv) Generate transaction  \\[-7mm]
-		& & and (v) abstract $\var{tx}_A$  \\[-7mm]
-		& $\var{tx}_A$ & \\[-7mm]
+		& & and (v) initiate WBPS signing \\[-7mm]
+		&& with abstract $\var{tx}_A$  \\[-7mm]
+		\phantom{x}& $\var{tx}_A$ & \\[-7mm]
 		%\ h=\fun{txid}~\var{tx}
 		% %& ZK.proof $p$ of $P (h,\  \var{tx}_A) = \true$ & \\
 		(vi) Produce Blind.  \\[-7mm]
@@ -595,23 +596,24 @@ The following computations are performed in the protocol
 		% %& ZK.proof $p$ of $P (h,\  \var{tx}_A) = \true$ & \\
 		(viii) Check proof \\[-7mm]
 		Produce pre signature \\[-7mm]
-
 		% sign abstract transaction\\[-7mm]
-		& $\var{bsig}$\\[-7mm]
-		& & (ix) Produce signature\\[-7mm]
+		& $\var{bsig}$\\[-7mm]	
+		& & (ix) Produce signature $\sigma$\\[-7mm]
 		& & from pre signature.\\[-7mm]
-		& & Post $\var{tx'}$ on-chain.\\
+		& & Post $(\var{tx'},\sigma)$ on-chain.\\
 	};
 	
-	%\draw[shorten <=-1.5cm,shorten >=-1.5cm] (m-1-1.south east)--(m-1-1.south west);
-	%\draw[shorten <=-1.5cm,shorten >=-1.5cm] (m-1-3.south east)--(m-1-3.south west);
-	
-	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-5-2.south west)--(m-5-2.south east);
-	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-9-2.south east)--(m-9-2.south west);
-	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-12-2.south west)--(m-12-2.south east);
-	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-15-2.south east)--(m-15-2.south west);
-	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-18-2.south west)--(m-18-2.south east);
-
+	\draw[shorten <=-1.5cm,shorten >=-1.5cm] (m-1-1.south east)--(m-1-1.south west);
+	\draw[shorten <=-1.5cm,shorten >=-1.5cm] (m-1-3.south east)--(m-1-3.south west);
+	%\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-6-2.south west)--(m-6-2.south east);
+	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-10-2.south east)--(m-10-2.south west);
+	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-13-2.south west)--(m-13-2.south east);
+	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-16-2.south east)--(m-16-2.south west);
+	\draw[shorten <=-1cm,shorten >=-1cm,-latex] (m-19-2.south west)--(m-19-2.south east);
+	%\draw (m-10-2.north west) rectangle (m-19-2.south east);
+	\node[fit={(m-10-1.north west) (m-18-1.north west) (m-21-3.south east) (m-15-3.south east)},
+      ultra thick, inner sep=0pt, rounded corners=1mm,
+      draw=cyan, label={[cyan,align=center]270:WBPS Execution}]{};
 \end{tikzpicture}
 
 \newpage
@@ -723,21 +725,21 @@ a signing/verification key pair $(sk, vk)$, which implicitly contain $par$, i.e.
 –\item $\langle Sign(sk, prd),User(vk, prd, m) \rangle \to (b, \sigma)$: an interactive protocol with shared input $par$
 (implicit in $sk$ and $vk$) and a predicate $prd$ is run between the signer and user. The signer
 takes a secret key $sk$ as private input, the user’s private input is a verification key $vk$ and
-a message $m$. The signer outputs $b = 1$ if the interaction completes successfully and $b = 0$
+a message $m$. The signer outputs $d = 1$ if the interaction completes successfully and $d = 0$
 otherwise, while the user outputs a signature $\sigma$ if it terminates correctly, and $\bot$ otherwise.
 \item $Ver(vk, m, \sigma) \to 0/1$: the (deterministic) verification algorithm, on input a verification key
 $vk$, a message $m$ and a signature $\sigma$, outputs 1 if $\sigma$ is valid on $m$ under  $vk$ and 0 otherwise.
 \end{itemize}
 
-For a 2-round protocol the interaction $\langle Sign(sk, prd),User(vk, prd, m) \rangle \to (b, \sigma)$ can be realized by the following algorithms:
+For a 2-round protocol the interaction $\langle Sign(sk, prd),User(vk, prd, m) \rangle \to (d, \sigma)$ can be realized by the following algorithms:
 \begin{align*}
 (txt_{U,0},st_{U,0}) \gets& User_0(vk, prd, m)\\
 (txt_{S,1},st_{S}) \gets& Sign_1(sk, prd, txt_{U,0}) \\
 (txt_{U,1},st_{U,1}) \gets& User_1(st_{U,0}, txt_{S,1})\\
-(txt_{S,2}, b) \gets& Sign_2(st_S, txt_{U,1}) \\
+(txt_{S,2}, d) \gets& Sign_2(st_S, txt_{U,1}) \\
 \sigma \gets& User_2(st_{U,1}, txt_{S,2})
 \end{align*}
-We write $(b, \sigma) \gets  \langle Sign(sk, prd),User(vk, prd, m) \rangle$  as shorthand for the above sequence.
+We write $(d, \sigma) \gets  \langle Sign(sk, prd),User(vk, prd, m) \rangle$  as shorthand for the above sequence.
 
 
 
@@ -759,13 +761,14 @@ $\BLD^{\A,b}_{\WBPSP}(\lambda)$
 \hrule
 
 $par \gets Setup(1^\lambda) $\\
-$(m_0,m_1,prd,vk',st) \gets \A_1(par)$\\
+$(m_0,m_1,prd,vk',st_\A) \gets \A_1(par)$\\
 \textbf{if} $P(prd,m_0) = 0$ \textbf{or} $P(prd,m_1) = 0$ 
 \textbf{then} \quad \textbf{return} 0\\
 $m \gets m_b$\\
 $vk \gets (par,vk')$
 $sess\gets \mathsf{init}$\\
-$b^*\gets\A_2^{\mathsf{ChalUser}}(st)$
+$b^*\gets\A_2^{\mathsf{ChalUser}}(st_\A)$\\
+$ \textbf{return} \quad  b==b^* $
 \end{minipage}%
 \hspace{0.5cm}%
 \begin{minipage}[t]{0.55\linewidth}
@@ -778,7 +781,7 @@ $\mathsf{ChalUser}(txt=\emptyset)$
 
 \textbf{if} $sess=\mathsf{await}$\\
 \null\quad $sess\gets\mathsf{closed}$\\
-\null\quad $\sigma \gets User_2(st, txt)$
+\null\quad $\sigma \gets User_2(st_u, txt)$
 
 
 
@@ -787,12 +790,12 @@ $\mathsf{ChalUser}(txt=\emptyset)$
 
 \textbf{if} $sess=\mathsf{open}$\\
 \null\quad $sess\gets\mathsf{await}$\\
-\null\quad $(txt',st) \gets User_1(st, txt)$
+\null\quad $(txt',st_u) \gets User_1(st_u, txt)$
 
 
 \textbf{if} $sess=\mathsf{init}$\\
 $\null\quad sess\gets\mathsf{open}$\\
-$\null\quad (txt',st) \gets User_0(vk, prd, m)$
+$\null\quad (txt',st_u) \gets User_0(vk, prd, m)$
 
 
 
