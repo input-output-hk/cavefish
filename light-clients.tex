@@ -872,17 +872,28 @@ according to LC's specification.
 To assess the efficiency of our construction we implement and benchmark the NArg component. Given today's implementations of zk-SNARKs, running NArg is expected to be the most time and resource intensive part of our assisted TX creation protocol.
 
 We base our tests on the trusted-setup zk-SNARK system \emph{Groth16}~\cite{cryptoeprint:2016/260} implemented by \emph{Iden3}~\cite{circom}.
-The circuits we constructed are inspired by the implementation of~\cite{blindsigs}
+The circuits we constructed are inspired by the implementation of~\cite{blindsigs}.
 We make them available in the domain-specific language of Circom.
 
 The NArg we instanciate captures proof $\pi$ : $\fun{chkSpec}(\var{int_{post}},\var{tx}) = 1$ $\land \var{Com}(\var{tx};\rho)$ from the protocol in Section~\ref{}.
 
 \begin{equation}
- \mathrm{R}_{\mathrm{WBPS}}((q, \mathbb{G}, G, \mathsf{H}),\ (X, R, c, \fun{chkSpec}(\var{int_{post}}, \cdot )),\ m)
+\label{narg}
+ \mathrm{R}_{\mathrm{WBPS}}((q, \mathbb{G}, G, \mathsf{H}),\ (X, R, c, \fun{chkSpec}(\var{int_{post}}, \cdot )),\ (tx, \mathsf{H}(tx), \rho))
 \end{equation}
 
 
+We estimate the arithmetic complexity of the relation in~\ref{narg} in terms of contraints the resulting circuit contains.
 
+We note that message being signed in our relation is the hash of the transaction $\mathsf{H}(tx)$.
+Thus the witness--strictly speaking--only contains the transaction $tx$, but we list $\mathsf{H}(tx)$, for completeness as the message being signed is $m \equiv \mathsf{H}(tx)$.
+
+\todobox{Incorporate $\rho$. If we add enough entropy using the meta/text field then we don't necessarily need $\rho$?}
+
+The parameters $(q, \mathbb{G}, G, \mathsf{H})$ can be interpreted as the global parameters for the Schnorr signature scheme used.
+We assume that our WBPS scheme is meant to extend an existing Schnorr signature scheme, in which case $(q, \mathbb{G}, G, \mathsf{H})$ are predefined, or, the parameters can be chosen to fit the underlying NIZK/SNARK system.
+
+We use BN254 as the curve for \emph{Groth16} to rely on. The relation is instantiated over an arithmetic circuit with modulus of 254 bits, i.e., the order of the group given by  BN254 has 254 bits.
 
 \section{Conclusion}
 
