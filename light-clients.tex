@@ -773,7 +773,7 @@ $ \textbf{return} \quad  b==b^* $
 \end{minipage}%
 \hspace{0.5cm}%
 \begin{minipage}[t]{0.55\linewidth}
-$\mathsf{ChalUser}(txt=\emptyset)$
+$\mathsf{ChalUser}(msg=\emptyset)$
 \hrule
 
 
@@ -782,27 +782,27 @@ $\mathsf{ChalUser}(txt=\emptyset)$
 
 \textbf{if} $sess=\mathsf{await}$\\
 \null\quad $sess\gets\mathsf{closed}$\\
-\null\quad $\sigma \gets User_2(st_u, txt)$
+\null\quad $\sigma \gets User_2(st_u, msg)$
 
 
 
 \textbf{if} $sess=\mathsf{closed}$\\
-\null\quad $txt' \gets Ver(vk, m, \sigma)$
+\null\quad $msg' \gets Ver(vk, m, \sigma)$
 
 \textbf{if} $sess=\mathsf{open}$\\
 \null\quad $sess\gets\mathsf{await}$\\
-\null\quad $(txt',st_u) \gets User_1(st_u, txt)$
+\null\quad $(msg',st_u) \gets User_1(st_u, msg)$
 
 
 \textbf{if} $sess=\mathsf{init}$\\
 $\null\quad sess\gets\mathsf{open}$\\
-$\null\quad (txt',st_u) \gets User_0(vk, prd, m)$
+$\null\quad (msg',st_u) \gets User_0(vk, prd, m)$
 
 
 
 
 
-\textbf{return} $txt'$
+\textbf{return} $msg'$
 
 \end{minipage}
 }
@@ -821,32 +821,43 @@ $ (sk, vk) \gets KeyGen(par) $\\
 $Q \gets 0$\\
 $S \gets 0$\\
 $P \gets 0$\\
-$(\vec{m},{\vec\sigma}) \gets \A^{OSig_1,OSig_2}(vk)$\\
-\textbf{if} $|m| > Q_m$ 
-\textbf{then} \quad \textbf{return} 0\\
-$ \textbf{return} \quad \prod_i Ver(vk,m_i^*,\sigma_i^*) $
+$PT \gets \emptyset $\\
+$(\vec{m^*},{\vec\sigma^*}, \vec{prd^*}) \gets \A^{SigInit,SigComplete}(vk)$\\
+$n \gets \left |{\vec{m}}\right |$\\
+$ \textbf{if} \quad \prod_i Ver(vk,m_i^*,\sigma_i^*) \neq 1 \textbf{ return 0} $\\
+$ \textbf{if} \quad \prod_i prd^*(m_i^*) \neq 1 \textbf{ return 0} $\\
+$ \textbf{if} \quad \exists i, j: (i\neq i) \land (m_i^*,\sigma_i^*)=(m_j^*,\sigma_j^*)\\ \quad \textbf{ return 0} $\\
+$ \textbf{if} \quad  n > Q \textbf{ return 1}$\\
+\textbf{if} $\nexists \rho \in Perm(S):$\\ 
+$\quad \forall i \leq n: (prd_{\rho(i)}(m_i)=1) \land (st_{\rho(i)}=\bot)$\\
+\textbf{then} \quad \textbf{return 1} \\
+\quad \textbf{return 0} \\
+
 \end{minipage}%
 \hspace{0.5cm}%
 \begin{minipage}[t]{0.55\linewidth}
-$\mathsf{OSig_1}(prd, txt_{U,0})$
+$\mathsf{SigInit}(prd, msg_{U,0})$
 \hrule
 
-%$(txt_{U,0},st_{U,0}) \gets User_0(vk, prd, m)$\\
+%$(msg_{U,0},st_{U,0}) \gets User_0(vk, prd, m)$\\
 $S\gets S+1; P\gets P+1$\\
-$(txt,st_{S}) \gets Sign_1(sk, prd, txt_{U,0})$ \\
-\textbf{return} $txt$\\
+$(msg,st_{S}) \gets Sign_1(sk, prd, msg_{U,0})$ \\
+\textbf{return} $msg$\\
 
-$\mathsf{OSig_2}(s,txt_{U,1})$ 
+$\mathsf{SigComplete}(s,msg_{U,1})$ 
 \hrule 
 
 
 \textbf{If } $s>S$ \textbf{or} $st_s=\bot$ \textbf{ then } \textbf { return } $\bot$\\
-%$(txt_{U,1},st_{U,1}) \gets User_1(st_{U,0}, txt_{S,1})$ \\
-$(txt, d) \gets Sign_2(st_s, txt_{U,1})$ \\
+%$(msg_{U,1},st_{U,1}) \gets User_1(st_{U,0}, msg_{S,1})$ \\
+$(msg, d) \gets Sign_2(st_s, msg_{U,1})$ \\
 \textbf{If } $d=1$ \textbf{ then } $Q\gets Q+1$\\
 $P \gets P-1$\\
+$PT_S\gets prd_S$\\
 $st_s \gets \bot$\\
-\textbf{return} $txt$
+\textbf{return} $msg$
+
+%Todo: change OSig1 / OSig2
 
 \end{minipage}
 }
