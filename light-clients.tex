@@ -821,12 +821,11 @@ $ (sk, vk) \gets KeyGen(par) $\\
 $Q \gets 0$\\
 $S \gets 0$\\
 $P \gets 0$\\
-$PT \gets \emptyset $\\
 $(\vec{m^*},{\vec\sigma^*}, \vec{prd^*}) \gets \A^{SigInit,SigComplete}(vk)$\\
-$n \gets \left |{\vec{m}}\right |$\\
+$n \gets \left |{\vec{m^*}}\right |$\\
 $ \textbf{if} \quad \prod_i Ver(vk,m_i^*,\sigma_i^*) \neq 1 \textbf{ return 0} $\\
-$ \textbf{if} \quad \prod_i prd^*(m_i^*) \neq 1 \textbf{ return 0} $\\
-$ \textbf{if} \quad \exists i, j: (i\neq i) \land (m_i^*,\sigma_i^*)=(m_j^*,\sigma_j^*)\\ \quad \textbf{ return 0} $\\
+$ \textbf{if} \quad \prod_i prd_i^*(m_i^*) \neq 1 \textbf{ return 0} $\\
+$ \textbf{if} \quad \exists i, j: (i\neq j) \land (m_i^*,\sigma_i^*)=(m_j^*,\sigma_j^*)\\ \quad \textbf{ return 0} $\\
 $ \textbf{if} \quad  n > Q \textbf{ return 1}$\\
 \textbf{if} $\nexists \rho \in Perm(S):$\\ 
 $\quad \forall i \leq n: (prd_{\rho(i)}(m_i)=1) \land (st_{\rho(i)}=\bot)$\\
@@ -842,6 +841,7 @@ $\mathsf{SigInit}(prd, msg_{U,0})$
 %$(msg_{U,0},st_{U,0}) \gets User_0(vk, prd, m)$\\
 $S\gets S+1; P\gets P+1$\\
 $(msg,st_{S}) \gets Sign_1(sk, prd, msg_{U,0})$ \\
+$prd_S \gets prd$\\
 \textbf{return} $msg$\\
 
 $\mathsf{SigComplete}(s,msg_{U,1})$ 
@@ -853,8 +853,7 @@ $\mathsf{SigComplete}(s,msg_{U,1})$
 $(msg, d) \gets Sign_2(st_s, msg_{U,1})$ \\
 \textbf{If } $d=1$ \textbf{ then } $Q\gets Q+1$\\
 $P \gets P-1$\\
-$PT_S\gets prd_S$\\
-$st_s \gets \bot$\\
+$st_S \gets \bot$\\
 \textbf{return} $msg$
 
 %Todo: change OSig1 / OSig2
@@ -905,7 +904,13 @@ $st_s \gets \bot$\\
 \end{tikzpicture}
 \subsection{Security}
 
-Blindness (sketch): If the commitments are perfectly hiding, then the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). However, the oracle query cannot be adversarially controlled: $(R,X,m_0)$ and $(R,X,m_1)$ are both known to the adversary. We thus need to replace $m\gets m_b$ with a weaker form.
+Blindness (initial sketch): If the commitments are perfectly hiding, then the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). However, the oracle query cannot be adversarially controlled: $(R,X,m_0)$ and $(R,X,m_1)$ are both known to the adversary. We thus need to replace $m\gets m_b$ with a weaker form.
+
+Blindness (revised sketch): We replace $m\gets m_b$ with the weaker form $m\gets m_b||m_r$. The commitments are hiding, so  the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). Finally, the oracle result $c$ cannot be predicted. It is either  $c=(R,X,m_0||m_r)$ or $c=(R,X,m_1||m_r)$, but neither value can be obtained without correctly guessing the value of $m_r$ (Event $H$, which only happens with negligible probability). Conditioning on $\not H$, $c$ is independent of the challenge bit $b$.
+
+Unforgreability (sketch): We follow F\&W: we extract the message from $tx_A$ and use that to preclude any soundness failures. Further, we use the value we learn to ``sign'' ahead of time, so the $R$ value is known to the simulator. We then distinguish between Adversaries who offer forgeries for incomplete sessions or forgeries for ``new" items. In the first case we let the reduction know the signing key and use it to calculate the DLOG of the $R$ value used in the forgery. In the second, we reduce to unforgeability of standard Schnorr: we know the message contained in each session via decrypting, and we can guarantee that at least one message output in the forgery has not been queried to the signing oracle.
+. 
+
 
 \section{Analysis}
 
