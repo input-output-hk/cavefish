@@ -144,11 +144,12 @@ template Main(n,k) {
         }
     }
     
-    for (var idx = 0; idx < k; idx++) {        
+    for (var idx = 0; idx < k; idx++) {     
+        log(fin[idx].out);   
         cc[idx] === fin[idx].out;
     }       
 }
 
 
 
-component main {public [X,R,cc,pred,Cmsg,C0]}= Main(64,4);
+component main {public [X,R,cc,pred,Cmsg,ek,C0]}= Main(64,4);
