@@ -1,6 +1,5 @@
 \section{Ledger Model}
 \label{sec:model}
-
 The ledger model to which we tailor our light client design is 
 a UTxO ledger with multi-asset support ($\mathsf{UTxO}_{ma}$), first introduced in \cite{utxoma}. 
 The UTxO ledger model, such as the one used by BitCoin \cite{bitcoin}, Ergo \cite{ergo},
@@ -29,9 +28,7 @@ the UTxO set field, $\fun{utxo}~:~\LState \to \UTxO$.
 It also contains the parameter $\fun{minfee}~:~\LState \in \N$, which is the minimum 
 fee a transaction must pay.
 A block $b$ can extend the blockchain (i.e. update the current state $s \in \LState$) whenever the function 
-
 \[ \fun{checkBlock}~:~\LState \times \Block \to \B \]
-
 applied as $\fun{checkBlock}~(s, b)$ returns $\true$. Then, the updated block state 
 is computed by $\fun{updateState}~(s, b)$. We do not give full specifications of 
 $\fun{checkBlock}$ or $\fun{updateState}$, as they are not required to model our light client approach.

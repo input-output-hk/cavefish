@@ -22,6 +22,7 @@
 \usetikzlibrary{matrix,shapes,arrows,positioning,chains,calc,fit}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{multirow}
 
 
 %\graphicspath{{./graphics/}}%helpful if your graphic files are in another directory
@@ -973,43 +974,42 @@ We base our tests on the trusted-setup zk-SNARK system \emph{Groth16}~\cite{cryp
 The circuits we construct and benchmark are inspired by the implementation of~\cite{blindsigs} and written in the domain-specific language of Circom~2.1.
 
 The NArg we instanciate captures proof $\pi$ : $\fun{chkSpec}(\var{int_{post}},\var{tx}) = 1$ $\land \var{Com}(\var{tx};\rho)$ from the protocol in Section~\ref{}.
-
 \begin{equation}
 \label{narg}
  \mathrm{R}_{\mathrm{WBPS}}((q, \mathbb{G}, G, \mathsf{H}),\ (X, R, c, \fun{chkSpec}(\var{int_{post}}, \cdot )),\ (tx, \mathsf{H}(tx), \rho))
 \end{equation}
-
-
-We estimate the arithmetic complexity of the relation in~\ref{narg} in terms of number of contraints, proving key size and proof size.
+We measure the arithmetic complexity of the relation in~\ref{narg} in terms of number of contraints, proving key size and proof size.
  We also measure the time it takes to creat the resulting circuit, the proving time and the proof verification time.
  The results are summarized in Table~\ref{table_results} for different scenarios we describe in the following. The experiments were executed on commodity hardware based on an Intel(R) Core(TM) i7-8750H CPU operating at 2.20GHz with 12 cores and 16GB of RAM.
 
 
-\subsection{Circuit construction}
+\subsection{Circuit construction framework}
 
 \subsection{Benchmarks for different scenarios}
 
 \begin{table}[h!]
 \centering
 \caption{Different scenarios for Bitcoin and Cardano. Predicate blindness and partial blindness.}
-\begin{tabular}{@{} lcccc @{}}
+\label{table_results}
+\begin{tabular}{@{} lcccccc @{}}
 \toprule
-  & Bitcoin & Cardano \\
+  & \multicolumn{2}{c}{\textbf{Bitcoin}} & & & \multicolumn{2}{c}{\textbf{Cardano}} \\
 \midrule
-Curve        & Secp256k1   & Ed25519      & 85      \\
-Hash          & SHA-256   & SHA-512      & 79      \\
+Signature scheme & \multicolumn{2}{c}{Schnorr} & & & \multicolumn{2}{c}{EdDSA} \\
+Curve        & \multicolumn{2}{c}{Secp256k1} & & & \multicolumn{2}{c}{Ed25519}           \\
+Hash          & \multicolumn{2}{c}{SHA-256} & & & \multicolumn{2}{c}{SHA-512}          \\
 \midrule
-Blindness type     & predicate & partial & predicate & partial \\
- & Threshold for amount& & $TX.out \le t$  & 333b blinded\\
-Transaction size & 256B & &  285B\\
+\multirow{2}{*}{Blindness type}     & predicate & partial & & & predicate & partial \\
+ & $TX.out \le t$ & xzy blinded & & & $TX.out \le t$  & 333b blinded\\
+Transaction size & 256B & xzy B & & & 285B & xzy B\\
 \midrule
-Proving key size \\
-Proving key verification time \\
-Verification key size \\
-Proving time \\
-Proof size \\
-Proof verification time \\
-Number of constraints \\
+Proving key size & 115 MB & & & & & 116 MB\\
+Proving key verification time & 19.3 s & & & & & 20.5 s \\
+Verification key size & 3.3 kB & & & & & 93 kB\\
+Proving time & 5.2 s & & & & & 5.8 s\\
+Proof size & 804 B & & & & & 805 B\\
+Proof verification time & 0.6s & & & & & 0.6s\\
+Number of constraints & 228k & & & & & 245k\\
 \bottomrule
 \end{tabular}
 \end{table}
