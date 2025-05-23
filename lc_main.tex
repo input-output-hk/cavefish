@@ -584,14 +584,19 @@ the transactions that have placed them into the UTxO set,
  is sufficiently difficult to not be considered a
 vector of attack."}
 
-\section{Light Client Protocol}
+\section{Light Client Protocols}
 \label{sec:protocols}
+We given an overview on our light client protocol and its components.
+As the protocol is uniquely suited for UTxO-based blockchains, we develop our approach
+to support the general ledger model explained in Section~\ref{sec:model}
+and the intents set forth in Section~\ref{sec:dsl}.
 
 \subsection{Outline}
 The following computations are performed in the protocol
 
 \begin{itemize}
     \item[(i)] Intent specification is generated (see Section \ref{sec:dsl})
+    \item[] \textcolor{orange}{mr: do we still need this extra signature?}
     \item[(ii)] Signature is generated as follows :
     \[\var{sig} = \fun{sign}~(\var{int_{post}}, sk_{\mathrm{client}})\]
     \item[(iii)] The signature is checked as follows :
