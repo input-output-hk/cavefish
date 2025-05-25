@@ -19,7 +19,7 @@
 \usepackage{stmaryrd}
 \usepackage{bm}
 
-%\usepackage{amsmath}
+\usepackage{amsmath}
 \usepackage{tikz}
 \usetikzlibrary{matrix,shapes,arrows,positioning,chains,calc,fit}
 \usepackage{xcolor}
@@ -104,6 +104,8 @@
 
 \newcommand\GGen{\ensuremath{\mathsf{GGen}}}
 \newcommand\NArg{\ensuremath{\mathsf{NArg}}}
+\newcommand\NArgr{\ensuremath{\mathsf{NArg}[R]}}
+
 \newcommand\Prove{\ensuremath{\mathsf{Prove}}}
 \newcommand\SimProve{\ensuremath{\mathsf{SimProve}}}
 
@@ -539,6 +541,30 @@ Following \cite[xxx], we define non-interactive zero knowledge arguments with re
 \item $\Ver(\crs,\theta,\pi)\to \{0,1\}$. Given a CRS $\crs$, a statement $\theta$ and a  proof $\pi$ outputs 1 or 0, accepting or rejecting the proof.
 \item $\SimProve(\crs,\theta,\tau)$. Given a CRS $\crs$, statement $\theta$ and traproor $\tau$ for $\crs$, produces a simulated proof $\pi$.
 \end{itemize}
+
+
+\begin{definition} A system $\NArgr$ is perfectly correct if for all unbounded adversaries $\A$ 
+\begin{align*}
+\Pr [par \gets \NArg.\mathsf{Rel}(1^\lambda);  (\crs,\tau)\gets \NArg.\Setup(par); (\theta,w) \gets A(crs):  \\
+\neg{}R(\theta,w) \lor \NArg.\Ver(\crs,\theta,\NArg.\Prove(\crs,\theta,w))]=1 \\
+\end{align*}
+\end{definition}
+
+\begin{definition} A system $\NArgr$ is adaptably computationally sound if for all p.p.t. adversaries $\A$ 
+\begin{align*}
+\Pr [par \gets \NArg.\mathsf{Rel}(1^\lambda);  (\crs,\tau)\gets \NArg.\Setup(par); (\theta,\pi) \gets A(crs):  \\
+\neg{}L(\theta) \land {}\NArg.\Ver(\crs,\theta,\pi)] \mbox{ is negligible in $\lambda$.}
+\end{align*}
+\end{definition}
+
+\begin{definition} A system $\NArgr$ is  computationally zero-knowledge if for all p.p.t. adversaries $\A$ 
+\begin{align*}
+|\Pr [par \gets \NArg.\mathsf{Rel}(1^\lambda);  (\crs,\tau)\gets \NArg.\Setup(par); d\gets\{0,1\}:  \\
+d = A^{\mathsf{OProve}_d}(crs)] - {1\over2}|\mbox{ is negligible in $\lambda$, where}\\
+\mathsf{OProve}_0(\theta,w):= \textbf{if } \neg R(\theta,w) \textbf{ return }\bot; \textbf{ return } \NArg.\Prove(\theta,w), \mbox{and} \\
+\mathsf{OProve}_1(\theta,w):= \textbf{if } \neg R(\theta,w) \textbf{ return }\bot; \textbf{ return } \NArg.\SimProve(\theta,\tau).
+  \end{align*}
+\end{definition}
 
 \input{model.tex}
 
