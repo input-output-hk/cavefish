@@ -6,6 +6,45 @@
 
 %% Saved with string encoding Unicode (UTF-8) 
 
+@article{jofc-2000-14276,
+  title={Security Arguments for Digital Signatures and Blind Signatures},
+  journal={J. Cryptology},
+  volume={13},
+  pages={361-396},
+  doi={10.1007/s001450010003},
+  author={David Pointcheval and Jacques Stern},
+  year=2000
+}
+
+@InProceedings{10.1007/0-387-34805-0_22,
+author="Schnorr, C. P.",
+editor="Brassard, Gilles",
+title="Efficient Identification and Signatures for Smart Cards",
+booktitle="Advances in Cryptology --- CRYPTO' 89 Proceedings",
+year="1990",
+publisher="Springer New York",
+address="New York, NY",
+pages="239--252",
+abstract="We present an efficient interactive identification scheme and a related signature scheme that are based on discrete logarithms and which are particularly suited for smart cards. Previous cryptoschemes, based on the discrete logarithm, have been proposed by El Gamal (1985), Chaum, Evertse, Graaf (1988), Beth (1988) and G{\"u}nter (1989). The new scheme comprises the following novel features.",
+isbn="978-0-387-34805-6"
+}
+
+
+@misc{cryptoeprint:2023/914,
+      author = {Dominik Hartmann and Eike Kiltz},
+      title = {Limits in the Provable Security of {ECDSA} Signatures},
+      howpublished = {Cryptology {ePrint} Archive, Paper 2023/914},
+      year = {2023},
+      url = {https://eprint.iacr.org/2023/914}
+}
+
+@misc{cryptoeprint:2011/368,
+      author = {Daniel J.  Bernstein and Niels Duif and Tanja Lange and Peter Schwabe and Bo-Yin Yang},
+      title = {High-speed high-security signatures},
+      howpublished = {Cryptology {ePrint} Archive, Paper 2011/368},
+      year = {2011},
+      url = {https://eprint.iacr.org/2011/368}
+}
 
 
 @misc{bip32,
@@ -85,6 +124,56 @@
 	url = {https://doi.org/10.1145/3133956.3134096},
 	year = {2017},
 	bdsk-url-1 = {https://doi.org/10.1145/3133956.3134096}}
+
+@article{10.1007/s10623-019-00608-x,
+author = {Maxwell, Gregory and Poelstra, Andrew and Seurin, Yannick and Wuille, Pieter},
+title = {Simple Schnorr multi-signatures with applications to Bitcoin},
+year = {2019},
+issue_date = {Sep 2019},
+publisher = {Kluwer Academic Publishers},
+address = {USA},
+volume = {87},
+number = {9},
+issn = {0925-1022},
+url = {https://doi.org/10.1007/s10623-019-00608-x},
+doi = {10.1007/s10623-019-00608-x},
+abstract = {We describe a new Schnorr-based multi-signature scheme (i.e., a protocol which allows a group of signers to produce a short, joint signature on a common message) called $$mathsf {MuSig}$$, provably secure under the Discrete Logarithm assumption and in the plain public-key model (meaning that signers are only required to have a public key, but do not have to prove knowledge of the private key corresponding to their public key to some certification authority or to other signers before engaging the protocol). $$mathsf {MuSig}$$ improves over the state-of-art scheme of Bellare and Neven (ACM Conference on Computer and Communications Security-CCS 2006) and its variants by Bagherzandi et al. (ACM Conference on Computer and Communications Security-CCS 2008) and Ma et al. (Des Codes Cryptogr 54(2):121–133, 2010) in two respects: (i) it is simple and efficient, having the same key and signature size as standard Schnorr signatures; (ii) it allows key aggregation, which informally means that the joint signature can be verified exactly as a standard Schnorr signature with respect to a single “aggregated” public key which can be computed from the individual public keys of the signers. To the best of our knowledge, this is the first multi-signature scheme provably secure under the Discrete Logarithm assumption in the plain public-key model which allows key aggregation. As an application, we explain how our new multi-signature scheme could improve both performance and user privacy in Bitcoin.},
+journal = {Des. Codes Cryptography},
+month = sep,
+pages = {2139–2164},
+numpages = {26},
+keywords = {Bitcoin, Forking lemma, Discrete logarithm problem, Key aggregation, Schnorr signatures, Multi-signatures}
+}
+
+
+  
+@misc{cryptoeprint:2022/1636,
+      author = {Dan Boneh and Chelsea Komlo},
+      title = {Threshold Signatures with Private Accountability},
+      howpublished = {Cryptology {ePrint} Archive, Paper 2022/1636},
+      year = {2022},
+      doi = {10.1007/978-3-031-15985-5_19},
+      url = {https://eprint.iacr.org/2022/1636}
+}
+
+
+@inproceedings{10.1007/978-3-030-45724-2_3,
+author = {Fuchsbauer, Georg and Plouviez, Antoine and Seurin, Yannick},
+title = {Blind Schnorr Signatures and Signed ElGamal Encryption in the Algebraic Group Model},
+year = {2020},
+isbn = {978-3-030-45723-5},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-030-45724-2_3},
+doi = {10.1007/978-3-030-45724-2_3},
+abstract = {The Schnorr blind signing protocol allows blind issuing of Schnorr signatures, one of the most widely used signatures. Despite its practical relevance, its security analysis is unsatisfactory. The only known security proof is informal and in the combination of the generic group model (GGM) and the random oracle model (ROM) assuming that the “ROS problem” is hard. The situation is similar for (Schnorr-)signed ElGamal encryption, a simple CCA2-secure variant of ElGamal.
+We analyze the security of these schemes in the algebraic group model (AGM), an idealized model closer to the standard model than the GGM. We first prove tight security of Schnorr signatures from the discrete logarithm assumption (DL) in the AGM+ROM. We then give a rigorous proof for blind Schnorr signatures in the AGM+ROM assuming hardness of the one-more discrete logarithm problem and ROS.As ROS can be solved in sub-exponential time using Wagner’s algorithm, we propose a simple modification of the signing protocol, which leaves the signatures unchanged. It is therefore compatible with systems that already use Schnorr signatures, such as blockchain protocols. We show that the security of our modified scheme relies on the hardness of a problem related to ROS that appears much harder. Finally, we give tight reductions, again in the AGM+ROM, of the CCA2 security of signed ElGamal encryption to DDH and signed hashed ElGamal key encapsulation to DL.},
+booktitle = {Advances in Cryptology – EUROCRYPT 2020: 39th Annual International Conference on the Theory and Applications of Cryptographic Techniques, Zagreb, Croatia, May 10–14, 2020, Proceedings, Part II},
+pages = {63–95},
+numpages = {33},
+keywords = {Schnorr signatures, Blind signatures, Algebraic group model, ElGamal encryption, Blockchain protocols},
+location = {Zagreb, Croatia}
+}
 
 @inproceedings{blindsigs,
 	abstract = {Many applications of blind signatures, e.g. in blockchains, require compatibility of the resulting signatures with the existing system. This makes blind issuing of Schnorr signatures (now being standardized and supported by major cryptocurrencies) desirable. Concurrent security of the signing protocol is required to thwart denial-of-service attacks.},

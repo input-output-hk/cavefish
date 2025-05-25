@@ -255,7 +255,7 @@ In this work, we propose a protocol and model for UTxO-based platforms that enab
 To achieve this, we introduce a secure predicate mechanism and a weakly blind signature scheme. This enables the SP to obtain a valid signature on the original (unblinded) transaction from the LC, which can then be submitted to the network. The result is a trustless interaction where the LC achieves their transaction goal, and the SP receives compensation for their work.
 To optimize communication and computational overhead, we design an extension of Secure Blind Schnorr Signatures called Weakly Blind Predicate Signatures, which relaxes the unlinkability requirement in standard blind signatures.
 Lastly, we implement and benchmark the Non-interactive Argument of Knowledge (NArg) component of our protocol on two major UTxO-based blockchain platforms. Despite this component being the most computationally intensive part, our evaluation demonstrates that proving and verification times, as well as associated circuit sizes, are well within practical bounds for real-world deployment.
-
+\textcolor{orange}{play up communication optimality: LC does not read blockchain. rationality }
 
 
 %Blockchain light clients (LCs) are platform users that do not have the capacity to locally maintain current,
@@ -296,9 +296,9 @@ The core of our design is an answer to the question of "how can a user request a
 We claim that our work can be used by any UTxO or EUTxO blockchain (with some adjustments to the details of intent specification).
 We use blind signatures~\cite{blindsigs}.
 
-\section{Related Work}
+\section{Background and Related Work}
 
-
+\subsection{Light clients and off-chain payments}
 Our approach facilitates transaction submission for a light client that is not aware of the history of a blockchain.
 Therefore, we compare our work with existing solutions for light clients as well as mechanisms that allow the interaction with a blockchain when in resource constrained operation.
 Our approach is different from a more ``traditional'' (i.e., what commonly is referred to) light client that has the primary goal of syncing to the blockchain in order to acquire the information necessary to interact with a smart contract or to submit a transaction.
@@ -317,7 +317,8 @@ Furthermore, suitable signatures and hash functions are needed, for example, agg
 Most related works and ideas are \textbf{intents} and \textbf{solver networks} that attempt to establish a relationship between solvers and users via their (light) clients~\cite{ethresearch-solvers}.
 A light client issues an intent via as an abstracted transaction object and solvers process the intent incentivized by transaction fee or intent execution reward. The users are then free to accept or reject a solver’s proposal.
 Outsourcing transaction creation to a solver does not need for user to bridge assets cross-chain, as chains are abstracted away. In case the solvers are required to provide a deposit, slashing guarantees honest behavior of a rational actor.
-While concepts around solver networks are relatively new there is currently no universal standard governing the specification for intents and abstract transaction objects. To the best of our knowledge, this is the first work describing
+While concepts around solver networks are relatively new there is currently no universal standard governing the specification for intents and abstract transaction objects.
+ To the best of our knowledge, this is the first work describing an intent-based light client protocol.
 
 \textbf{Payment channels}.
 We also briefly cover \textbf{payment channels} (also called \textbf{state channels}), which also constitute
@@ -342,7 +343,11 @@ we target with our low-commitment design. For these reasons, it does not make se
 to a specific payment channel.
 
 Similarly, our design should be general enough to support any transaction or on-chain operation, irregardless of its monetary value or physical size.
-One potential problem in payment channels is liquidity. If one of the parties does not have sufficient liquidity in the channel, payments might fail or need to be routed through multiple channels\footnote{Payment networks attempt to address this issue by using multi-path payments, where the original payment is split into smaller parts, each routed through different channels, allowing for greater liquidity}, adding complexity and risk.
+One potential problem in payment channels is liquidity. If one of the parties does not have sufficient 
+liquidity in the channel, payments might fail or need to be routed
+ through multiple channels\footnote{Payment networks attempt to address this issue
+  by using multi-path payments, where the original payment is split into smaller parts,
+   each routed through different channels, allowing for greater liquidity}, adding complexity and risk.
 Our construction does not suffer from those shortcommings while at the same time provinding the same level of atomicity expected from payment channels, i.e., payments are either fully successful or completely fail.
 
 Some existing proposals\cite{todo} suggest to augment payment channels with the ability to process any off-chain interaction, not just payments. Often those constructions are called state channels. Off-chain interactions that go beyond transaction do however entail increased complexity. The base/main chain needs to offer smart contract support. Hash Time-Locked contracts (as used in the Lightning Network) are not sufficient for complex off-chain interactions.
@@ -378,13 +383,39 @@ either ad-based, requires users to create an account paid for with fiat currency
 promote use of the specific service/blockchain. We, on the other hand, propose that SPs are compensated
 in assets on the same blockchain as the one to which their transaction gets applied, and the payment structure
 consists of a one-time, no-setup atomic exchange of assets for services. Since the SP in our design gets paid
-only once a transaction is successfully applied, all data for which payment they receive payment
-is not just mostly reliable (as for existing services), but provably correct.
+only once a transaction is successfully applied, all data for which they receive payment
+is not just reliable (as for existing services), but provably correct.
 
 \subsection{Hierarchical Deterministic wallets and address discovery}
 UTXO based blockchains, including Bitcoin and Cardano use the concept of Hierarchical Deterministic (HD) wallets \cite{bip32} where child addresses can be created in a deterministic way using a public key of a keypair $sk,pk$, and some short auxiliary data (the chain code). Given a public key $pk$, chain code $c$ and requested index $i$ for a child key, a hash function is used to produce a scalar $s_i$ enablind the derivation of the child key as $sk_i=sk+s_i$. It is also possible to use $s_i$ without knowing $sk$ to directly derive the corresponding public key $pk_i=pk\cdot g^{s_i}$. The same method is used to produce a child chain code $c_i$, so that multiple generations of keys are possible.
 
 In our application, we can assume that a wallet can give the SPO a single public key and chain code, letting the SPO do address derivation and lookup on their side, using some agreed-upon bounds, or heuristics on the index depth. This keeps the communication cost from the light client to the SPO constant.
+
+
+\subsection{Schnorr Blind Signatures}
+Schnorr signatures~\cite{10.1007/0-387-34805-0_22} have gained significant adoption as soon as their patent expired in 2008, 
+replacing RSA in many scenarios due to their smaller size and faster verification.
+Compared to (EC)DSA, Schnorr offers similar efficiency and guarantees,
+but (EC)DSA security proofs are most likely not possible without 
+strong idealization~\cite{cryptoeprint:2023/914}.
+As a result, EdDSA~\cite{cryptoeprint:2011/368}, a popular variant of the
+ Schnorr scheme, is currently under consideration by NIST for standardization.
+The security or Schnorr signaatures is based on the discrete 
+logarithm assumption~\cite{jofc-2000-14276},
+with proofs in the random oracle model (ROM) as well as in 
+the algebraic group model (AGM) and the ROM~\cite{10.1007/978-3-030-45724-2_3}.
+
+Standard Schnorr signatures are now widely used in blockchains such as Bitcoin, Bitcoin Cash, Litecoin, and Polkadot, 
+where Monero, Zcash, and Cardano use the EdDSA variant.
+The adption of Schnorr and EdDSA signatures is driven by privacy~\cite{cryptoeprint:2022/1636} and
+ scalability gains~\cite{10.1007/s10623-019-00608-x}
+but also the straightforward extension to \emph{blind Schnorr signatures}~\cite{10.1007/3-540-48071-4_7}.
+
+
+Our construction hinges on the the practical concurrently secure blind and partially blind signing protocol
+for standard Schnorr signatures, found in~\cite{blindsigs},
+the first work stating rigorous security guarantees for a practical blind signature
+scheme based on Schnorr signatures.
 
 
 \todobox{
@@ -397,8 +428,10 @@ Compare our approach  with :
     \item LCs that operate on multi-prover model
 	%\item Time lock micro payment channel~\cite{{10.1007/978-3-319-21741-3_1}
 \end{itemize}}
-\subsection{Technical Background}
-UTxO model \textcolor{orange}{mr: do we still need this subsection?}
+
+
+%\subsection{Technical Background}
+%UTxO model \textcolor{orange}{mr: do we still need this subsection?}
 
 
 \subsubsection{Discrete Log Groups}
@@ -803,7 +836,7 @@ The following computations are performed in the protocol
 
 \begin{itemize}
     \item[(i)] Intent specification is generated (see Section \ref{sec:dsl})
-    \item[] \textcolor{orange}{mr: do we still need this extra signature?}
+    \item[] \textcolor{orange}{mr: do we still need this extra signature? we can just say communication happens over secure channel.}
     \item[(ii)] Signature is generated as follows :
     \[\var{sig} = \fun{sign}~(\var{int_{post}}, sk_{\mathrm{client}})\]
     \item[(iii)] The signature is checked as follows :
