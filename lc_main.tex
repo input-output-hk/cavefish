@@ -759,12 +759,38 @@ Can we have viewing keys?}
 
 \section{Light Client Protocols}
 \label{sec:protocols}
+We given an overview on our light client protocol and its components. Our protocol maximizes space and communication efficiency by essentially pushing all storage and lookup tasks to the SPO, whilst  guaranteeing the resulting transaction is safe for the light client to sign, and compensating their SPO for their effort. This is not trivial as the transaction must be signed sight-unseen (blinded) otherwise, the light client could simply remove the payment to the SPO and submit the modified transaction.
+
+To satisfy both parties we rely on cryptographic tools as well as some established features in implemented blockchains such as transaction validity periods and handling of invalid transactions.
+
+\subsection{Definitions and Requirements}
+
+\begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\Tx'$ produced by the SP is such that $\fun{\fun{checkTxL}~}(LState, \Tx')=1$. \end{definition}
+
+\todobox{ Let ${\fun{checkTxL}~}(LState, \Tx)$  be shorthand for  $\fun{checkTx}~((\var{slot}, \var{fee}), \var{utxo},~\var{tx})$ }.
+
+
+\begin{definition}[Safety] A transaction building protocol is \textbf{safe} if for an honest light client and any service provider SP we have that: if transaction $\Tx('$ is produced by the SP is such that  $\fun{\fun{checkTxL}~}(LState, \Tx')=1$
+%against the client's key (XXX note: maybe we can ommit this)
+, then it must be that $\fun{chkSpec}(\mathcal{I}_\mathsf{post} , \Tx')=1$. \end{definition}
+
+\begin{definition}[Private until posted] A transaction building protocol has the  \textbf{private until posted} property if a PPT adversarial client $C_\mathcal{A}$ cannot win the following experiment with probability significantly higher than $1\over 2$.
+
+For an honest service provider SP and any client $C_\mathcal{A}$ we have that: client provides 2 states $\LState_0, \LState_1$ and one intent $\mathcal{I}_\mathsf{post}$ such that for $i=0,1$ it is $ \fun{mkToSpec}(\LState_i, \mathcal{I}_\mathsf{post}) \neq \bot$.  The experiment flips a coin $d$ and runs the protocol between SP and C* using state $\LState_d$. $C_\mathcal{A}$ outputs $d^*$. The adversarial client wins iff $d=d^*$. \end{definition}
+
+
+
+
+\subsection{A Communication Optimal Transaction Building Protocol}
 We given an overview on our light client protocol and its components.
 As the protocol is uniquely suited for UTxO-based blockchains, we develop our approach
 to support the general ledger model explained in Section~\ref{sec:model}
 and the intents set forth in Section~\ref{sec:dsl}.
 
-\subsection{Outline}
+We point out that our protocol is optimal in terms of light client storage and light client \& SPO communication. The light client only needs to store information about which wallet subkeys have been active. In terms of communication, our protocol only transmits a constant number of elements when using a succinct proof system. This compares favorably to solutions such as SPV which incur linear costs or even solutions based on succinct proof systems for the chain tip,  but where the client needs to verify transaction inclusion into blocks via Merkle proofs.
+
+
+\subsubsection{Outline}
 The following computations are performed in the protocol
 
 \begin{itemize}
@@ -791,29 +817,6 @@ The following computations are performed in the protocol
     \[ \var{tx'} = \var{tx}~\{~sig = \var{sigs'}~\} \]
 \end{itemize}
 
-\subsection{Definitions and Requirements}
-
-\begin{definition}[Correctness] A transaction building protocol is \textbf{correct} if for an honest light client, and service provider and any state $\LState$ and intent $\mathcal{I}_\mathsf{post}$ such that: if $\fun{mkToSpec}(\LState, \mathcal{I}_\mathsf{post}) \neq \bot$, then the protocol completes and the transaction $\Tx'$ produced by the SP is such that $\fun{\fun{checkTxL}~}(LState, \Tx')=1$. \end{definition}
-
-\todobox{ Let ${\fun{checkTxL}~}(LState, \Tx)$  be shorthand for  $\fun{checkTx}~((\var{slot}, \var{fee}), \var{utxo},~\var{tx})$ }.
-
-
-\begin{definition}[Safety] A transaction building protocol is \textbf{safe} if for an honest light client and any service provider SP we have that: if transaction $\Tx('$ is produced by the SP is such that  $\fun{\fun{checkTxL}~}(LState, \Tx')=1$
-%against the client's key (XXX note: maybe we can ommit this)
-, then it must be that $\fun{chkSpec}(\mathcal{I}_\mathsf{post} , \Tx')=1$. \end{definition}
-
-\begin{definition}[Private until posted] A transaction building protocol has the  \textbf{private until posted} property if a PPT adversarial client $C_\mathcal{A}$ cannot win the following experiment with probability significantly higher than $1\over 2$.
-
-For an honest service provider SP and any client $C_\mathcal{A}$ we have that: client provides 2 states $\LState_0, \LState_1$ and one intent $\mathcal{I}_\mathsf{post}$ such that for $i=0,1$ it is $ \fun{mkToSpec}(\LState_i, \mathcal{I}_\mathsf{post}) \neq \bot$.  The experiment flips a coin $d$ and runs the protocol between SP and C* using state $\LState_d$. $C_\mathcal{A}$ outputs $d^*$. The adversarial client wins iff $d=d^*$. \end{definition}
-
-
-
-
-\subsection{A Communication Optimal Transaction Building Protocol}
-We given an overview on our light client protocol and its components.
-As the protocol is uniquely suited for UTxO-based blockchains, we develop our approach
-to support the general ledger model explained in Section~\ref{sec:model}
-and the intents set forth in Section~\ref{sec:dsl}.
 
 \subsubsection{Model Requirements}
 \label{sec:model}
@@ -941,32 +944,6 @@ We show our light client protocol that leverages weakly blind signatures in Figu
 
 
 
-\subsection{Outline --To be removed}
-The following computations are performed in the protocol
-
-\begin{itemize}
-    \item[(i)] Intent specification is generated (see Section \ref{sec:dsl})
-    \item[] \textcolor{orange}{mr: do we still need this extra signature?}
-    \item[(ii)] Signature is generated as follows :
-    \[\var{sig} = \fun{sign}~(\var{int_{post}}, sk_{\mathrm{client}})\]
-    \item[(iii)] The signature is checked as follows :
-    \[ \fun{checkSig} (\var{int_{post}}, vk_{\mathrm{client}}, \var{sig}) = \true \]
-    \item[(iv)] The transaction is generated as follows, including a randomly generated bytestring
-    in the $\fun{auxData}$ field for extra entropy :
-    \[ \var{tx} = \fun{mkToSpec}~(\var{ls},~\var{int_{post}},~\var{tx}_t)~\{~\fun{auxData}~=~\fun{random}~\} \]
-    \item[(v)] Abstract transaction is generated as :
-    \[ \var{tx}_A = \fun{mkAbs}~\var{tx}  \]
-    \item[(vi)] Blind Signature Commitment (see Section \ref{sec:blind} for details)
-
-    \item[(vii)] Intent specification Proof (see Section \ref{sec:dsl}) :
-    \[ \chkSpec{(\var{int_{post}})}(\var{tx}_A )= \true \]
-    \item[(viii)] Proof Check. Blind signatures are computed by (see Section \ref{sec:blind} for details), with $\var{sks} = \fun{getSKs}~\fun{dom}~(\var{tx} . \fun{sigs})$ :
-    \[ \var{sigs} = \{~(s,~\fun{blindSign}~(h,~\var{tx}_A,~ s)) \vert s \in sk_{\mathrm{client}} \cup ~\var{sks}~\} \]
-    \item[(ix)] Signatures are computed from blind signatures (see Section \ref{sec:blind} for details) :
-    \[ \var{sigs'} = \{~(s,~\fun{mkRealSig}~(s,~h,~\var{tx}_A,~k)) ~\vert~(s, k) \in \var{sigs}~\} \]
-    \item[(ix)] Signatures are added to the transaction
-    \[ \var{tx'} = \var{tx}~\{~sig = \var{sigs'}~\} \]
-\end{itemize}
 
 \subsection{discussion}
 
@@ -1041,14 +1018,9 @@ vector of attack."}
 
 
 
-\subsubsection{Single-SP vs Multi-SP Protocols and optimality }
+\subsubsection{Multi-SP Protocols and optimality }
 
-\todobox{split into two discussions ?}
-
-We describe a basic protocol in which a single LC queries a single SP for constructing a
-transaction matching LC's specification, and then eventually that transaction getting posted
-after all protocol steps are completed. We assume that all specification-meeting
-transactions are acceptable to the LC. However, we can also formulate a version of this
+ However, we can also formulate a version of this
 protocol where the LC instead sends the specification to multiple SPs, selecting the best
 response, and engaging in the rest of the protocol only with that SP.
 
