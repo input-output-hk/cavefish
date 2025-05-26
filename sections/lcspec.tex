@@ -1,0 +1,146 @@
+% !TEX root = ../lc_main.tex
+
+\section{Light Client Specification}
+
+ We will model light clients in terms of their functionality, restrictions and protocols for communication with full nodes. By functionality, we refer to the interaction between a light client and its user(s). To satisfy user requests a light client will need to connect to and query a number of full nodes via a set of protocols prescribed by its design.
+
+
+ We describe functionality of a light client in terms of reading and posting \emph{intents} denoted as two sets of predicates $\mathcal{I}_\mathsf{read}$, $\mathcal{I}_\mathsf{post}$. When queried on a reading predicate $\mathsf{int_{read}} \in \mathcal{I}_\mathsf{read}$ at time $t_0$, the light client replies with all transactions $tx$ such that $\mathsf{int_{read}}(tx,\LState_t)=1$, where  $\LState_t$ is the state of the blockchain at time $t \geq t_0$. When queried on a posting predicate $\mathsf{int_{post}} \in \mathcal{I}_\mathsf{post}$ at time $t_0$, the light client prepares a transaction $tx_p$ such that $\mathsf{int_{post}}(tx_p,\LState_t)=1$, where $t \geq t_0$ and broadcasts it to the blockchain.
+
+\todobox{ [TODO: revisit time]
+ [TODO: can we do the LC part of bridges with these intents?]}
+
+ In order to provide answers to queries by the user, a light client participates in a number of protocols between itself and a set of full nodes. These protocols may be one to one or one to many, depending on the design of the light client. We will expand on the syntax and operation of such protocols in the following subsection.
+
+ Lastly, a light client is characterized in terms of restrictions placed on the resources it has available (without restrictions, 
+ we could treat a full node of a chain as a light client). These restrictions can relate to the  
+ communication cost to answer a series of queries, available storage, and assumptions about connectivity. On the other hand,
+  a particular light client design might limit the intents contained in $\mathcal{I}_\mathsf{read}$, $\mathcal{I}_\mathsf{post}$
+  to simplify its design and limit its functionality.
+
+
+\subsection{Intent Specification}
+\label{sec:dsl}
+
+We define the type of \emph{abstract transaction}, $\TxAbs$,
+which is the data structure a light client receives from the service provider instead of
+the full plaintext transaction, see \ref{fig:abs-tx}. This type does not contain
+the $\fun{auxData}$ or the $\outputs$ transaction fields, and instead of the $\Signature$
+field, it contains only the signing keys $\fun{sigKeys}$ and not the corresponding signatures.
+For the implementing some example the usecases of our design, we require the definition of the
+following functions, given in Figure \ref{fig:dsl}, and Figure \ref{fig:mktospec}, respectively :
+
+\begin{itemize}
+    \item[(i)] The function that construct a transaction based on the specification
+    \[ \fun{mkToSpec} : \LState \times \mathcal{I}_\mathsf{post} \to \Tx \]
+    \item[(ii)] The function that checks that a given abstract transaction matches the specification
+    \[\fun{chkSpec}~(\mathcal{I}_\mathsf{post} \times \TxAbs) \to \B\]
+\end{itemize}
+
+\begin{figure}
+    \textsc{$\mathcal{I}_\mathsf{post}$ Constructors}
+\begin{displaymath}
+\begin{array}{rlll}
+    \fun{MustMint}           &: \Value \to \mathcal{I}_\mathsf{post}\\
+    \fun{SpendFrom}         &: \Script \to \mathcal{I}_\mathsf{post}  \\
+    \fun{MaxInterval}   &: \Slot \to \mathcal{I}_\mathsf{post}  \\
+    \fun{PayTo}  &: (\Value \times \Script)  \to \mathcal{I}_\mathsf{post}  \\
+    \fun{ChangeTo} &: \Script \to \mathcal{I}_\mathsf{post}  \\
+    \fun{MaxFee} &: \N  \to \mathcal{I}_\mathsf{post} \\
+    \fun{AndExps}  &: [\mathcal{I}_\mathsf{post}] \to \mathcal{I}_\mathsf{post} \\
+\end{array}
+\end{displaymath}
+\nextdef
+\textsc{Evaluation of $\mathcal{I}_\mathsf{post}$}
+\begin{displaymath}
+\begin{array}{rlll}
+  \chkSpec{\_} &:& \mathcal{I}_\mathsf{post} \to \TxAbs \to \B \\
+  \chkSpec{\fun{MustMint}~v} (\var{tx}) &=&  v \leq \var{tx} . \mint \\
+  \chkSpec{\fun{SpendFrom}~s} (\var{tx}) &=& \applyScript{s}(\fun{dom}~(\var{tx} . \sigs), \var{tx}.\validityInterval) \\
+  \chkSpec{\fun{MaxInterval}~i} (\var{tx}) &=& (\var{tx}.\validityInterval)_2 - (\var{tx}.\validityInterval)_1 \leq i \\
+  \chkSpec{\fun{PayTo}~(s, v)} (\var{tx}) &=& (s, v) \in \var{tx} . \outputs  \\
+  \chkSpec{\fun{ChangeTo}~s} (\var{tx}) &=& (s, \fun{consumed}~-~\fun{produced}) \in \var{tx} . \outputs  \\
+  \chkSpec{\fun{MaxFee}~f} (\var{tx}) &=&  \var{tx} . \fun{fee} \leq f \\
+  \chkSpec{\fun{AndExps}~[a1 ; a2 ; ... ; ak]} (\var{tx}) &=& (\chkSpec{a1}~\var{tx}) \wedge (\chkSpec{a2}~\var{tx}) \wedge ... \wedge (\chkSpec{ak}~\var{tx})
+\end{array}
+\end{displaymath}
+\caption{$\mathcal{I}_\mathsf{post}$ constructors and evaluation}
+\label{fig:dsl}
+\end{figure}
+
+We these functions are defined such that for any $l,~i$, such that $\fun{mkToSpec}~l~i~\var{tx}_t \neq \fun{nothing}$,
+necessarily $\chkSpec{i}~(\fun{mkAbs}~(\fun{mkToSpec}~l~i~\var{tx}_t))$,
+see Appendix \ref{sec:chk-mk} for a proof sketch.
+Note that in a realistic system, however, more constraints need to be
+included in this DSL, e.g. a way to limits transaction size, or support for specifying
+desired token exchanges. Let us define two examples of intent specifications :
+
+\begin{itemize}
+    \item[($i_1$)] Intent to mint some token $t$ within an interval of length $j$ and maximum fee $f$ :
+    \[ i_1 =  \fun{AndExps}~[ \fun{MustMint}~t ; \fun{MaxInterval}~j ; \fun{MaxFee}~f ]\]
+
+    \item[($i_2$)] Intent to pay $x$ from outputs locked by $\fun{RequireSig}~k1$ to  $\fun{RequireSig}~k2$
+    \[ i_1 =  \fun{AndExps}~[ \fun{SpendFrom}~(\fun{RequireSig}~k1) ; \fun{PayTo}~(\fun{RequireSig}~k2,~x) ]\]
+\end{itemize}
+
+The resulting transactions are given in Figure \ref{fig:txs}.
+
+\todobox{
+    define fig:txs,  Appendix \ref{sec:chk-mk}
+}
+
+
+\todobox{Give example of :
+
+Set of transactions - that satisfy the intent
+Examples
+Assume there is some number client can generate that corresponds to how many public keys server should check - high communication complexity for some users
+Is the hash unpredictable?
+SPs can respond to queries with no proof , because LC will have to ask for tx construction to use that info anyways
+spv and Ethereumlc citations?
+SP can send the client the completed transaction as soon as the sP observes it being included into a block
+SPs can provide services for free in exchange for delegating to their stake pool
+
+TxData - what is it?
+DSL
+Security - somehow sign a whole class of transactions?}
+
+
+ \subsection{Light Client Interactions}
+
+The light client interacts with a number of full nodes. We assume that all parties know the current time up to an allowable deviation $\delta_t$. We allow for protocols featuring a single or multiple full nodes, and (orthogonally) protocols that are supported by a smart contract at the cost of additional setup. An important difference between the single and multi-node model is that existential honesty trivialises the single-node case. As such, single-node protocols are usually required to operate under more stringent security assumptions.
+
+The end result of such protocols are typically one of the following: an update to the light client's state or the creation of a transaction to be posted on the blockchain.  In the next section, we describe our security requirements  for such protocols as well as some modeling assumptions  for their environment.
+
+
+\todobox{
+ \begin{itemize}
+
+\item User - LC interface
+
+ \item LC characteristics/ limitations
+   \begin{itemize}
+\item What are the capabilities of a light client?
+
+\item Does it remember all addresses it has been paid at (tx history)?
+
+\item Do we assume that viewing keys exist? Can we assume LC can generate first x addresses from its private key in a
+deterministic way?
+
+\item Is light client allowed to maintain state, and what state can they maintain if so? Secret key is the minimum state.
+\item Sanity test: if we dismiss all requirements we should recover a full client.
+\end{itemize}
+
+ \item LC - Full Node interactions
+  \begin{itemize}
+  \item Protocols to support user requests
+  \item Security reqs (protecting integrity/ privacy/ SPO revenue?)
+\end{itemize}
+ \end{itemize}}
+
+
+\todobox{Can we describe the differences between light wallets, bridges and light nodes in our framework? (Probably yes).
+
+How can we formalize the intent of a light client without revealing secret key?
+
+Can we have viewing keys?}

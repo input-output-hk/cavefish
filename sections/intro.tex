@@ -1,0 +1,50 @@
+% !TEX root = ../lc_main.tex
+
+\maketitle
+
+\begin{abstract}
+Blockchain light clients (LCs) are users with limited resources who cannot maintain a fully validated local copy of the ledger state. Consequently, they rely on service providers (SPs), typically full nodes, to access the data needed for tasks such as transaction construction or interacting with off-chain applications.
+In this work, we propose a protocol and model for UTxO-based platforms that enables LCs to submit transactions with minimal local storage and computation. Our solution is a two-party computation (2PC) protocol between an LC and an SP. The LC instructs the SP to create a transaction according to its specifications, but only a blinded version of the result is shared. The blinded form prevents the LC from altering the transaction or constructing a new (valid) transaction, while still allowing the LC to verify that the transaction satisfies their original specification.
+To achieve this, we introduce a secure predicate mechanism and a weakly blind signature scheme. This enables the SP to obtain a valid signature on the original (unblinded) transaction from the LC, which can then be submitted to the network. The result is a trustless interaction where the LC achieves their transaction goal, and the SP receives compensation for their work.
+To optimize communication and computational overhead, we design an extension of Secure Blind Schnorr Signatures called Weakly Blind Predicate Signatures, which relaxes the unlinkability requirement in standard blind signatures.
+Lastly, we implement and benchmark the Non-interactive Argument of Knowledge (NArg) component of our protocol on two major UTxO-based blockchain platforms. Despite this component being the most computationally intensive part, our evaluation demonstrates that proving and verification times, as well as associated circuit sizes, are well within practical bounds for real-world deployment.
+\textcolor{orange}{play up communication optimality: LC does not read blockchain. rationality }
+
+
+%Blockchain light clients (LCs) are platform users that do not have the capacity to locally maintain current,
+%fully-validated ledger state. For this reason, light clients rely on service providers (SPs, which are full nodes) for obtaining the blockchain data they require, e.g. for transaction construction or running off-chain apps.
+%In this paper, we propose protocol and model in which a light client of a UTxO-style platform has the goal of submitting a transaction with minimal local state and minimal local processing. We propose a 2-party computation protocol between the LC and the SP. First, the light client creates a specification for the transaction they would like the SP to construct, then the SP builds such a transaction, while including a small payment to cover the cost of computation.
+%The SP sends the LC a blinded version of the constructed transaction for signing and checking. It is modified such that it is impossible for the LC to use the provided data to construct a distinct new (valid) transaction without guessing pre-images of transaction hashes, but has enough information to allow the LC to
+%check that it meets their specification. Using a secure predicate and partially blind signature scheme, the SP is able to obtain a signature on the original (unmodified) transaction,
+%which is submitted to the network for inclusion in a block. This 2-PC protocol constitutes a trustless
+%interaction between the LC and the SP resulting in the LC's desired transaction being applied
+%to the ledger state, and the SP receiving compensation for their work.
+
+%In order to realize our light client protocol in a communication optimal way, we develop an adaptation of Secure Blind Schnorr Signatures that we call Weakly Blind Predicate Signatures, alleviating the unlinkability requirement of standard Blind Schnorr Signatures.
+
+%Finally, we implement and benchmark the Non-interactive Argument of Knowledge as part of our protocol and constitutes the most time and resource intensive component of our construction.
+\end{abstract}
+
+
+
+\section{Introduction}
+\todobox{
+What sets us apart?
+
+\begin{itemize}
+    \item Atomicity of payment+service
+
+    \item permission-less, decentralized
+
+    \item Model for (trustless) 2-party transaction construction rather than proving things about chain/ledger state
+
+    \item Do not require establishing a relationship with SP or any other set-up
+
+    \item inherent timeliness of transaction construction incentivized by SPs desired to earn
+    their tip. This is in contrast with the possibility of stale info provided from old Mithril snapshots in other LC models
+\end{itemize}}
+
+The core of our design is an answer to the question of "how can a user request and approve payment (e.g. from their wallet) without knowing anything about the chain except what the transaction spending their money is doing with their money"?
+
+We claim that our work can be used by any UTxO or EUTxO blockchain (with some adjustments to the details of intent specification).
+We use blind signatures~\cite{blindsigs}.

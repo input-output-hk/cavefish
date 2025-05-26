@@ -1,0 +1,16 @@
+% !TEX root = ../lc_main.tex
+
+\section{Analysis}
+
+\textbf{Asset and Non-Asset Compensation.} In our model, we have so far assumed that an SP performs its
+services in exchange for a fee. This fee may be either flat, or calculated on the basis of transaction size,
+or complexity of transaction specification, etc. - the details of this fee calculation are dependent on the
+specifics of the implementation of our protocol, the marketplace, and SPs preferences.
+The fee may also be specified in either an amount of primary asset tokens,
+or some other user-defined tokens. A fee requirement in user-defined tokens could be useful in the case
+of the SP service for LCs being associated with another type of service trading in such tokens, such as a
+videogame token marketplace. Yet another option for SPs is to request non-monetary compensation
+for their services, such as requiring engagement with a specific smart contract (i.e. SP does DApp fee
+sponsorship), voting for a specific update,
+delegating stake, etc. All these actions can be performed by the very transaction that SP constructed
+according to LC's specification.

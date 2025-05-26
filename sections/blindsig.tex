@@ -1,0 +1,272 @@
+% !TEX root = ../lc_main.tex
+
+ \section{Blind Signatures for Abstract Transactions}
+ \label{sec:blind}
+ In order to allow the LC to sign an abstract transaction artifacts we implement blind signatures on (partially) blinded transaction objects.
+ At the minimum the SP hides the inputs to the transaction, i.e., the references to UTxO objects which are present in the ledger and required to cover the transaction.
+
+ In Bitcoin, for example, UTxOs are captured in the ledger as follows:
+ For Cardano, the structure looks as follows:
+
+ \todobox{ Describe UTxO briefly for all chains we support?  }.
+
+
+ The specific ledger implementation might require slight adaptations in terms of signature type and used hash functions---in this work, we give a very general construction that can be tailored to specific blockchains.
+
+ Our construction is inspired by the predicate blind signature mechanism in~\cite{blindsigs}.
+ It realizes a concurrently secure blind and partially blind signing protocol resulting in  standard Schnorr signatures.
+ The signature scheme builds upon the original protocol proposed in~\cite{10.1007/3-540-48071-4_7} with the addition of a commitment phase that binds the signer to her secrets (blinding value and message), preventing a forgery attack (described in~\cite{bibid}) and making the scheme unforgeable under concurrent sessions.
+
+ We describe how this protocol can be applied and simplified for abstract transaction signing.
+ The proposed simplification is applicable in our setting due to the fact that our protocol does not rely on concurrent singing sessions.
+ Furthermore, unlinkability of signatures and artifacts.
+ Once the SP publishes final (unblinded) transactions on the chain, the LC can in theory download recent blocks and observe the transaction that was posted by the SP on behalf of the light client. If downloading is too resource-intensive, the LC might also consult an online block explorer for said purpose. As a consequence, abstract transactions, published transactions and signatures are assumed to be ``linkable'' and unlinkability provided by the signature scheme is redundant in our scenario.
+
+
+
+ \todobox{
+    \begin{itemize}
+ \item Do we consider TLS connection between LC and SP? A network adversary could otherwise link/localize abstract transactions and transactions posted on the ledger.
+ \item specify the signing algorithm : $\fun{sign} : (\H, \privkey) \to \H$
+ \item specify the function to make real sigs from blind sigs $\fun{mkRealSig} : (\pubkey \times \TxId \times \TxAbs \times \H) \to \H$
+\item specify the blind signing algorithm $\fun{blindSign} : \H \times \TxAbs \times \privkey \to \H$
+\end{itemize} }.
+
+
+
+\subsection{Weakly Blinded Predicate Signatures }
+
+We adapt the definitions of [XXX] to account for the weak variant of blindness.
+
+A WBPS scheme is parameterized by a family of polynomial-time-computable predicates,
+which are implemented by a p.t. algorithm $P$, the predicate compiler: on input a predicate
+description $prd \in {0, 1}$ and a message $m \in {0, 1}$, $P$ returns 1 or 0 indicating whether $m$
+satisfies $prd$.
+
+ A WBPS scheme \WBPSP for predicate $P$ is defined by the following algorithms. We focus on
+schemes with 2-round (i.e., 4-message) signing protocols for concreteness.
+
+\begin{itemize}
+\item $Setup(1^\lambda) \to par$: the setup algorithm, on input the security parameter, outputs public
+parameters $par$, which define a message space $\mathcal{M}_{par}$.
+\item $KeyGen(par) \to (sk, vk)$: the key generation algorithm, on input the parameters $par$, outputs
+a signing/verification key pair $(sk, vk)$, which implicitly contain $par$, i.e., $vk = (par, vk')$.
+–\item $\langle Sign(sk, prd),User(vk, prd, m) \rangle \to (b, \sigma)$: an interactive protocol with shared input $par$
+(implicit in $sk$ and $vk$) and a predicate $prd$ is run between the signer and user. The signer
+takes a secret key $sk$ as private input, the user’s private input is a verification key $vk$ and
+a message $m$. The signer outputs $d = 1$ if the interaction completes successfully and $d = 0$
+otherwise, while the user outputs a signature $\sigma$ if it terminates correctly, and $\bot$ otherwise.
+\item $Ver(vk, m, \sigma) \to 0/1$: the (deterministic) verification algorithm, on input a verification key
+$vk$, a message $m$ and a signature $\sigma$, outputs 1 if $\sigma$ is valid on $m$ under  $vk$ and 0 otherwise.
+\end{itemize}
+
+For a 2-round protocol the interaction $\langle Sign(sk, prd),User(vk, prd, m) \rangle \to (d, \sigma)$ can be realized by the following algorithms:
+\begin{align*}
+(txt_{U,0},st_{U,0}) \gets& User_0(vk, prd, m)\\
+(txt_{S,1},st_{S}) \gets& Sign_1(sk, prd, txt_{U,0}) \\
+(txt_{U,1},st_{U,1}) \gets& User_1(st_{U,0}, txt_{S,1})\\
+(txt_{S,2}, d) \gets& Sign_2(st_S, txt_{U,1}) \\
+\sigma \gets& User_2(st_{U,1}, txt_{S,2})
+\end{align*}
+We write $(d, \sigma) \gets  \langle Sign(sk, prd),User(vk, prd, m) \rangle$  as shorthand for the above sequence.
+
+
+
+\begin{definition}. A WBPS scheme $\WBPSP$ satisfies weak blindness if for all
+adversaries $\A$:
+
+$$Adv^{\mathsf{BLD}}_{\WBPSP,\mathcal{A}}(\lambda) := \Pr[
+\BLD^{\A,1}_{\WBPSP}(\lambda) - \BLD^{\A,0}_{\WBPSP}(\lambda)]
+$$
+
+is negligible in $\lambda$.
+\end{definition}
+
+\begin{figure}[ht]
+    \fbox{
+
+ \begin{minipage}[t]{0.55\linewidth}
+$\BLD^{\A,b}_{\WBPSP}(\lambda)$
+\hrule
+
+$par \gets Setup(1^\lambda) $\\
+$(m_0,m_1,prd,vk',st_\A) \gets \A_1(par)$\\
+\textbf{if} $P(prd,m_0) = 0$ \textbf{or} $P(prd,m_1) = 0$
+\textbf{then} \quad \textbf{return} 0\\
+{\color{red}{$m_r \gets \{0,1\}^\lambda $}}\\
+$m \gets m_b{\color{red}||m_r}$\\
+$vk \gets (par,vk')$
+$sess\gets \mathsf{init}$\\
+$b^*\gets\A_2^{\mathsf{ChalUser}}(st_\A)$\\
+$ \textbf{return} \quad  b=b^* $
+\end{minipage}%
+\hspace{0.5cm}%
+\begin{minipage}[t]{0.55\linewidth}
+$\mathsf{ChalUser}(msg=\emptyset)$
+\hrule
+
+
+
+
+
+\textbf{if} $sess=\mathsf{await}$\\
+\null\quad $sess\gets\mathsf{closed}$\\
+\null\quad $\sigma \gets User_2(st_u, msg)$
+
+
+
+\textbf{if} $sess=\mathsf{closed}$\\
+\null\quad $msg' \gets Ver(vk, m, \sigma)$
+
+\textbf{if} $sess=\mathsf{open}$\\
+\null\quad $sess\gets\mathsf{await}$\\
+\null\quad $(msg',st_u) \gets User_1(st_u, msg)$
+
+
+\textbf{if} $sess=\mathsf{init}$\\
+$\null\quad sess\gets\mathsf{open}$\\
+$\null\quad (msg',st_u) \gets User_0(vk, prd, m)$
+
+
+
+
+
+\textbf{return} $msg'$
+
+\end{minipage}
+}
+    \caption{Weak Blindness}
+\end{figure}
+
+\begin{figure}[ht]
+    \fbox{
+
+ \begin{minipage}[t]{0.55\linewidth}
+$\textsf{CMA}^{\A,b}_{\WBPSP}(\lambda)$
+\hrule
+
+$par \gets Setup(1^\lambda) $\\
+$ (sk, vk) \gets KeyGen(par) $\\
+$Q \gets 0$\\
+$S \gets 0$\\
+$P \gets 0$\\
+$(\vec{m^*},{\vec\sigma^*}, \vec{prd^*}) \gets \A^{SigInit,SigComplete}(vk)$\\
+$n \gets \left |{\vec{m^*}}\right |$\\
+$ \textbf{if} \quad \prod_i Ver(vk,m_i^*,\sigma_i^*) \neq 1 \textbf{ return 0} $\\
+$ \textbf{if} \quad \prod_i prd_i^*(m_i^*) \neq 1 \textbf{ return 0} $\\
+$ \textbf{if} \quad \exists i, j: (i\neq j) \land (m_i^*,\sigma_i^*)=(m_j^*,\sigma_j^*)\\ \quad \textbf{ return 0} $\\
+$ \textbf{if} \quad  n > Q \textbf{ return 1}$\\
+\textbf{if} $\nexists \rho \in Perm(S):$\\
+$\quad \forall i \leq n: (prd_{\rho(i)}(m_i)=1) \land (st_{\rho(i)}=\bot)$\\
+\textbf{then} \quad \textbf{return 1} \\
+\quad \textbf{return 0} \\
+
+\end{minipage}%
+\hspace{0.5cm}%
+\begin{minipage}[t]{0.55\linewidth}
+$\mathsf{SigInit}(prd, msg_{U,0})$
+\hrule
+
+%$(msg_{U,0},st_{U,0}) \gets User_0(vk, prd, m)$\\
+$S\gets S+1; P\gets P+1$\\
+$(msg,st_{S}) \gets Sign_1(sk, prd, msg_{U,0})$ \\
+$prd_S \gets prd$\\
+\textbf{return} $msg$\\
+
+$\mathsf{SigComplete}(s,msg_{U,1})$
+\hrule
+
+
+\textbf{If } $s>S$ \textbf{or} $st_s=\bot$ \textbf{ then } \textbf { return } $\bot$\\
+%$(msg_{U,1},st_{U,1}) \gets User_1(st_{U,0}, msg_{S,1})$ \\
+$(msg, d) \gets Sign_2(st_s, msg_{U,1})$ \\
+\textbf{If } $d=1$ \textbf{ then } $Q\gets Q+1$\\
+$P \gets P-1$\\
+$st_S \gets \bot$\\
+\textbf{return} $msg$
+
+%Todo: change OSig1 / OSig2
+
+\end{minipage}
+}
+    \caption{Chosen Message Unforgeability Experiment}
+\end{figure}
+
+
+\subsection{Our Scheme}
+\begin{figure}[ht]
+%\centering
+
+\fbox{%
+  \begin{minipage}{0.95\textwidth}
+    % Top minipage
+    
+    \begin{minipage}[t]{0.05\textwidth}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.4\textwidth}
+    
+ \textbf{\uline{\bm{$\WBPS.\Setup$}}}\\[0.5ex]
+$(\G,g,q) \gets \GGen(1^\lambda)\\$
+$\hash\gets  \HGen(q)\\$
+$sp \gets (\G,g,q,\hash)\\$
+$(\crs,\tau)\gets \NArg.\Setup(sp)\\$
+$(ek,dk)\gets \PKE.\Keygen(1^\lambda)\\$
+$par \gets (\crs,ek)\\$
+$\textbf{return } par\\$
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.30\textwidth}
+      \textbf{\uline{\bm{$\WBPS.\Keygen (par)$}}}\\[0.5ex]
+$(\G,g,q) :\subseteq par\\$
+$x\gets \Z_q; X\gets g^x \\$
+$sk\gets(par,x)\\ vk\gets (par,X)\\$
+$\textbf{return } (sk,vk)\\$\\
+
+
+%\vspace{.5cm}
+       \textbf{\uline{\bm{$\WBPS.\Ver(vk,m,\sigma)$}}}\\[0.5ex]
+$(\G,g,q,\hash,X):\subseteq vk$\\
+$(R,s)\gets \sigma$\\
+$c\gets \hash(R,X,m)$\\
+$\textbf{return } (g^s=R\cdot X^c)$
+
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.1\textwidth}
+    \end{minipage}
+
+    \vspace{2em}
+
+    % Bottom minipage with invisible table
+    \begin{center}
+      \begin{tabular}{>{\raggedright\arraybackslash}p{0.3\textwidth} p{0.15\textwidth} >{\raggedright\arraybackslash}p{0.3\textwidth}}
+        \textbf{\uline{\bm{$\WBPS.\Sign(sk,prd)$}}} & & \textbf{\uline{\bm{$\WBPS.\Request(vk,prd,m)$}}} \\
+        $(\G,g,q,\crs,ek,x):\subseteq sk$ &  &  $(\G,g,q,\hash,\crs,ek,X):\subseteq vk$ \\
+         & $\xleftarrow{\quad C \quad}$  & $C\gets \PKE.\Enc(ek,m;\rho)$ \\
+         $r\gets \Z_q; R\gets g^r $& $\xrightarrow{\quad R \quad}$ &$c\gets \hash(R,X,m)$\\
+         && $ \theta \gets (X,R,c,C,prd,ek)$\\
+         && $w\gets (m,\rho)$\\
+         & $\xleftarrow{\quad c,\pi \quad}$ & $\pi \gets \NArg.\Prove(\crs,\theta,w)$\\
+         \textbf{if } $\NArg.\Ver(\crs,\theta,\pi) = 0:$ &&\\
+         \textbf{return } $0$ &&\\
+         $s\gets (r+c\cdot x) \mod q$ & $\xrightarrow{\quad s \quad}$ & $\textbf{if }g^s \neq R\cdot X^c : \textbf{return } \bot$ \\
+          \textbf{return } $1$ && $ \textbf{return } \sigma\gets(R,s)$
+      \end{tabular} 
+    \end{center}
+  \end{minipage}%
+}
+
+\caption{The weakly blind predicate Schnorr signature scheme \WBPSP}
+\end{figure}
+
+
+
+\subsection{Security}
+
+Blindness (initial sketch): If the commitments are perfectly hiding, then the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). However, the oracle query cannot be adversarially controlled: $(R,X,m_0)$ and $(R,X,m_1)$ are both known to the adversary. We thus need to replace $m\gets m_b$ with a weaker form.
+
+Blindness (revised sketch): We replace $m\gets m_b$ with the weaker form $m\gets m_b||m_r$. The commitments are hiding, so  the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). Finally, the oracle result $c$ cannot be predicted. It is either  $c=(R,X,m_0||m_r)$ or $c=(R,X,m_1||m_r)$, but neither value can be obtained without correctly guessing the value of $m_r$ (Event $H$, which only happens with negligible probability). Conditioning on $\not H$, $c$ is independent of the challenge bit $b$.
+
+Unforgreability (sketch): We follow F\&W: we extract the message from $tx_A$ and use that to preclude any soundness failures. Further, we use the value we learn to ``sign'' ahead of time, so the $R$ value is known to the simulator. We then distinguish between Adversaries who offer forgeries for incomplete sessions or forgeries for ``new" items. In the first case we let the reduction know the signing key and use it to calculate the DLOG of the $R$ value used in the forgery. In the second, we reduce to unforgeability of standard Schnorr: we know the message contained in each session via decrypting, and we can guarantee that at least one message output in the forgery has not been queried to the signing oracle.
+.
+
