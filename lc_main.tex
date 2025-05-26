@@ -411,12 +411,13 @@ The adption of Schnorr and EdDSA signatures is driven by privacy~\cite{cryptoepr
  scalability gains~\cite{10.1007/s10623-019-00608-x}
 but also the straightforward extension to \emph{blind Schnorr signatures}~\cite{10.1007/3-540-48071-4_7}.
 Most Schnorr-based blind signature schemes
-require multiple rounds~\cite{10.1007/3-540-48071-4_7,,}, which can make the protocol suceptible to denial-of-service attacks.
-Research has thus been focusing on making blind signatures \emph{concurrently} secure where more than one session can be interwined~\cite{}. % as well as round-optimal schemes~\cite{}.
+require multiple rounds~\cite{10.1007/3-540-48071-4_7,,}, which makes the protocol suceptible to denial-of-service attacks.
+Research has thus been focusing on making blind signatures \emph{concurrently} secure where more than one session can be interwined~\cite{}. % as well as round-optimal schemes~\cite{}. 
 
 Our construction hinges on the the concurrently secure blind and partially blind signing protocol
 for standard Schnorr signatures found in~\cite{blindsigs} by Fuchsbauer, et al.---the first work stating rigorous security guarantees for a practical blind signature scheme based on Schnorr signatures.
-Unlike schemes that had been presented before,~\cite{blindsigs} is not vulnerable to the attacks described in~\cite{} which showed that the hardness-assumption existing schemes relied on for concurrent security can be solved in polynomial-time.
+Unlike schemes that had been presented before,~\cite{blindsigs} is not vulnerable to the attacks described in~\cite{10.1007/3-540-45708-9_19,cryptoeprint:2020/945} which showed that the hardness-assumption\footnote{The ROS (Random inhomogeneities in a Overdetermined
+Solvable system of linear equations) problem was initially studied by Schnorr in~\cite{10.1007/3-540-45600-7_1}} existing schemes relied on for concurrent security can be solved in polynomial-time.
 
 As our light client protocol is based on~\cite{blindsigs}, it also provides partial and predicate blindness, two properties that allow us to describe a transaction in an abstract way featuring ``redacted'' parts.
 We briefly outline the construction of Fuchsbauer et al.~\cite{blindsigs} in the following.
@@ -889,15 +890,15 @@ We show our complete light client protocol  in Figure~\ref{fig:protocol-short}, 
 		% sign abstract transaction\\[-7mm]
 		&  \node[rightArrowBelow] {$\var{s}$}; \\
 		& & Produce signature $\sigma = (R,s)$\\
-		& & Post $(\var{tx}{\color{blue}||\var{nt}},\sigma)$ on chain.\\
+		& & If valid, post $(\var{tx}||\var{aux},\sigma)$ on chain.\\
 	};
 	\draw[thick] (m-1-1.south east)--(m-1-1.south west);
 	\draw[thick] (m-1-3.south east)--(m-1-3.south west);
-	\node[fit={(m-8-3.south west) (m-25-3.south east) (m-12-1.north west)},
+	\node[fit={(m-8-3.south west) (m-24-3.south east) (m-12-1.north west)},
    ultra thick, dotted, inner xsep=11pt, inner ysep=0pt,
     rounded corners=1mm, draw=gray, label={[gray,anchor=north west]north west:WBPS Execution}]{};	
 \end{tikzpicture}
-\caption{WBPS protocol between light client and service provider.}
+\caption{Light client protocol featuring WBPS scheme.}
 \label{fig:wbps_protocol}
 \end{figure}
 
@@ -1357,7 +1358,7 @@ The circuits we construct and benchmark are inspired by the implementation of~\c
 The NArg we instanciate captures proof $\pi$ : $\fun{chkSpec}(\var{int_{post}},\var{tx}) = 1$ $\land \var{Com}(\var{tx};\rho)$ from the protocol in Section~\ref{}.
 \begin{equation}
 \label{narg}
-\mathrm{R}_{\mathrm{WBPS}}
+\mathrm{R}_{\mathrm{LCP}}
 	(\underbrace{(q, \mathbb{G}, G, \mathsf{H})}_{\text{parameters}\ par},\
 	\overbrace{(X_{\mathrm{client}}, R, com_\mathrm{tx}, \var{tx}_A, c, \var{int_{post}} )}^{\text{known statement}\ \theta}\ ,\
 	 \underbrace{(\var{tx}||\var{nt}, \rho)}_{\text{witness}\ \omega}\ )
@@ -1368,7 +1369,7 @@ We measure the arithmetic complexity of the relation in~\ref{narg} in terms of n
  The results are summarized in Table~\ref{table_results} for different scenarios we describe in the following. The experiments were executed on commodity hardware based on an Intel(R) Core(TM) i7-8750H CPU operating at 2.20GHz with 12 cores and 16GB of RAM.
 
 
-\subsection{Circuit construction framework}
+%\subsection{Circuit construction framework}
 
 \subsection{Benchmarks for different scenarios}
 
