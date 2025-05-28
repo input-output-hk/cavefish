@@ -31,3 +31,5 @@ light-clients.blg
 *.out
 *.vtc
 lc_main.synctex(busy)
+*.synctex(busy)
+*.synctex*

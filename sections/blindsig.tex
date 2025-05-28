@@ -2,25 +2,27 @@
 
  \section{Blind Signatures for Abstract Transactions}
  \label{sec:blind}
- In order to allow the LC to sign an abstract transaction artifacts we implement blind signatures on (partially) blinded transaction objects.
+ In order to allow the light to sign an abstract transaction we implement blind signatures on (partially) blinded transaction objects.
  At the minimum the SP hides the inputs to the transaction, i.e., the references to UTxO objects which are present in the ledger and required to cover the transaction.
+ This ensures that the light client cannot simply obtain the transaction from the SP, then edit it to remove the SPs compensation.
 
- In Bitcoin, for example, UTxOs are captured in the ledger as follows:
- For Cardano, the structure looks as follows:
+% In Bitcoin, for example, UTxOs are captured in the ledger as follows:
+ %For Cardano, the structure looks as follows:
 
- \todobox{ Describe UTxO briefly for all chains we support?  }.
+% \todobox{ Describe UTxO briefly for all chains we support?  }.
 
 
- The specific ledger implementation might require slight adaptations in terms of signature type and used hash functions---in this work, we give a very general construction that can be tailored to specific blockchains.
+ %The specific ledger implementation might require slight adaptations in terms of signature type and used hash functions---in this work, we give a very general construction that can be tailored to specific blockchains.
 
  Our construction is inspired by the predicate blind signature mechanism in~\cite{blindsigs}.
- It realizes a concurrently secure blind and partially blind signing protocol resulting in  standard Schnorr signatures.
- The signature scheme builds upon the original protocol proposed in~\cite{10.1007/3-540-48071-4_7} with the addition of a commitment phase that binds the signer to her secrets (blinding value and message), preventing a forgery attack (described in~\cite{bibid}) and making the scheme unforgeable under concurrent sessions.
+ It realizes a concurrently secure blind and partially blind signing protocol resulting in standard Schnorr signatures. This is a core property as it allows our protocol to be compatible with popular blockchains such as Bitcoin and Cardano without any modifications.
+%The signature scheme builds upon the original protocol proposed in~\cite{10.1007/3-540-48071-4_7} with the addition of a commitment phase that binds the signer to her secrets (blinding value and message), preventing a forgery attack (described in~\cite{bibid}) and making the scheme unforgeable under concurrent sessions.
 
- We describe how this protocol can be applied and simplified for abstract transaction signing.
- The proposed simplification is applicable in our setting due to the fact that our protocol does not rely on concurrent singing sessions.
- Furthermore, unlinkability of signatures and artifacts.
- Once the SP publishes final (unblinded) transactions on the chain, the LC can in theory download recent blocks and observe the transaction that was posted by the SP on behalf of the light client. If downloading is too resource-intensive, the LC might also consult an online block explorer for said purpose. As a consequence, abstract transactions, published transactions and signatures are assumed to be ``linkable'' and unlinkability provided by the signature scheme is redundant in our scenario.
+Given our application, the unlinkability property of blind signatures is not of much benefit: signed transactions are somewhat infrequent, often have different payees or payment sums (i.e different predicates) and re indirectly timestamped due to their time of posting on the blockchain. Further, there seems to be little benefit in preventing the light client from knowing which protocol section produced which payment. For this reason, we do away with the requirement of the signer being unable to distinguish between messages signed on different sessions. We only require that the singer is unable to distinguish the message \emph{before}  the signature-message pair is posted. 
+
+This weakening of the blindness property brings about the benefit that we can remove the blinding operations from the protocol (for a small efficiency increase) and also from the proof of correctness of the challenge generation (where the gain is more significant as it removes group exponentiations using foreign field arithmetic).
+ 
+%Once the SP publishes final (unblinded) transactions on the chain, the LC can in theory download recent blocks and observe the transaction that was posted by the SP on behalf of the light client. If downloading is too resource-intensive, the LC might also consult an online block explorer for said purpose. As a consequence, abstract transactions, published transactions and signatures are assumed to be ``linkable'' and unlinkability provided by the signature scheme is redundant in our scenario.
 
 
 
@@ -36,14 +38,14 @@
 
 \subsection{Weakly Blinded Predicate Signatures }
 
-We adapt the definitions of [XXX] to account for the weak variant of blindness.
+We adapt the definitions of \cite{blindsigs} to account for the weak variant of blindness.
 
 A WBPS scheme is parameterized by a family of polynomial-time-computable predicates,
 which are implemented by a p.t. algorithm $P$, the predicate compiler: on input a predicate
 description $prd \in {0, 1}$ and a message $m \in {0, 1}$, $P$ returns 1 or 0 indicating whether $m$
 satisfies $prd$.
 
- A WBPS scheme \WBPSP for predicate $P$ is defined by the following algorithms. We focus on
+ A WBPS scheme \WBPSP{} for predicate $P$ is defined by the following algorithms. We focus on
 schemes with 2-round (i.e., 4-message) signing protocols for concreteness.
 
 \begin{itemize}
@@ -72,7 +74,7 @@ We write $(d, \sigma) \gets  \langle Sign(sk, prd),User(vk, prd, m) \rangle$  as
 
 
 
-\begin{definition}. A WBPS scheme $\WBPSP$ satisfies weak blindness if for all
+\begin{definition} A WBPS scheme $\WBPSP$ satisfies weak blindness if for all p.p.t.
 adversaries $\A$:
 
 $$Adv^{\mathsf{BLD}}_{\WBPSP,\mathcal{A}}(\lambda) := \Pr[
@@ -81,6 +83,8 @@ $$
 
 is negligible in $\lambda$.
 \end{definition}
+
+We note that the $\mathsf{BLD}$ experiment mauls the message by appending a random bitstring $r$ of length $\lambda$. This is appropriate to our setting, where the SP is explicitly allowed to use the  ``notes'' field of a transaction to add a randomizer. Without this mauling, any indistinguishability-based definition would fail.
 
 \begin{figure}[ht]
     \fbox{
@@ -142,7 +146,7 @@ $\null\quad (msg',st_u) \gets User_0(vk, prd, m)$
     \fbox{
 
  \begin{minipage}[t]{0.55\linewidth}
-$\textsf{CMA}^{\A,b}_{\WBPSP}(\lambda)$
+$\textsf{CMA}^{\A}_{\WBPSP}(\lambda)$
 \hrule
 
 $par \gets Setup(1^\lambda) $\\
@@ -192,8 +196,33 @@ $st_S \gets \bot$\\
     \caption{Chosen Message Unforgeability Experiment}
 \end{figure}
 
+\begin{definition}. A WBPS scheme $\WBPSP$ satisfies unforgeability  if for all p.p.t.
+adversaries $\A$:
+
+$$Adv^{\mathsf{EUF-CMA}}_{\WBPSP,\mathcal{A}}(1^\lambda) := \Pr[
+\mathsf{CMA}^{\A}_{\WBPSP}(1^\lambda)=1]
+$$
+
+is negligible in $\lambda$.
+\end{definition}
+
 
 \subsection{Our Scheme}
+\label{sect:ourscheme}
+Our Scheme operates as follows: given an intent (i.e. predicate) $P:= \var{int_{post}}$ the requestor (i.e. the SP) encrypts the message, in our case the full transaction $tx$ and sends the commitment $C$ to the signer, who returns a random group element $R$ used in the final Schnorr signature. The requestor replies with the Schnorr challenge $c$ as well as a proof $\pi$ of its correct construction, and of the fact that $tx$ satisfies $\var{int_{post}}$. 
+
+We instantiate the scheme with a parametrisable $\NArg$ for the following relation, \begin{equation}
+\label{narg}
+\mathrm{R}_{\mathrm{LCP}}
+	(\underbrace{(q, \mathbb{G}, G, \mathsf{H})}_{\text{parameters}\ par},\
+	\overbrace{(X_{\mathrm{client}}, R, com_\mathrm{tx}, \var{tx}_A, c, \var{int_{post}} )}^{\text{known statement}\ \theta}\ ,\
+	 \underbrace{(\var{tx}||\var{nt}, \rho)}_{\text{witness}\ \omega}\ )
+\end{equation}
+checking that  $\fun{chkSpec}(\var{int_{post}},\var{tx}) = 1 \land m=\var{tx}||\nt \land C = \PKE.\Enc(m;\rho) \land c= \hash(R,X_{\mathrm{client}},m) \land tx_A=\fun{mkAbs}(tx)$.
+
+
+The signer completes the signing only if the proof verifies correctly. We present the full protocol in Figure \ref{fig:WBSP}.
+
 \begin{figure}[ht]
 %\centering
 
@@ -256,17 +285,32 @@ $\textbf{return } (g^s=R\cdot X^c)$
   \end{minipage}%
 }
 
-\caption{The weakly blind predicate Schnorr signature scheme \WBPSP}
+\caption{The weakly blind predicate Schnorr signature scheme \WBPSP}\label{fig:WBSP}
 \end{figure}
 
 
 
 \subsection{Security}
 
-Blindness (initial sketch): If the commitments are perfectly hiding, then the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). However, the oracle query cannot be adversarially controlled: $(R,X,m_0)$ and $(R,X,m_1)$ are both known to the adversary. We thus need to replace $m\gets m_b$ with a weaker form.
+%Blindness (initial sketch): If the commitments are perfectly hiding, then the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). However, the oracle query cannot be adversarially controlled: $(R,X,m_0)$ and $(R,X,m_1)$ are both known to the adversary. We thus need to replace $m\gets m_b$ with a weaker form.
 
-Blindness (revised sketch): We replace $m\gets m_b$ with the weaker form $m\gets m_b||m_r$. The commitments are hiding, so  the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). Finally, the oracle result $c$ cannot be predicted. It is either  $c=(R,X,m_0||m_r)$ or $c=(R,X,m_1||m_r)$, but neither value can be obtained without correctly guessing the value of $m_r$ (Event $H$, which only happens with negligible probability). Conditioning on $\not H$, $c$ is independent of the challenge bit $b$.
+\begin{theorem} The $\WBPSP{}$  scheme of Figure \ref{fig:WBSP} achieves weak blindness when the encryption scheme $\PKE$ is IND-CPA secure, $\NArg$ has the zero knowledge property, assumption \ref{ass:hash} holds w.r.t. the hash generator $\HGen{}$.\label{thm:blind}
+\end{theorem}
+\begin{proof}
+We structure our proof as a sequence of games so that (1) two consecutive games are computationally indistinguishable to the adversary and (2) in the final game, the view of the adversary is independent of the challenge $b$. We define the initial game $G_0$ to be $G_0:=\BLD^{\A,b}_{\WBPSP}(\lambda)$. For $G_1$ we replace proofs with simulated ones. This is not detectable by the adversary due to the zero knowledge property of $\NArg$. Second, for game $G_2$ we replace $C$ with an encryption of a fixed message $\bar{m}$ rather than $m_b$, this too is undetectable\footnote{This will also change the input of the simulator, but this is not an obstacle: we simply consider the simulator to be part of the adversary we are constructing against the IND-CPA security of $\PKE$.} due to the IND-CPA security of $\PKE$. For game $G_3$ we replace the challenge $c$ to also use  $\bar{m}$ rather than $m_b$ in the hash. This is computationally indistinguishable due to assumption \ref{ass:hash}.
+ %  We replace $m\gets m_b$ with the weaker form $m\gets m_b||m_r$. The commitments are hiding, so  the first round does not reveal anything to the adversary. Likewise, the proof  can be simulated with no contradiction (there will always exist a correct witness to proceed with). Finally, the oracle result $c$ cannot be predicted. It is either  $c=(R,X,m_0||m_r)$ or $c=(R,X,m_1||m_r)$, but neither value can be obtained without correctly guessing the value of $m_r$ (Event $H$, which only happens with negligible probability). Conditioning on $\neg H$, $c$ is independent of the challenge bit $b$.
+\end{proof}
 
-Unforgreability (sketch): We follow F\&W: we extract the message from $tx_A$ and use that to preclude any soundness failures. Further, we use the value we learn to ``sign'' ahead of time, so the $R$ value is known to the simulator. We then distinguish between Adversaries who offer forgeries for incomplete sessions or forgeries for ``new" items. In the first case we let the reduction know the signing key and use it to calculate the DLOG of the $R$ value used in the forgery. In the second, we reduce to unforgeability of standard Schnorr: we know the message contained in each session via decrypting, and we can guarantee that at least one message output in the forgery has not been queried to the signing oracle.
-.
+\begin{theorem} The $\WBPSP{}$  scheme of Figure \ref{fig:WBSP} achieves unforgeability when the encryption scheme $\PKE$ is IND-CPA secure, $\NArg$ is sound, and assumption \ref{ass:schnorr} holds w.r.t. the hash generator $\HGen{}$\label{thm:unforge}
+\end{theorem}
+
+\begin{proof}
+We follow the proof of \cite{blindsigs} with little changes. As before, we structure our proof as a sequence of games so that the probability of adversarial success changes negligibly from one game to the next. We define the initial game $G_0$ to be $G_0:=\mathsf{CMA}^{\A}_{\WBPSP}(\lambda)$.
+
+For game $G_1$, the experiment holds the decryption key for $\PKE$, so that we extract the message from $C$ ahead of time, and thus predict the $c$ value once the value of $R$ has been determined. If the value sent by the adversary is different from the predicted one, and the accompanying proof $\pi$ verifies we abort early, diverging from the original game. This only happens with negligible probability though, due to the adaptive soundness of $\NArg$ (if $\pi$ does not verify, $G_0$ would abort as well).
+
+For game $G_2$, we check to see if any of the adversarial signatures uses a message that belongs to a session that was not closed. If so, we abort early, diverging from $G_1$. However, this implies that the second part of the signature $s$ along with the secret key $x$ can be used to calculate the discrete log of $R$. Thus, if the early abort occurs (i.e. adversary manages to win using unfinished sessions)  with non negligible probability  we can build a discrete log calculator by embedding a discrete log challenge in one of the R values. Otherwise, we can assume that almost all of the adversarial wins use at least one ``new'' message, and thus the success probability for $G_1$ and $G_2$ differ only negligibly .
+
+For $G_3$ we build a reduction to the EUF-CMA security of Schnorr (Assumption \ref{ass:schnorr}). We remove key generation from the challenger, and instead obtain a $vk$ from the Schnorr EUF-CMA security game.  When we decrypt a message $m$, we query it on our signing oracle, obtaining $R,s$ as the signature. The reduction forwards $R$ to the adversary anticipating $c,\pi$. The checks introduced in $G_1$ ensure the $c$ value matches the predicted one, and thus $s$ correctly completes the signature. This ensures the simulation can complete the game. If the adversary wins the security game  $\WBPSP{}$ security game, there must be a signature on a new message that the reduction uses to also win the Schnorr EUF-CMA game with the same probability.
+\end{proof}
 

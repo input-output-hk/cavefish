@@ -28,23 +28,53 @@ Lastly, we implement and benchmark the Non-interactive Argument of Knowledge (NA
 
 
 \section{Introduction}
-\todobox{
-What sets us apart?
+Blockchain technologies have emerged as a foundational component of decentralized systems, offering strong guarantees of data integrity, censorship resistance, and fault tolerance through cryptographic protocols and distributed consensus. Within this domain, the Unspent Transaction Output (UTxO) model represents a distinctive paradigm for managing asset ownership and validating transactions. 
+The UTxO model was initially introduced by Bitcoin and subsequently adopted by other platforms such as Cardano.
+In contrast to account-based models, UTxO-based blockchains employ a stateless transactions that facilitate parallelism and improve auditability, but also introduce challenges for client verification.
 
-\begin{itemize}
-    \item Atomicity of payment+service
+Full nodes in a UTxO-based blockchain are required to download and validate the entire chain history to ensure correctness and security. This requirement presents a significant barrier to participation for resource-constrained devices, such as smartphones and embedded systems. Light client (LC) protocols aim to mitigate this issue by enabling nodes to interact with the blockchain in a secure and efficient manner without maintaining full historical data. These protocols must strike a careful balance between minimizing resource consumption and preserving critical security properties, such as transaction inclusion, double-spending resistance, and above all, chain validity.
 
-    \item permission-less, decentralized
+Blockchains are append-only data structures that grow continuously over time. As the chain length increases, it becomes prohibitively expensive for a light client (LC) to scan the entire history to verify past transactions or to locate a specific UTxO. In UTxO-based systems, where each transaction consumes and produces discrete outputs without a centralized account state, the ability to efficiently access historical transaction data becomes essential. Without mechanisms to support succinct historical queries or proofs of inclusion, LCs may be forced to rely on third-party services or sacrifice security assumptions.
 
-    \item Model for (trustless) 2-party transaction construction rather than proving things about chain/ledger state
+At the core of the protocol presented in this paper is the question of ``how can a user of a light client request and approve payments (e.g. from their wallet) in a secure and decentralized way without knowing anything about the current chain and ledger state and minimal communication effort?'' 
+In this paper, we present solution to this question in the form of a novel intent-based light client protocol designed for UTxO-based blockchains.
+Our solution enables LCs to query the current ledger state and submit transactions requiring only minimal local storage and computation. In order to submit a transaction on chain, the LC engages with a service provider (SP) in a two-party computation protocol that yields a signed transaction indistiguishable from one created by a full node. In addition to the low storage and computational requirements, our LC protocol is communication-optimal. After the LC has instructed the SP about the type of transaction it wishes to create, the protocol can be completed in as few as two rounds. The LC does not need to download or let alone parse the blockchain. The only information the SP must obtain from the LC are the addresses where the funds are located.
+If the LC uses a hierarchical wallet that allows straightforward address discovery, only the LC's (master) public key together with the chain code are required.
+These are sufficient for the SP to scan the UTxO ledger and construct a transaction according to the specifications requested by the LC.
+The only missing part are the signatures by the LC before the transaction can be posted on chain. But instead of sharing the created transaction with the LC verbatim and obtaining the missing signatures, the SP transmits the result in blinded form, which is what we call an abstract transaction. The blinded form of the transaction prevents the LC from modifying the transaction and/or posting the transaction to the chain on its own.
 
-    \item Do not require establishing a relationship with SP or any other set-up
+The LC and SP then complete a blind signature protocol where the LC verifies if the transaction is according to its defined specifications and only then creates valid signature(s) which are sent back to the SP.
+As a last step, the SP attaches the signatures to the transaction and posts them to the blockchain on behalf of the LC.
 
-    \item inherent timeliness of transaction construction incentivized by SPs desired to earn
-    their tip. This is in contrast with the possibility of stale info provided from old Mithril snapshots in other LC models
-\end{itemize}}
+To make our scheme viable in the real-world, we adapt the blind Schnorr signature scheme in~\cite{blindsigs}.
+More precisely, we omit the unlinkability requirement once the transaction has been published on the blockchain.
+In a permission-less blockchain system, the ledger is publicly accessable, and therefore, the transaction signed by the LC has to stay \emph{private until posted} only.
+This insight allows us to turn the construction into a weakly blind signature scheme, a simplification that reduces the space and time complexity of the zero-knowledge component which asserts that the abstract transaction meets the LC's specifications.
 
-The core of our design is an answer to the question of "how can a user request and approve payment (e.g. from their wallet) without knowing anything about the chain except what the transaction spending their money is doing with their money"?
+In addition to the low communication overhead, our light client protocol gives the SP the ability to be reimbursed for its computation time required to construct the transaction without the need of an additional protocol or exchange. The SP embeds a small fee into the transaction, i.e., an additional UTxO output, which makes up for the SP's costs and small reward. If the LC does not agree with the (amount of the) fee, it simply does not provide its signatures at the last step of the blind signature protocol.
+This forces the SP to charge a realistic fee for its services as otherwise the LC approaches a different SP.
 
-We claim that our work can be used by any UTxO or EUTxO blockchain (with some adjustments to the details of intent specification).
-We use blind signatures~\cite{blindsigs}.
+To summarize, our light client protocol constitutes a completely trustless interaction between a light client 
+and service provider that differs from existing approaches as it does not aim to synchornize the LC to the current ledger state despite its resource contraints. 
+Since our protocol features atomicity of service and payment, no enrolment or other set up phase is required,  letting the light client freely choose any suitable service provider.
+
+Our work can be implemented for any UTxO or EUTxO blockchain provided the intent specification is adapted to capture the ledger model and the blockchain supports standard Schnorr signatures. We implement and benchmark the zero-knowledge component of our scheme for two major blockchain platforms, Bitcoin and Cardano, and show that even an ``unoptimized'' implementation achieves proving and verification times that are viable in a real-world deployment.
+\textcolor{orange}{mr: needs 1-2 passes and some references.}
+
+%\todobox{
+%What sets us apart?
+%
+%\begin{itemize}
+%    \item Atomicity of payment+service
+%
+%    \item permission-less, decentralized
+%
+%    \item Model for (trustless) 2-party transaction construction rather than proving things about chain/ledger state
+%
+%    \item Do not require establishing a relationship with SP or any other set-up
+%
+%    \item inherent timeliness of transaction construction incentivized by SPs desired to earn
+%    their tip. This is in contrast with the possibility of stale info provided from old Mithril snapshots in other LC models
+%\end{itemize}}
+
+

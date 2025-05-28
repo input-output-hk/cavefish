@@ -4,19 +4,21 @@
 %UTxO model \textcolor{orange}{mr: do we still need this subsection?}
 
 \section{Technical Background}
-\subsubsection{Discrete Log Groups}
+
+\textbf{Notation} We use $y \gets x)$ to denote that  variable $y$ is assigned the (possibly randomized) evaluation of $x$. When $x$ is a set, we denote uniformly random sampling from the set. We use $a=b$ to denote boolean comparison between $a$ and $b$ and $z:=w$ to denote equality by definition. We use $||$ to denote concatenation of bitstrings. When algorithms are randomized, we denote them as $A(x;r)$, where $x$ is the input and $r$ is the randomness, belonging to a randomness space $\mathcal{R}$. When we write $y\gets A(x)$ we imply $r\gets \mathcal{R};y\gets A(x;r)$. In algorithm descriptions we write $x,y,z \subseteq a$ to imply parsing $a$ to obtain $x,y,z$. 
+
+\subsection{Discrete Log Groups}
 \begin{definition} A group generator \GGen is a probabilistic polynomial time (p.p.t.) algorithm with input a security parameter $\lambda$ and outputs a group description $\G,g,q$ such that $\G$ is a group of prime order $q\approx 2^\lambda$ with generator $g$. We say that the discrete logarithm problem is hard w.r.t. \GGen{} if for all p.p.t $\A$ we have that
 
 $$\Pr[(\G,g,q) \gets \GGen(1^\lambda); t\gets \Z_q; h\gets g^t: t=A(\G,g,q,h) ] \mbox{ is negligible in }\lambda.$$
 \end{definition}
 
-\subsubsection{ Public Key encryption and Schnorr Signatures}
+\subsection{ Public Key encryption and Schnorr Signatures}
 
 A public key encryption scheme $\PKE$ comprises a set of polynomial time algorithms $\Keygen,\Enc,\Dec$ with the following syntax:
 \begin{itemize}
 \item $\Keygen(1^\lambda) \to (ek,dk)$. Creates a public/private keypair $ek,dk$. The encryption key $ek$ also defines the message space $\mathcal{M}$
-\item $\Enc(ek,m;\rho) \to C$. Encrypts a message $m\in \mathcal{M}$ under the public encryption key $ek$. We list the randomness $\rho$ used in the encryption as an input so that we can refer to it in other contexts (e.g. zero knowledge arguments).
-\item $\Dec(dk,C) \to m$. Decrypts a ciphertext $C$ using the private decryption key $dk$.
+\item $\Enc(ek,m;\rho) \to C$. Encrypts a message $m\in \mathcal{M}$ under the public encryption key $ek$. \item $\Dec(dk,C) \to m$. Decrypts a ciphertext $C$ using the private decryption key $dk$.
 \end{itemize}
 
 \begin{definition} A public key encryption scheme $\PKE$ is \emph{correct} if 
@@ -131,11 +133,16 @@ $\textbf{return } \sigma$
 \end{figure}
 
 
-\begin{assumption} \cite{XXX} There exists a group generator $\GGen$ and hash function generator $\HGen$ such that the Schnorr signature scheme $\SDS$ is strongly unforgeable under definition \ref{def:seufcma}. \end{assumption}
+\begin{assumption} \label{ass:schnorr}\cite{blindsigs} There exists a group generator $\GGen$ and hash function generator $\HGen$ such that the Schnorr signature scheme $\SDS$ is strongly unforgeable under definition \ref{def:seufcma}. \end{assumption}
 
-\subsubsection{Parametrized Non-Interactive Zero Knowledge Arguments}
+Similarly, in the ROM we can trivially guarantee $\hash$ is pseudorandom, whereas for our setting we require an additional assumption:
 
-Following \cite[xxx], we define non-interactive zero knowledge arguments with regards to \emph parametrized polynomial relations $\mathcal{P}: \{0,1\}^* \times \{0,1\}^* \times \{0,1\}^*  \to \{0,1\}$, where the first argument represents a parameter set $par$ (e.g. a group description). Given a value of $par$, we say that $w$ is a witness for statement $\theta$ if $\mathcal{P}(par,\theta,w)=1$, i.e. $R=R_{par}(\theta,w):=\mathcal{P}(par,\theta,w)$ is an NP-relation, and $\Lang=\Lang_{par}$ is an NP-language. A NIZK for a relation  $\mathcal{P}$ operates as follows:
+\begin{assumption} The hash function generator $\HGen$ is such that for all $n$\label{ass:hash}
+$$\left| \Pr[\hash \gets \HGen(n); (m_0,m_1)\gets \A(\hash);b\gets\{0,1\};r\gets\{0,1\}^\lambda:b=\A(\hash(m_b||r))]-1/2 \right| $$ is negligible in $\lambda$. \end{assumption}
+
+\subsection{Parametrized Non-Interactive Zero Knowledge Arguments}
+
+Following \cite{blindsigs}, we define non-interactive zero knowledge arguments with regards to \emph parametrized polynomial relations $\mathcal{P}: \{0,1\}^* \times \{0,1\}^* \times \{0,1\}^*  \to \{0,1\}$, where the first argument represents a parameter set $par$ (e.g. a group description). Given a value of $par$, we say that $w$ is a witness for statement $\theta$ if $\mathcal{P}(par,\theta,w)=1$, i.e. $R=R_{par}(\theta,w):=\mathcal{P}(par,\theta,w)$ is an NP-relation, and $\Lang=\Lang_{par}$ is an NP-language. A NIZK for a relation  $\mathcal{P}$ operates as follows:
 \begin{itemize}
 
 \item $\mathsf{Rel}(1^\lambda) \to par$. Generates a parameter set $par$ that defines $R$ and $\Lang$.
