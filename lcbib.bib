@@ -272,9 +272,12 @@ location = {Zagreb, Croatia}
 	year = {2024}}
 
 @misc{circom,
-	howpublished = {\url{https://github.com/iden3/circom}},
-	note = {Accessed: 2025-01-30},
-	title = {{Iden3} Circom Circuit Compiler}}
+  author       = {{iden3}},
+  title        = {Circom: Circuit Compiler for Zero-Knowledge Proofs},
+  year         = {2023},
+  howpublished = {\url{https://github.com/iden3/circom}},
+  note         = {Accessed: 2025-05-28}
+}
 
 @inproceedings{utxoma,
 	author = {Manuel M. T. Chakravarty and James Chapman and Kenneth MacKenzie and Orestis Melkonian and Jann M{\"{u}}ller and Michael Peyton Jones and Polina Vinogradova and Philip Wadler and Joachim Zahnentferner},
@@ -308,13 +311,13 @@ location = {Zagreb, Croatia}
 	title = {{Full Cardano Ledger}},
 	year = {2024}}
 
-@online{ethresearch-solvers,
-	author = {{{ETH} research}},
-	title = {A decentralised solver architecture for executing intents on EVM blockchain},
-	url = {https://ethresear.ch/t/a-decentralised-solver-architecture-for-executing-intents-on-evm-blockchain/16608},
-	urldate = {2024-09-07},
-	year = 2023,
-	bdsk-url-1 = {https://ethresear.ch/t/a-decentralised-solver-architecture-for-executing-intents-on-evm-blockchain/16608}}
+@misc{ethresearch-solvers,
+  author       = {Ankur Dubey},
+  title        = {A decentralised solver architecture for executing intents on EVM blockchain},
+  howpublished = {\url{https://ethresear.ch/t/a-decentralised-solver-architecture-for-executing-intents-on-evm-blockchain/16608}},
+  year         = {2023},
+  note         = {Accessed: 2025-05-28}
+}
 
 @techreport{lightning,
 	author = {{Joseph Poon and Thaddeus Dryja}},
@@ -426,10 +429,103 @@ abstract="Stake-based multiparty cryptographic primitives operate in a setting w
 isbn="978-981-97-8013-6"
 }
 
-
 @misc{celo,
-      title={Plumo: An Ultralight Blockchain Client}, 
-      author={Psi Vesely , Kobi Gurkan , Michael Straka , Ariel Gabizon , Philipp Jovanovic , Georgios Konstantopoulos , Asa Oines , Marek Olszewski, Eran Tromer} ,
-      year={2025},
-      url={https://celo.org/papers/plumo}
+  title={Plumo: An Ultralight Blockchain Client},
+  author={Psi Vesely and Kobi Gurkan and Michael Straka and Ariel Gabizon and Philipp Jovanovic and Georgios Konstantopoulos and Asa Oines and Marek Olszewski and Eran Tromer},
+  year={2025},
+  url={https://celo.org/papers/plumo},
+  note={White paper}
 }
+
+@misc{cardano-ledger,
+  author       = {{IntersectMBO}},
+  title        = {Cardano Ledger Specifications and Implementations},
+  year         = {2025},
+  howpublished = {\url{https://github.com/IntersectMBO/cardano-ledger}},
+  note         = {Accessed: 2025-05-28}
+}
+
+@misc{bip340,
+  author = {Bitcoin Developers},
+  title = {BIP 340: Schnorr Signatures for secp256k1},
+  year = {2021},
+  howpublished = {\url{https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki}},
+  note = {Accessed: 2025-05-28}
+}
+
+@article{bellare2003one,
+  title={The one-more-RSA-inversion problems and the security of Chaum's blind signature scheme},
+  author={Bellare and Namprempre and Pointcheval and Semanko},
+  journal={Journal of Cryptology},
+  volume={16},
+  pages={185--215},
+  year={2003},
+  publisher={Springer}
+}
+
+@inproceedings{hanzlik2023rai,
+  title={Rai-choo! Evolving blind signatures to the next level},
+  author={Hanzlik, Lucjan and Loss, Julian and Wagner, Benedikt},
+  booktitle={Annual International Conference on the Theory and Applications of Cryptographic Techniques},
+  pages={753--783},
+  year={2023},
+  organization={Springer}
+}
+
+@inproceedings{tessaro2022short,
+  title={Short pairing-free blind signatures with exponential security},
+  author={Tessaro, Stefano and Zhu, Chenzhi},
+  booktitle={Annual International Conference on the Theory and Applications of Cryptographic Techniques},
+  pages={782--811},
+  year={2022},
+  organization={Springer}
+}
+
+@inproceedings{chairattana2022pi,
+  title={PI-cut-choo and friends: Compact blind signatures via parallel instance cut-and-choose and more},
+  author={Chairattana-Apirom, Rutchathon and Hanzlik, Lucjan and Loss, Julian and Lysyanskaya, Anna and Wagner, Benedikt},
+  booktitle={Annual International Cryptology Conference},
+  pages={3--31},
+  year={2022},
+  organization={Springer}
+}
+
+@article{plonk,
+  title={Plonk: Permutations over lagrange-bases for oecumenical noninteractive arguments of knowledge},
+  author={Gabizon, Ariel and Williamson, Zachary J and Ciobotaru, Oana},
+  journal={Cryptology ePrint Archive},
+  year={2019}
+}
+
+@INPROCEEDINGS {9155085,
+author = { Baldimtsi, Foteini and Madathil, Varun and Scafuro, Alessandra and Zhou, Linfeng },
+booktitle = { 2020 IEEE 33rd Computer Security Foundations Symposium (CSF) },
+title = {{ Anonymous Lottery In The Proof-of-Stake Setting }},
+year = {2020},
+volume = {},
+ISSN = {},
+pages = {318-333},
+abstract = { When Proof-of-Stake (PoS) underlies a consensus protocol, parties who are eligible to participate in the protocol are selected via a public selection function that depends on the stake they own. Identity and stake of the selected parties must then be disclosed in order to allow verification of their eligibility, and this can raise privacy concerns. In this paper, we present a modular approach for addressing the identity leaks of selection functions, decoupling the problem of implementing an anonymous selection of the participants, from the problem of implementing others task, e.g. consensus. We present an ideal functionality for anonymous selection that can be more easily composed with other protocols. We then show an instantiation of our anonymous selection functionality based on the selection function of Algorand. },
+keywords = {Protocols;Bitcoin;Measurement;Computer science;Privacy},
+doi = {10.1109/CSF49147.2020.00030},
+url = {https://doi.ieeecomputersociety.org/10.1109/CSF49147.2020.00030},
+publisher = {IEEE Computer Society},
+address = {Los Alamitos, CA, USA},
+month =Jun}
+
+@InProceedings{10.1007/978-3-031-78679-2_7,
+author="Bobolz, Jan
+and Diaz, Jesus
+and Kohlweiss, Markulf",
+editor="Clark, Jeremy
+and Shi, Elaine",
+title="Foundations of Anonymous Signatures: Formal Definitions, Simplified Requirements, and a Construction Based on General Assumptions",
+booktitle="Financial Cryptography and Data Security",
+year="2025",
+publisher="Springer Nature Switzerland",
+address="Cham",
+pages="121--139",
+abstract="In today's systems, privacy is often at odds with utility: users that reveal little information about themselves get restricted functionality, and service providers mistrust them. In practice, systems tip to either full anonymity (e.g. Monero), or full utility (e.g. Bitcoin). Well-known cryptographic primitives for bridging this gap exist: anonymous credentials (AC) let users disclose a subset of their credentials' attributes, revealing to service providers ``just what they need''; group signatures (GS) allow users to authenticate anonymously, to be de-anonymized ``just when deemed necessary''. However, these primitives are hard to deploy.",
+isbn="978-3-031-78679-2"
+}
+

@@ -18,7 +18,7 @@
 
 \usepackage{stmaryrd}
 \usepackage{bm}
-
+\usepackage{microtype}
 \usepackage{amsmath}
 \usepackage{tikz}
 \usetikzlibrary{matrix,shapes,arrows,positioning,chains,calc,fit}
@@ -27,6 +27,7 @@
 \usepackage{multirow}
 \usepackage[normalem]{ulem}
 \usepackage{amsthm}
+\usepackage[subtle]{savetrees} 
 
 \theoremstyle{definition} % For upright text
 \newtheorem{assumption}{Assumption}
@@ -36,9 +37,9 @@
 
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
-\title{Communication-Optimal Light Client Protocol for UTxO Ledgers in the Rational Model}
+\title{Cavefish: Communication-Optimal Light Client Protocol for UTxO Ledgers}
 
-%\titlerunning{Dummy short title} %TODO optional, please use if title is longer than one line
+\titlerunning{Cavefish} %TODO optional, please use if title is longer than one line
 
 \author{Jane {Open Access}}{Dummy University Computing Laboratory, [optional: Address], Country \and My second affiliation, Country \and \url{http://www.myhomepage.edu} }{johnqpublic@dummyuni.org}{https://orcid.org/0000-0002-1825-0097}{(Optional) author-specific funding acknowledgements}%TODO mandatory, please use full name; only 1 author per \author macro; first two parameters are mandatory, other parameters can be empty. Please provide at least the name of the affiliation and the country. The full address is optional. Use additional curly braces to indicate the correct name splitting when the last name consists of multiple name parts.
 
@@ -47,13 +48,33 @@
 
 \Copyright{Jane Open Access and Joan R. Public} %TODO mandatory, please use full first names. LIPIcs license is "CC-BY";  http://creativecommons.org/licenses/by/3.0/
 
-\ccsdesc[100]{\textcolor{red}{Replace ccsdesc macro with valid one}} %TODO mandatory: Please choose ACM 2012 classifications from https://dl.acm.org/ccs/ccs_flat.cfm 
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10002978.10003014.10003015</concept_id>
+       <concept_desc>Security and privacy~Security protocols</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10003752.10010070.10010099.10010103</concept_id>
+       <concept_desc>Theory of computation~Exact and approximate computation of equilibria</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10002950.10003624.10003633.10003643</concept_id>
+       <concept_desc>Mathematics of computing~Graphs and surfaces</concept_desc>
+       <concept_significance>300</concept_significance>
+       </concept>
+ </ccs2012>
+\end{CCSXML}
 
-\keywords{Dummy keyword} %TODO mandatory; please add comma-separated list of keywords
+\ccsdesc[500]{Security and privacy~Security protocols}
 
-\category{} %optional, e.g. invited paper
+\keywords{light clients, protocols, wallets, blockchain} %TODO mandatory; please add comma-separated list of keywords
 
-\relatedversion{} %optional, e.g. full version hosted on arXiv, HAL, or other respository/website
+%\category{} %optional, e.g. invited paper
+
+%\relatedversion{} %optional, e.g. full version hosted on arXiv, HAL, or other respository/website
 %\relatedversiondetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books/mk/GrayR93]{Classification (e.g. Full Version, Extended Version, Previous Version}{URL to related version} %linktext and cite are optional
 
 %\supplement{}%optional, e.g. related research data, source code, ... hosted on a repository like zenodo, figshare, GitHub, ...
@@ -121,6 +142,8 @@
 \newcommand{\where}{\ensuremath{~ ~ \mathbf{where}~ ~ }}
 
 \newcommand{\todobox}[1]{ \fcolorbox{black}{gray!50} {\textbf{TODO:} \parbox{.7\textwidth}{#1}}}
+\newcommand{\cut}[1]{}
+%\newcommand{\cut}[1]{ \textcolor{orange}{#1}}
 
 
 % Macros for eutxo things.
