@@ -24,9 +24,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Rust (for circom build)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install circom & snarkjs
         run: |
-          npm install -g circom@^2.1.0 snarkjs@^0.7.0
+          cargo install --git https://github.com/iden3/circom --locked --force
+          npm install -g snarkjs@^0.7.0
           circom --version
           snarkjs --version
 
