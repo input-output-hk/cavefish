@@ -32,7 +32,8 @@ jobs:
           cargo install --git https://github.com/iden3/circom --locked --force
           npm install -g snarkjs@^0.7.0
           circom --version
-          snarkjs --version
+          # snarkjs prints help & exits 99 on --version in some builds; avoid failing the job
+          snarkjs -v || true
 
       - name: Compile circuit
         run: |
