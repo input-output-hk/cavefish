@@ -26,7 +26,9 @@ jobs:
 
       - name: Install circom & snarkjs
         run: |
-          npm install -g circom@2.1.6 snarkjs@0.7.x
+          npm install -g circom@^2.1.0 snarkjs@^0.7.0
+          circom --version
+          snarkjs --version
 
       - name: Compile circuit
         run: |
