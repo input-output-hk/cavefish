@@ -2,9 +2,11 @@ name: ZK prototype CI
 
 on:
   pull_request:
-    paths: [ 'prototype/**' ]
+    paths:
+      - 'prototype/**'
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build-test:
@@ -14,11 +16,12 @@ jobs:
         working-directory: prototype/wbps_circuit
 
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
 
+      # Circuit compilation inside Circom Docker image
       - name: Compile circuit (circom via Docker)
         uses: addnab/docker-run-action@v3
         with:
@@ -35,13 +38,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install snarkjs
-        run: npm i -g snarkjs@0.7.x
+        run: npm install -g snarkjs@0.7.x
 
       - name: Witness / Prove / Verify (permissive until vectors are final)
         run: |
-          # If a curated vector exists, link it where the Makefile expects it
+          # Ensure input vector exists (link or fallback to {})
           if [ ! -f circ_eddsa_cardano_input.json ]; then
             if [ -f vectors/circ_eddsa_cardano_input.json ]; then
               ln -s vectors/circ_eddsa_cardano_input.json circ_eddsa_cardano_input.json
@@ -50,22 +54,22 @@ jobs:
             fi
           fi
 
-          # Calculate witness with snarkjs (avoids Node ESM issues)
+          # Witness generation
           snarkjs wtns calculate \
             circ_eddsa_cardano_js/circ_eddsa_cardano.wasm \
             circ_eddsa_cardano_input.json \
             circ_eddsa_cardano.wtns || true
 
-          # Export public signals (ok to be empty during permissive setup)
+          # Export public signals
           snarkjs wtns export json circ_eddsa_cardano.wtns circ_eddsa_cardano_public.json || true
 
-          # Groth16 (lab-only)
+          # Trusted setup (lab use only)
           snarkjs powersoftau new bn128 19 powersoftau.ptau
           snarkjs powersoftau prepare phase2 powersoftau.ptau pot_final.ptau
           snarkjs groth16 setup circ_eddsa_cardano.r1cs pot_final.ptau circ_eddsa_cardano.zkey
           snarkjs zkey export verificationkey circ_eddsa_cardano.zkey circ_eddsa_cardano_verifkey.json
 
-          # Prove & verify (permissive)
+          # Prove & verify (permissive mode)
           snarkjs groth16 prove \
             circ_eddsa_cardano.zkey \
             circ_eddsa_cardano.wtns \
