@@ -18,30 +18,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: false
 
-      # Circuit compilation inside Circom Docker image
-      - name: Compile circuit (circom via Docker)
-        uses: addnab/docker-run-action@v3
-        with:
-          image: iden3/circom:2.1.6
-          options: -v ${{ github.workspace }}/prototype/wbps_circuit:/work
-          run: |
-            cd /work
-            circom circ_eddsa_cardano.circom --r1cs --wasm --sym \
-              -l ../circomlib \
-              -l ../hashing_circuits \
-              -l .
-
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install snarkjs
-        run: npm install -g snarkjs@0.7.x
+      - name: Install circom & snarkjs
+        run: |
+          npm install -g circom@2.1.6 snarkjs@0.7.x
+
+      - name: Compile circuit
+        run: |
+          circom circ_eddsa_cardano.circom --r1cs --wasm --sym \
+            -l ../circomlib \
+            -l ../hashing_circuits \
+            -l .
 
       - name: Witness / Prove / Verify (permissive until vectors are final)
         run: |
