@@ -1,0 +1,180 @@
+cabal-version: 3.4
+name:          cavefish
+version:       0.1.0.0
+license:       Apache-2.0
+build-type:    Simple
+
+flag ide-stub
+  description: Use IDE stub for PlutusTx compile (for HLS only)
+  default: False
+  manual: True
+
+library
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  hs-source-dirs:  lib
+  exposed-modules: 
+    Core.Cbor
+    Core.Intent
+    Core.Pke
+    Core.Proof
+    Core.PaymentProof
+    Core.TxAbs
+    Observers.Observer
+    Sp.App
+    Sp.Emulator
+    Client.Impl
+    Client.Mock
+    Sp.Server
+    Sp.State
+    Sp.TxBuilder
+  default-language: GHC2021
+  default-extensions:
+    DerivingStrategies
+    GeneralizedNewtypeDeriving
+    DerivingVia
+    StandaloneDeriving
+    DeriveAnyClass
+    DeriveGeneric
+    OverloadedStrings
+
+    NamedFieldPuns
+    RecordWildCards
+    DuplicateRecordFields
+    LambdaCase
+    OverloadedRecordDot 
+    ViewPatterns
+
+    ScopedTypeVariables
+    TypeOperators
+    StandaloneKindSignatures
+
+    GADTs
+    TypeFamilies
+    DataKinds
+    PolyKinds
+    RankNTypes
+    MultiParamTypeClasses
+    FunctionalDependencies
+  build-depends:
+    , base                         >=4.9   && <5
+    , aeson
+    , cardano-api
+    , cardano-binary
+    , mtl
+    , servant
+    , servant-server
+    , transformers
+    , transformers-either
+    , cardano-crypto-class
+    , cborg
+    , plutus-ledger-api
+    , plutus-tx
+    , text
+    , time
+    , containers
+    , data-default
+    , cooked-validators
+    , cardano-ledger-core
+    , cardano-ledger-alonzo
+    , plutus-script-utils
+    , plutus-core
+    , plutus-tx-plugin
+    , bytestring
+    , crypton
+    , plutus-ledger
+    , memory
+    , stm
+    , uuid
+  if flag(ide-stub)
+    cpp-options: -DIDE_STUB
+
+executable cavefish-server
+  ghc-options: -Wall -Wcompat
+  hs-source-dirs: app
+  main-is: Main.hs
+  build-depends:
+    , base >=4.9 && <5
+    , cavefish
+    , warp
+    , cooked-validators
+    , bytestring
+    , crypton
+    , stm
+  default-language: Haskell2010
+
+benchmark bench
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  type:           exitcode-stdio-1.0
+  main-is:        Bench.hs
+  hs-source-dirs: bench
+  build-depends:
+    , base >=4.9     && <5
+    , cavefish
+
+test-suite test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  type:           exitcode-stdio-1.0
+  main-is:        Main.hs
+  hs-source-dirs: test
+  default-extensions:
+    DerivingStrategies
+    GeneralizedNewtypeDeriving
+    DerivingVia
+    StandaloneDeriving
+    DeriveAnyClass
+    DeriveGeneric
+    OverloadedStrings
+
+    NamedFieldPuns
+    RecordWildCards
+    DuplicateRecordFields
+    LambdaCase
+    OverloadedRecordDot 
+    ViewPatterns
+
+    ScopedTypeVariables
+    TypeOperators
+    StandaloneKindSignatures
+
+    GADTs
+    TypeFamilies
+    DataKinds
+    PolyKinds
+    RankNTypes
+    MultiParamTypeClasses
+    FunctionalDependencies
+  other-modules:
+    Spec
+    Core.CborSpec
+    Test.Common
+  build-depends:
+    , base >=4.9     && <5
+    , cavefish
+    , aeson
+    , bytestring
+    , base16-bytestring
+    , cardano-api
+    , cardano-ledger-core
+    , cardano-ledger-alonzo
+    , cborg
+    , containers
+    , servant
+    , servant-server
+    , warp
+    , hspec
+    , servant-client
+    , http-client
+    , wai
+    , text
+    , stm
+    , crypton
+    , memory
+    , plutus-ledger-api
+    , plutus-ledger
+    , plutus-script-utils
+    , cooked-validators
+    , data-default
+    , transformers
+    , mtl
+    , cardano-crypto-class
+    , uuid
