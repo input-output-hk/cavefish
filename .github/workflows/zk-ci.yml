@@ -3,84 +3,75 @@ name: ZK prototype CI
 on:
   pull_request:
     paths:
-      - 'prototype/**'
+      - '.github/workflows/zk-ci.yml'
+      - 'wbps/**'
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - '.github/workflows/zk-ci.yml'
+      - 'wbps/**'
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: prototype/wbps_circuit
+        working-directory: wbps
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Node is needed by snarkjs + the circom wasm runner
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'   # 20+ is fine for snarkjs
 
-      - name: Setup Rust (for circom build)
+      # circom is built with Rust
+      - name: Setup Rust (for circom)
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo (speeds up circom build)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/sccache
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
 
       - name: Install circom & snarkjs
         run: |
           cargo install --git https://github.com/iden3/circom --locked --force
-          npm install -g snarkjs@^0.7.0
+          npm i -g snarkjs@^0.7.0
           circom --version
-          # snarkjs prints help & may exit 99; don’t fail the job
           snarkjs -v || true
 
-      - name: Fetch circuits (replace removed submodules)
+      # Your circuit file includes ../vendor/circomlib/... when compiled
+      # from wbps/circuits, so we place the dependency under wbps/vendor/.
+      - name: Fetch circomlib (vendor)
         run: |
-          git clone --depth=1 https://github.com/iden3/circomlib.git circomlib
-          git clone --depth=1 https://github.com/bkomuves/hash-circuits.git hashing_circuits
-
-      - name: Compile circuit
-        run: |
-          circom circ_eddsa_cardano.circom --r1cs --wasm --sym \
-            -l ./circomlib/circuits \
-            -l ./hashing_circuits \
-            -l .
-
-      - name: Witness / Prove / Verify (permissive until vectors are final)
-        run: |
-          # Ensure input vector exists (link or fallback to {})
-          if [ ! -f circ_eddsa_cardano_input.json ]; then
-            if [ -f vectors/circ_eddsa_cardano_input.json ]; then
-              ln -s vectors/circ_eddsa_cardano_input.json circ_eddsa_cardano_input.json
-            else
-              echo '{}' > circ_eddsa_cardano_input.json
-            fi
+          mkdir -p vendor
+          if [ ! -d vendor/circomlib ]; then
+            git clone --depth=1 https://github.com/iden3/circomlib.git vendor/circomlib
           fi
 
-          # Witness generation
-          snarkjs wtns calculate \
-            circ_eddsa_cardano_js/circ_eddsa_cardano.wasm \
-            circ_eddsa_cardano_input.json \
-            circ_eddsa_cardano.wtns || true
-
-          # Export public signals
-          snarkjs wtns export json circ_eddsa_cardano.wtns circ_eddsa_cardano_public.json || true
-
-          # Trusted setup (lab use only)
-          snarkjs powersoftau new bn128 19 powersoftau.ptau
-          snarkjs powersoftau prepare phase2 powersoftau.ptau pot_final.ptau
-          snarkjs groth16 setup circ_eddsa_cardano.r1cs pot_final.ptau circ_eddsa_cardano.zkey
-          snarkjs zkey export verificationkey circ_eddsa_cardano.zkey circ_eddsa_cardano_verifkey.json
-
-          # Prove & verify (permissive mode)
-          snarkjs groth16 prove \
-            circ_eddsa_cardano.zkey \
-            circ_eddsa_cardano.wtns \
-            circ_eddsa_cardano_proof.json \
-            circ_eddsa_cardano_public.json || true
-
-          snarkjs groth16 verify \
-            circ_eddsa_cardano_verifkey.json \
-            circ_eddsa_cardano_public.json \
-            circ_eddsa_cardano_proof.json || true
+      - name: Build with Makefile
+        run: |
+          make
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wbps-build
+          path: |
+            wbps/build/wbps_cardano/*.r1cs
+            wbps/build/wbps_cardano/*.sym
+            wbps/build/wbps_cardano/wbps_cardano_js/**
+            wbps/build/wbps_cardano/*.wtns
+            wbps/build/wbps_cardano/*proof.json
+            wbps/build/wbps_cardano/*public.json
+            wbps/build/wbps_cardano/*verifkey.json
+          if-no-files-found: warn
