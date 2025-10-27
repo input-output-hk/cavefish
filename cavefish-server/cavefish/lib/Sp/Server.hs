@@ -74,13 +74,13 @@ instance ToJSON TransactionResp where
   toJSON = \case
     TransactionMissing ->
       object ["status" .= String "missing"]
-    TransactionPending PendingSummary{..} ->
+    TransactionPending PendingSummary {..} ->
       object
         [ "status" .= String "pending"
         , "expiresAt" .= pendingExpiresAt
         , "clientId" .= pendingClientId
         ]
-    TransactionSubmitted SubmittedSummary{..} ->
+    TransactionSubmitted SubmittedSummary {..} ->
       object
         [ "status" .= String "submitted"
         , "transaction" .= submittedTx
@@ -110,6 +110,7 @@ newtype ClientsResp = ClientsResp
   deriving (Eq, Show, Generic)
 
 instance ToJSON ClientsResp
+
 instance FromJSON ClientsResp
 
 data ClientInfo = ClientInfo
@@ -119,6 +120,7 @@ data ClientInfo = ClientInfo
   deriving (Eq, Show, Generic)
 
 instance ToJSON ClientInfo
+
 instance FromJSON ClientInfo
 
 newtype PendingResp = PendingResp
@@ -127,6 +129,7 @@ newtype PendingResp = PendingResp
   deriving (Eq, Show, Generic)
 
 instance ToJSON PendingResp
+
 instance FromJSON PendingResp
 
 data PendingItem = PendingItem
@@ -138,6 +141,7 @@ data PendingItem = PendingItem
   deriving (Eq, Show, Generic)
 
 instance ToJSON PendingItem
+
 instance FromJSON PendingItem
 
 newtype RegisterReq = RegisterReq
@@ -154,14 +158,16 @@ instance FromJSON RegisterReq where
       CryptoPassed pk -> pure (RegisterReq pk)
 
 instance ToJSON RegisterReq where
-  toJSON RegisterReq{..} =
+  toJSON RegisterReq {..} =
     object ["publicKey" .= renderHex (BA.convert publicKey)]
 
 newtype RegisterResp = RegisterResp
   { id :: UUID
   }
   deriving (Eq, Show, Generic)
+
 instance FromJSON RegisterResp
+
 instance ToJSON RegisterResp
 
 cavefishApi :: Proxy CavefishApi
@@ -170,6 +176,7 @@ cavefishApi = Proxy
 mkApp :: Env -> Application
 mkApp env = serve cavefishApi (hoistServer cavefishApi (runApp env) server)
 
+-- | Request to prepare a transaction.
 data PrepareReq = PrepareReq
   { intent :: IntentW
   , observer :: ByteString
@@ -183,9 +190,10 @@ instance FromJSON PrepareReq where
     obsHex :: Text <- o .: "observer"
     observer <- parseHex obsHex
     clientId <- o .: "clientId"
-    pure PrepareReq{..}
+    pure PrepareReq {..}
+
 instance ToJSON PrepareReq where
-  toJSON PrepareReq{..} =
+  toJSON PrepareReq {..} =
     object
       [ "intent" .= intent
       , "observer" .= renderHex observer
@@ -201,7 +209,9 @@ data PrepareResp = PrepareResp
   , witnessBundleHex :: Text
   }
   deriving (Eq, Show, Generic)
+
 instance FromJSON PrepareResp
+
 instance ToJSON PrepareResp
 
 data FinaliseReq = FinaliseReq
@@ -215,9 +225,10 @@ instance FromJSON FinaliseReq where
     txId <- o .: "txId"
     sigHex :: Text <- o .: "lcSig"
     lcSig <- parseHex sigHex
-    pure FinaliseReq{..}
+    pure FinaliseReq {..}
+
 instance ToJSON FinaliseReq where
-  toJSON FinaliseReq{..} =
+  toJSON FinaliseReq {..} =
     object
       [ "txId" .= txId
       , "lcSig" .= renderHex lcSig
@@ -227,7 +238,9 @@ data FinaliseResult
   = Finalised
   | Rejected Text
   deriving (Eq, Show, Generic)
+
 instance ToJSON FinaliseResult
+
 instance FromJSON FinaliseResult
 
 data FinaliseResp = FinaliseResp
@@ -236,22 +249,24 @@ data FinaliseResp = FinaliseResp
   , result :: FinaliseResult
   }
   deriving (Eq, Show, Generic)
+
 instance ToJSON FinaliseResp
+
 instance FromJSON FinaliseResp
 
 server :: ServerT CavefishApi AppM
 server = prepareH :<|> finaliseH :<|> registerH :<|> clientsH :<|> pendingH :<|> transactionH
 
 prepareH :: PrepareReq -> AppM PrepareResp
-prepareH PrepareReq{..} = do
-  Env{..} <- ask
+prepareH PrepareReq {..} = do
+  Env {..} <- ask
   internalIntent <- liftIO $ either (ioError . userError . T.unpack) pure (toInternalIntent intent)
 
   clientKnown <- liftIO . atomically $ do
     registry <- readTVar clientRegistration
     pure (Map.member clientId registry)
   unless clientKnown $
-    throwError err403{errBody = "unknown client"}
+    throwError err403 {errBody = "unknown client"}
 
   -- TODO WG: We can't do this exactly, but it'd be nice to say at this point whether or not the observer is coherent with the intent
   -- expectedObserverBytes <-
@@ -260,27 +275,31 @@ prepareH PrepareReq{..} = do
   -- when (observer /= expectedObserverBytes) $
   --   throwError err422{errBody = "observer script does not match intent"}
 
-  BuildTxResult{tx = tx, txAbs = txAbs, mockState = builtState, changeDelta = cd} <- liftIO $ build internalIntent observer
+  BuildTxResult {tx = tx, txAbs = txAbs, mockState = builtState, changeDelta = cd} <-
+    liftIO $ build internalIntent observer
 
   auxNonceBytes :: ByteString <- liftIO $ getRandomBytes 32
   rhoBytes :: ByteString <- liftIO $ getRandomBytes 32
 
   let payload = serialiseTx tx <> auxNonceBytes
-      toServerErr msg = err500{errBody = BL.fromStrict (TE.encodeUtf8 msg)}
-      toPkeErr err = err500{errBody = BL.fromStrict (TE.encodeUtf8 ("pke encryption failed: " <> renderError err))}
+      toServerErr msg = err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
+      toPkeErr err = err500 {errBody = BL.fromStrict (TE.encodeUtf8 ("pke encryption failed: " <> renderError err))}
   ciphertext <- liftEither $ first toPkeErr (encrypt pkePublic payload rhoBytes)
-  witnessBundle <- liftEither $ first toServerErr $ mkWitnessBundle tx txAbs observer auxNonceBytes ciphertext
+  witnessBundle <-
+    liftEither $ first toServerErr $ mkWitnessBundle tx txAbs observer auxNonceBytes ciphertext
   let witnessBundleHex = renderHex (serialiseClientWitnessBundle witnessBundle)
 
   unless (satisfies cd internalIntent txAbs) $
-    throwError err422{errBody = "transaction does not satisfy intent"}
+    throwError err422 {errBody = "transaction does not satisfy intent"}
 
   let txBody = Api.getTxBody tx
       txId = Api.getTxId txBody
       txIdTxt = Api.serialiseToRawBytesHexText txId
       txAbsHash :: ByteString
       txAbsHash = hashTxAbs txAbs
-  proof <- liftIO (mkPaymentProof spSk internalIntent tx txAbs (encryptedTx witnessBundle) auxNonceBytes rhoBytes)
+  proof <-
+    liftIO
+      (mkPaymentProof spSk internalIntent tx txAbs (encryptedTx witnessBundle) auxNonceBytes rhoBytes)
   now <- liftIO getCurrentTime
   let expiry = addUTCTime ttl now
   liftIO . atomically $
@@ -308,8 +327,8 @@ prepareH PrepareReq{..} = do
       }
 
 finaliseH :: FinaliseReq -> AppM FinaliseResp
-finaliseH FinaliseReq{..} = do
-  env@Env{..} <- ask
+finaliseH FinaliseReq {..} = do
+  env@Env {..} <- ask
   now <- liftIO getCurrentTime
   case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txId) of
     Left _ ->
@@ -321,7 +340,7 @@ finaliseH FinaliseReq{..} = do
       case mp of
         Nothing ->
           pure $ FinaliseResp txId now (Rejected "unknown or expired tx")
-        Just pendingEntry@Pending{..} -> do
+        Just pendingEntry@Pending {..} -> do
           when (now > expiry) $ do
             liftIO . atomically $
               modifyTVar' pending (Map.delete wantedTxId)
@@ -336,7 +355,7 @@ finaliseH FinaliseReq{..} = do
               case mClient of
                 Nothing ->
                   pure $ FinaliseResp txId now (Rejected "unknown client")
-                Just ClientRegistration{publicKey} ->
+                Just ClientRegistration {publicKey} ->
                   if verifyClientSignature publicKey txAbsHash lcSig
                     then do
                       res <- liftIO (submit tx mockState)
@@ -344,7 +363,7 @@ finaliseH FinaliseReq{..} = do
                         Left reason ->
                           pure $ FinaliseResp txId now (Rejected reason)
                         Right _ -> do
-                          let completed = Completed{tx, submittedAt = now, creator}
+                          let completed = Completed {tx, submittedAt = now, creator}
                           liftIO . atomically $ do
                             modifyTVar' pending (Map.delete wantedTxId)
                             modifyTVar' complete (Map.insert wantedTxId completed)
@@ -352,56 +371,58 @@ finaliseH FinaliseReq{..} = do
                     else pure $ FinaliseResp txId now (Rejected "invalid client signature")
 
 registerH :: RegisterReq -> AppM RegisterResp
-registerH RegisterReq{publicKey} = do
-  Env{clientRegistration} <- ask
+registerH RegisterReq {publicKey} = do
+  Env {clientRegistration} <- ask
   uuid <- liftIO nextRandom
-  liftIO $ atomically $ modifyTVar' clientRegistration (Map.insert (ClientId uuid) (ClientRegistration publicKey))
-  pure RegisterResp{id = uuid}
+  liftIO $
+    atomically $
+      modifyTVar' clientRegistration (Map.insert (ClientId uuid) (ClientRegistration publicKey))
+  pure RegisterResp {id = uuid}
 
 clientsH :: AppM ClientsResp
 clientsH = do
-  Env{clientRegistration} <- ask
+  Env {clientRegistration} <- ask
   regs <- liftIO . atomically $ Map.toAscList <$> readTVar clientRegistration
   pure . ClientsResp $ fmap mkClientInfo regs
- where
-  mkClientInfo :: (ClientId, ClientRegistration) -> ClientInfo
-  mkClientInfo (ClientId uuid, ClientRegistration{publicKey}) =
-    ClientInfo
-      { clientId = uuid
-      , publicKey = renderHex (BA.convert publicKey)
-      }
+  where
+    mkClientInfo :: (ClientId, ClientRegistration) -> ClientInfo
+    mkClientInfo (ClientId uuid, ClientRegistration {publicKey}) =
+      ClientInfo
+        { clientId = uuid
+        , publicKey = renderHex (BA.convert publicKey)
+        }
 
 pendingH :: AppM PendingResp
 pendingH = do
-  Env{pending} <- ask
+  Env {pending} <- ask
   pendings <- liftIO . atomically $ Map.toAscList <$> readTVar pending
   pure . PendingResp $ fmap (uncurry mkPendingItem) pendings
- where
-  mkPendingItem :: Api.TxId -> Pending -> PendingItem
-  mkPendingItem txId Pending{..} =
-    let ClientId creatorId = creator
-     in PendingItem
-          { txId = Api.serialiseToRawBytesHexText txId
-          , txAbsHash = renderHex txAbsHash
-          , expiresAt = expiry
-          , clientId = creatorId
-          }
+  where
+    mkPendingItem :: Api.TxId -> Pending -> PendingItem
+    mkPendingItem txId Pending {..} =
+      let ClientId creatorId = creator
+       in PendingItem
+            { txId = Api.serialiseToRawBytesHexText txId
+            , txAbsHash = renderHex txAbsHash
+            , expiresAt = expiry
+            , clientId = creatorId
+            }
 
 transactionH :: Text -> AppM TransactionResp
 transactionH txIdText = do
-  Env{complete, pending} <- ask
+  Env {complete, pending} <- ask
   txId <-
     case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txIdText) of
-      Left _ -> throwError err400{errBody = "malformed tx id"}
+      Left _ -> throwError err400 {errBody = "malformed tx id"}
       Right parsedTxId -> pure parsedTxId
   completes <- liftIO (readTVarIO complete)
   case Map.lookup txId completes of
-    Just Completed{tx, submittedAt, creator = ClientId creatorId} ->
+    Just Completed {tx, submittedAt, creator = ClientId creatorId} ->
       pure $ TransactionSubmitted (SubmittedSummary (CardanoEmulatorEraTx tx) submittedAt creatorId)
     Nothing -> do
       pendings <- liftIO (readTVarIO pending)
       case Map.lookup txId pendings of
-        Just Pending{expiry, creator = ClientId creatorId} ->
+        Just Pending {expiry, creator = ClientId creatorId} ->
           pure $ TransactionPending (PendingSummary expiry creatorId)
         Nothing -> pure TransactionMissing
 
@@ -420,11 +441,11 @@ verifyClientSignature pk txAbsHash sigBytes =
        in Ed.verify pk message sig
 
 decryptPendingPayload :: Env -> Pending -> Either ServerError ByteString
-decryptPendingPayload Env{pkeSecret} Pending{ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
+decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
   case decrypt pkeSecret pendingCiphertext of
     Left err ->
       let msg = "pke decrypt failed: " <> renderError err
-       in Left err500{errBody = BL.fromStrict (TE.encodeUtf8 msg)}
+       in Left err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
     Right payload ->
       let txBytes = serialiseTx tx
           (payloadTxBytes, payloadNonce) = BS.splitAt (BS.length txBytes) payload
