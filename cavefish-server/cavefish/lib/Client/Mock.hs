@@ -64,18 +64,18 @@ mkPrepareReq :: ClientId -> IntentW -> Either Text PrepareReq
 mkPrepareReq clientId intentW = do
   internalIntent <- toInternalIntent intentW
   observerBytes <- intentStakeValidatorBytes internalIntent
-  pure PrepareReq{intent = intentW, observer = observerBytes, clientId}
+  pure PrepareReq {intent = intentW, observer = observerBytes, clientId}
 
 mkFinaliseReq :: Ed.SecretKey -> Text -> ByteString -> FinaliseReq
 mkFinaliseReq secretKey txId txAbsHash =
   let message = clientSignatureMessage txAbsHash
       signature = Ed.sign secretKey (Ed.toPublic secretKey) message
-   in FinaliseReq{txId = txId, lcSig = BA.convert signature}
+   in FinaliseReq {txId = txId, lcSig = BA.convert signature}
 
 verifyPrepareProof :: Ed.PublicKey -> PrepareResp -> Either Text ()
-verifyPrepareProof publicKey PrepareResp{txId = txIdText, txAbs, proof, witnessBundleHex} = do
+verifyPrepareProof publicKey PrepareResp {txId = txIdText, txAbs, proof, witnessBundleHex} = do
   witnessBytes <- decodeHex "witness bundle" witnessBundleHex
-  ClientWitnessBundle{cwbCiphertext = ciphertext, cwbAuxNonce = auxNonceBytes, cwbTxId = bundleTxId} <-
+  ClientWitnessBundle {cwbCiphertext = ciphertext, cwbAuxNonce = auxNonceBytes, cwbTxId = bundleTxId} <-
     first (const "failed to decode witness bundle") (deserialiseClientWitnessBundle witnessBytes)
   txId <-
     case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txIdText) of
@@ -88,12 +88,12 @@ verifyPrepareProof publicKey PrepareResp{txId = txIdText, txAbs, proof, witnessB
   verifyPaymentProof publicKey proof txAbs txId ciphertext auxNonceBytes
 
 registerClient :: RunServer -> Ed.PublicKey -> Handler RegisterResp
-registerClient run publicKey = run $ registerH RegisterReq{publicKey}
+registerClient run publicKey = run $ registerH RegisterReq {publicKey}
 
 register :: UnregisteredMockClient -> Handler MockClient
-register UnregisteredMockClient{..} = do
-  RegisterResp{id = uuid} <- registerClient umcRun (Ed.toPublic umcLcSk)
-  pure MockClient{mcRun = umcRun, mcLcSk = umcLcSk, mcSpPk = umcSpPk, mcClientId = ClientId uuid}
+register UnregisteredMockClient {..} = do
+  RegisterResp {id = uuid} <- registerClient umcRun (Ed.toPublic umcLcSk)
+  pure MockClient {mcRun = umcRun, mcLcSk = umcLcSk, mcSpPk = umcSpPk, mcClientId = ClientId uuid}
 
 getClients :: RunServer -> Handler ClientsResp
 getClients run = run clientsH
@@ -125,7 +125,7 @@ prepareAndVerifyWithClient mockClient intentW = do
     Right () -> pure resp
 
 finalise :: RunServer -> Ed.SecretKey -> PrepareResp -> Handler FinaliseResp
-finalise run secretKey PrepareResp{txId, txAbs} =
+finalise run secretKey PrepareResp {txId, txAbs} =
   let txAbsHash = hashTxAbs txAbs
       req = mkFinaliseReq secretKey txId txAbsHash
    in run (finaliseH req)
@@ -137,12 +137,12 @@ verifyPrepareProofWithClient :: MockClient -> PrepareResp -> Either Text ()
 verifyPrepareProofWithClient mockClient = verifyPrepareProof (mcSpPk mockClient)
 
 verifySatisfies :: IntentW -> PrepareResp -> Either Text Bool
-verifySatisfies intentW PrepareResp{txAbs, changeDelta} = do
+verifySatisfies intentW PrepareResp {txAbs, changeDelta} = do
   internal <- toInternalIntent intentW
   pure (satisfies changeDelta internal txAbs)
 
 as422 :: Text -> ServerError
-as422 t = err422{errBody = BL.fromStrict (TE.encodeUtf8 t)}
+as422 t = err422 {errBody = BL.fromStrict (TE.encodeUtf8 t)}
 
 decodeHex :: Text -> Text -> Either Text ByteString
 decodeHex label hexText =

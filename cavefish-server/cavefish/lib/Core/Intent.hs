@@ -100,15 +100,15 @@ emptyIntent =
 
 normalizeIntent :: IntentExpr -> Intent
 normalizeIntent = go emptyIntent
- where
-  go acc = \case
-    MustMint v -> acc{irMustMint = v : irMustMint acc}
-    SpendFrom s -> acc{irSpendFrom = s : irSpendFrom acc}
-    MaxInterval i -> acc{irMaxInterval = Just (maybe i (min i) (irMaxInterval acc))}
-    PayTo v a -> acc{irPayTo = (v, a) : irPayTo acc}
-    ChangeTo a -> acc{irChangeTo = Just a}
-    MaxFee f -> acc{irMaxFee = Just (maybe f (min f) (irMaxFee acc))}
-    AndExps xs -> Data.Foldable.foldl go acc xs
+  where
+    go acc = \case
+      MustMint v -> acc {irMustMint = v : irMustMint acc}
+      SpendFrom s -> acc {irSpendFrom = s : irSpendFrom acc}
+      MaxInterval i -> acc {irMaxInterval = Just (maybe i (min i) (irMaxInterval acc))}
+      PayTo v a -> acc {irPayTo = (v, a) : irPayTo acc}
+      ChangeTo a -> acc {irChangeTo = Just a}
+      MaxFee f -> acc {irMaxFee = Just (maybe f (min f) (irMaxFee acc))}
+      AndExps xs -> Data.Foldable.foldl go acc xs
 
 toIntentExpr :: IntentW -> Either Text IntentExpr
 toIntentExpr = \case
@@ -119,28 +119,28 @@ toIntentExpr = \case
   ChangeToW a -> ChangeTo <$> parseAddr a
   MaxFeeW i -> Right (MaxFee i)
   AndExpsW xs -> AndExps <$> traverse toInt xs
- where
-  parseAddr :: AddressW -> Either Text (Api.AddressInEra Api.ConwayEra)
-  parseAddr (AddressW addr) =
-    maybe
-      (Left "invalid address")
-      Right
-      (Api.deserialiseAddress (Api.AsAddressInEra Api.AsConwayEra) addr)
-  toInt :: IntentW -> Either Text IntentExpr
-  toInt = \case
-    MustMintW v -> Right (MustMint v)
-    SpendFromW walletAddr -> fmap SpendFrom $ Spend <$> parseAddr walletAddr
-    MaxIntervalW w -> Right (MaxInterval (fromInteger w))
-    PayToW v a -> PayTo v <$> parseAddr a
-    ChangeToW a -> ChangeTo <$> parseAddr a
-    MaxFeeW i -> Right (MaxFee i)
-    AndExpsW ys -> AndExps <$> traverse toInt ys
+  where
+    parseAddr :: AddressW -> Either Text (Api.AddressInEra Api.ConwayEra)
+    parseAddr (AddressW addr) =
+      maybe
+        (Left "invalid address")
+        Right
+        (Api.deserialiseAddress (Api.AsAddressInEra Api.AsConwayEra) addr)
+    toInt :: IntentW -> Either Text IntentExpr
+    toInt = \case
+      MustMintW v -> Right (MustMint v)
+      SpendFromW walletAddr -> fmap SpendFrom $ Spend <$> parseAddr walletAddr
+      MaxIntervalW w -> Right (MaxInterval (fromInteger w))
+      PayToW v a -> PayTo v <$> parseAddr a
+      ChangeToW a -> ChangeTo <$> parseAddr a
+      MaxFeeW i -> Right (MaxFee i)
+      AndExpsW ys -> AndExps <$> traverse toInt ys
 
 toInternalIntent :: IntentW -> Either Text Intent
 toInternalIntent = fmap normalizeIntent . toIntentExpr
 
 satisfies :: ChangeDelta -> Intent -> TxAbs Api.ConwayEra -> Bool
-satisfies cd Intent{..} tx =
+satisfies cd Intent {..} tx =
   and
     [ -- MustMint: v ≤ tx.mint
       let need = Map.fromList . valueToList $ mconcat irMustMint
@@ -167,12 +167,12 @@ satisfies cd Intent{..} tx =
     , -- MaxFee (if any): tx.fee ≤ f
       maybe True (\f -> tx.absFee <= f) irMaxFee
     ]
- where
-  hasSigner :: Set.Set PubKey -> Api.AddressInEra Api.ConwayEra -> Bool
-  hasSigner sigs addr =
-    case cardanoPubKeyHash addr of
-      Nothing -> False
-      Just pkh -> any ((== pkh) . pubKeyHash) (Set.toList sigs)
+  where
+    hasSigner :: Set.Set PubKey -> Api.AddressInEra Api.ConwayEra -> Bool
+    hasSigner sigs addr =
+      case cardanoPubKeyHash addr of
+        Nothing -> False
+        Just pkh -> any ((== pkh) . pubKeyHash) (Set.toList sigs)
 
 valueLeq :: Api.Value -> Api.Value -> Bool
 valueLeq need have =

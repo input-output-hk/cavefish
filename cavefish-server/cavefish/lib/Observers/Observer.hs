@@ -119,9 +119,9 @@ untypedObserverStakeValidator intent redeemerRaw ctxRaw =
 
 observerStakeValidatorLogic :: ObserverIntent -> () -> PV2.ScriptContext -> Bool
 {-# INLINEABLE observerStakeValidatorLogic #-}
-observerStakeValidatorLogic ObserverIntent{oiSpendFrom, oiPayTo, oiMustMint, oiChangeTo, oiMaxFee, oiMaxInterval} _ ctx =
+observerStakeValidatorLogic ObserverIntent {oiSpendFrom, oiPayTo, oiMustMint, oiChangeTo, oiMaxFee, oiMaxInterval} _ ctx =
   case ctx of
-    PV2.ScriptContext{PV2.scriptContextTxInfo = info} ->
+    PV2.ScriptContext {PV2.scriptContextTxInfo = info} ->
       case info of
         PV2.TxInfo
           { PV2.txInfoInputs = inputs
@@ -147,24 +147,24 @@ credentialSatisfied :: [PV2.TxInInfo] -> [PV2.PubKeyHash] -> PV2.Credential -> B
 {-# INLINEABLE credentialSatisfied #-}
 credentialSatisfied inputs signers cred =
   credentialSeenInInputs P.|| signerSatisfied
- where
-  credentialSeenInInputs = anyList matchesInput inputs
-  signerSatisfied = case cred of
-    PV2.PubKeyCredential pkh -> anyList (pubKeyHashEquals pkh) signers
-    PV2.ScriptCredential _ -> False
-  matchesInput txIn = case txIn of
-    PV2.TxInInfo _ resolved ->
-      case resolved of
-        PV2.TxOut addr _ _ _ -> addressHasCredential cred addr
+  where
+    credentialSeenInInputs = anyList matchesInput inputs
+    signerSatisfied = case cred of
+      PV2.PubKeyCredential pkh -> anyList (pubKeyHashEquals pkh) signers
+      PV2.ScriptCredential _ -> False
+    matchesInput txIn = case txIn of
+      PV2.TxInInfo _ resolved ->
+        case resolved of
+          PV2.TxOut addr _ _ _ -> addressHasCredential cred addr
 
 payToSatisfied :: [PV2.TxOut] -> [(PV2.Value, PV2.Address)] -> Bool
 payToSatisfied outputs =
   allList (requirementSatisfied outputs)
- where
-  requirementSatisfied outs (valueReq, addrReq) =
-    anyList (outputMatches valueReq addrReq) outs
-  outputMatches valueReq addrReq (PV2.TxOut addr valueOut _ _) =
-    addressesEqual addr addrReq P.&& valueGeq valueOut valueReq
+  where
+    requirementSatisfied outs (valueReq, addrReq) =
+      anyList (outputMatches valueReq addrReq) outs
+    outputMatches valueReq addrReq (PV2.TxOut addr valueOut _ _) =
+      addressesEqual addr addrReq P.&& valueGeq valueOut valueReq
 
 mustMintSatisfied :: PV2.Value -> PV2.Value -> Bool
 mustMintSatisfied mintedValue required = valueGeq mintedValue required
@@ -172,16 +172,16 @@ mustMintSatisfied mintedValue required = valueGeq mintedValue required
 changeSatisfied :: [PV2.TxInInfo] -> [PV2.TxOut] -> Maybe PV2.Address -> Bool
 changeSatisfied inputs outputs =
   maybe P.True checkChange
- where
-  checkChange addr =
-    let consumed = foldValues inputValue inputs
-        produced = foldValues txOutValue outputs
-        delta = consumed P.- produced
-     in if valuePositive delta
-          then anyList (matchesExact addr delta) outputs
-          else P.True
-  matchesExact addr val (PV2.TxOut outAddr outVal _ _) =
-    addressesEqual outAddr addr P.&& valueEq outVal val
+  where
+    checkChange addr =
+      let consumed = foldValues inputValue inputs
+          produced = foldValues txOutValue outputs
+          delta = consumed P.- produced
+       in if valuePositive delta
+            then anyList (matchesExact addr delta) outputs
+            else P.True
+    matchesExact addr val (PV2.TxOut outAddr outVal _ _) =
+      addressesEqual outAddr addr P.&& valueEq outVal val
 
 feeSatisfied :: PV2.Value -> Maybe Integer -> Bool
 feeSatisfied feeValue = maybe P.True (\limit -> adaAmount feeValue P.<= limit)
@@ -199,9 +199,9 @@ maxIntervalOk range limit =
             width = PV2.getPOSIXTime hi' P.- PV2.getPOSIXTime lo'
          in hi' P.>= lo' P.&& width P.<= limit
       _ -> False
- where
-  adjustLower closed time = if closed then time else time P.+ 1
-  adjustUpper closed time = if closed then time else time P.- 1
+  where
+    adjustLower closed time = if closed then time else time P.+ 1
+    adjustUpper closed time = if closed then time else time P.- 1
 
 inputValue :: PV2.TxInInfo -> PV2.Value
 inputValue (PV2.TxInInfo _ resolved) = txOutValue resolved
@@ -214,20 +214,20 @@ foldValues f xs = foldrList (\x acc -> f x P.+ acc) P.mempty xs
 
 valueGeq :: PV2.Value -> PV2.Value -> Bool
 valueGeq have need = allList assetSatisfied (Value.flattenValue need)
- where
-  assetSatisfied (cs, tn, qtyNeed) =
-    case lookupAsset cs tn have of
-      Nothing -> P.False
-      Just qtyHave -> fromBuiltinBool (BI.lessThanEqualsInteger qtyNeed qtyHave)
+  where
+    assetSatisfied (cs, tn, qtyNeed) =
+      case lookupAsset cs tn have of
+        Nothing -> P.False
+        Just qtyHave -> fromBuiltinBool (BI.lessThanEqualsInteger qtyNeed qtyHave)
 
 lookupAsset :: Value.CurrencySymbol -> Value.TokenName -> PV2.Value -> Maybe Integer
 lookupAsset cs tn value =
   go (Value.flattenValue value)
- where
-  go [] = Nothing
-  go ((cs', tn', amt) : rest)
-    | currencySymbolEquals cs cs' P.&& tokenNameEquals tn tn' = Just amt
-    | P.otherwise = go rest
+  where
+    go [] = Nothing
+    go ((cs', tn', amt) : rest)
+      | currencySymbolEquals cs cs' P.&& tokenNameEquals tn tn' = Just amt
+      | P.otherwise = go rest
 
 valueEq :: PV2.Value -> PV2.Value -> Bool
 valueEq a b = valueGeq a b P.&& valueGeq b a
@@ -240,24 +240,24 @@ valuePositive value =
 adaAmount :: PV2.Value -> Integer
 adaAmount value =
   foldrList step 0 (Value.flattenValue value)
- where
-  step (cs, tn, amt) acc =
-    let isAda = currencySymbolEquals cs Value.adaSymbol P.&& tokenNameEquals tn Value.adaToken
-     in if isAda then acc P.+ amt else acc
+  where
+    step (cs, tn, amt) acc =
+      let isAda = currencySymbolEquals cs Value.adaSymbol P.&& tokenNameEquals tn Value.adaToken
+       in if isAda then acc P.+ amt else acc
 
 allList :: (a -> P.Bool) -> [a] -> P.Bool
 allList p = go
- where
-  go xs = case xs of
-    [] -> P.True
-    y : ys -> p y P.&& go ys
+  where
+    go xs = case xs of
+      [] -> P.True
+      y : ys -> p y P.&& go ys
 
 anyList :: (a -> P.Bool) -> [a] -> P.Bool
 anyList p = go
- where
-  go xs = case xs of
-    [] -> P.False
-    y : ys -> p y P.|| go ys
+  where
+    go xs = case xs of
+      [] -> P.False
+      y : ys -> p y P.|| go ys
 
 foldrList :: (a -> b -> b) -> b -> [a] -> b
 foldrList f z xs = case xs of
@@ -265,10 +265,11 @@ foldrList f z xs = case xs of
   y : ys -> f y (foldrList f z ys)
 
 toObserverIntent :: Intent -> Either Text ObserverIntent
-toObserverIntent Intent{..} = do
+toObserverIntent Intent {..} = do
   let mustMint = foldMap LedgerValue.fromCardanoValue irMustMint
       spendFrom = LedgerAddr.cardanoAddressCredential . source <$> irSpendFrom
-      payTo = fmap (\(val, addr) -> (LedgerValue.fromCardanoValue val, LedgerAddr.toPlutusAddress addr)) irPayTo
+      payTo =
+        fmap (\(val, addr) -> (LedgerValue.fromCardanoValue val, LedgerAddr.toPlutusAddress addr)) irPayTo
       changeTo = LedgerAddr.toPlutusAddress <$> irChangeTo
       maxInterval = fmap ((slotLengthMillis *) . getSlot) irMaxInterval
   pure

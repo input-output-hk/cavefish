@@ -31,12 +31,11 @@ import Client.Mock (
 import Control.Monad.Except (MonadError, liftEither, throwError)
 import Control.Monad.Reader (MonadReader, ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Class (lift)
+import Core.Intent (IntentW)
 import Crypto.PubKey.Ed25519 (PublicKey, SecretKey)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Servant (Handler, ServerError)
-
-import Core.Intent (IntentW)
 import Sp.Server (ClientsResp, FinaliseResp, PendingResp, PrepareResp)
 
 newtype ClientM a = ClientM (ReaderT ClientEnv Handler a)
@@ -60,7 +59,7 @@ withSession env action = runClient env (startSession >>= action)
 
 startSession :: ClientM ClientSession
 startSession = do
-  ClientEnv{run, lcSk, spPk} <- ask
+  ClientEnv {run, lcSk, spPk} <- ask
   let unregistered = initMockClient run lcSk spPk
   client <- liftHandler (register unregistered)
   pure (ClientSession client)
@@ -72,7 +71,7 @@ eitherAs422 :: Either Text a -> ClientM a
 eitherAs422 = liftEither . first as422
 
 prepare :: ClientSession -> IntentW -> ClientM PrepareResp
-prepare ClientSession{client} intent = liftHandler (prepareWithClient client intent)
+prepare ClientSession {client} intent = liftHandler (prepareWithClient client intent)
 
 prepareAndValidate :: ClientSession -> IntentW -> ClientM PrepareResp
 prepareAndValidate session intent = do
@@ -83,7 +82,7 @@ prepareAndValidate session intent = do
   pure resp
 
 finalise :: ClientSession -> PrepareResp -> ClientM FinaliseResp
-finalise ClientSession{client} resp = liftHandler (finaliseWithClient client resp)
+finalise ClientSession {client} resp = liftHandler (finaliseWithClient client resp)
 
 runIntent :: ClientSession -> IntentW -> ClientM FinaliseResp
 runIntent session intent = do
@@ -92,12 +91,12 @@ runIntent session intent = do
 
 listPending :: ClientM PendingResp
 listPending = do
-  ClientEnv{run} <- ask
+  ClientEnv {run} <- ask
   liftHandler (getPending run)
 
 listClients :: ClientM ClientsResp
 listClients = do
-  ClientEnv{run} <- ask
+  ClientEnv {run} <- ask
   liftHandler (getClients run)
 
 ensure :: Text -> Bool -> Either Text ()

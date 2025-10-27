@@ -15,8 +15,8 @@ import Plutus.Script.Utils.Value qualified as PSV
 import PlutusLedgerApi.V1.Interval qualified as Interval
 import Sp.App (Env (..))
 
-buildTx :: (MonadBlockChain m) => Intent -> ByteString -> Env -> m CardanoTx
-buildTx intent observerBytes env@Env{..} = do
+buildTx :: MonadBlockChain m => Intent -> ByteString -> Env -> m CardanoTx
+buildTx intent observerBytes env@Env {..} = do
   let stakeValidator = stakeValidatorFromBytes observerBytes
       skel0 = base stakeValidator
   signerWallets <-
@@ -33,7 +33,7 @@ buildTx intent observerBytes env@Env{..} = do
           (w : ws) ->
             skel0
               { txSkelSigners = w : ws
-              , txSkelOpts = (txSkelOpts skel0){txOptBalancingPolicy = BalanceWith w}
+              , txSkelOpts = (txSkelOpts skel0) {txOptBalancingPolicy = BalanceWith w}
               }
   unless (null (irPayTo intent) || not (null signerWallets)) $
     fail "TxBuilder: pay outputs require at least one funding source"
@@ -49,7 +49,7 @@ buildTx intent observerBytes env@Env{..} = do
       -- TODO WG: Realism
       let end = start + maxInterval
       when (end < start) $ fail "TxBuilder: max interval must be non-negative"
-      pure skel1{txSkelValidityRange = Interval.interval start end}
+      pure skel1 {txSkelValidityRange = Interval.interval start end}
   skel3 <- case irChangeTo intent of
     Nothing -> pure skel2
     Just addr -> do
@@ -60,40 +60,40 @@ buildTx intent observerBytes env@Env{..} = do
                 txOptBalancingPolicy = BalanceWith wallet
               , txOptBalanceOutputPolicy = DontAdjustExistingOutput
               }
-      pure skel2{txSkelOpts = opts}
+      pure skel2 {txSkelOpts = opts}
   -- MaxFee is a post-condition only; no builder action required
   validateTxSkel skel3
- where
-  base stakeValidator' =
-    txSkelTemplate
-      { txSkelSigners = []
-      , txSkelWithdrawals = scriptWithdrawal stakeValidator' emptyTxSkelRedeemer 0
-      , txSkelOuts = spFeeOutputs
-      }
+  where
+    base stakeValidator' =
+      txSkelTemplate
+        { txSkelSigners = []
+        , txSkelWithdrawals = scriptWithdrawal stakeValidator' emptyTxSkelRedeemer 0
+        , txSkelOuts = spFeeOutputs
+        }
 
-  spFeeOutputs =
-    if spFee > 0
-      then [spWallet `receives` Payable.Value (PSV.ada spFee)]
-      else []
+    spFeeOutputs =
+      if spFee > 0
+        then [spWallet `receives` Payable.Value (PSV.ada spFee)]
+        else []
 
-  addPay :: (MonadBlockChain m) => TxSkel -> (Api.Value, Api.AddressInEra Api.ConwayEra) -> m TxSkel
-  addPay skel (v, addr) = do
-    outs <- either (fail . T.unpack) pure (mkPayTo v addr env)
-    pure skel{txSkelOuts = txSkelOuts skel ++ outs}
-  getWallet ::
-    Api.AddressInEra Api.ConwayEra ->
-    Either Text Wallet
-  getWallet addr' =
-    case resolveWallet addr' of
-      Nothing -> Left "TxBuilder: address not recognised (resolveWallet failed)"
-      Just w -> pure w
+    addPay :: MonadBlockChain m => TxSkel -> (Api.Value, Api.AddressInEra Api.ConwayEra) -> m TxSkel
+    addPay skel (v, addr) = do
+      outs <- either (fail . T.unpack) pure (mkPayTo v addr env)
+      pure skel {txSkelOuts = txSkelOuts skel ++ outs}
+    getWallet ::
+      Api.AddressInEra Api.ConwayEra ->
+      Either Text Wallet
+    getWallet addr' =
+      case resolveWallet addr' of
+        Nothing -> Left "TxBuilder: address not recognised (resolveWallet failed)"
+        Just w -> pure w
 
 mkPayTo ::
   Api.Value ->
   Api.AddressInEra Api.ConwayEra ->
   Env ->
   Either Text [TxSkelOut]
-mkPayTo value addr Env{..} = do
+mkPayTo value addr Env {..} = do
   payee <- case resolveWallet addr of
     Nothing -> Left "TxBuilder: address not recognised (resolveWallet failed)"
     Just w -> Right w
@@ -103,10 +103,10 @@ mkPayTo value addr Env{..} = do
 toLovelace :: Api.Value -> Either Text Integer
 toLovelace =
   foldM step 0 . Api.valueToList
- where
-  step :: Integer -> (Api.AssetId, Api.Quantity) -> Either Text Integer
-  step acc (aid, Api.Quantity q) =
-    case aid of
-      Api.AdaAssetId -> Right (acc + q)
-      -- TODO WG (but maybe we don't care for the prototype)
-      Api.AssetId{} -> Left "TxBuilder: unsupported (WIP)"
+  where
+    step :: Integer -> (Api.AssetId, Api.Quantity) -> Either Text Integer
+    step acc (aid, Api.Quantity q) =
+      case aid of
+        Api.AdaAssetId -> Right (acc + q)
+        -- TODO WG (but maybe we don't care for the prototype)
+        Api.AssetId {} -> Left "TxBuilder: unsupported (WIP)"

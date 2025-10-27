@@ -25,7 +25,17 @@ spec =
       completeStore <- newTVarIO Map.empty
       clientStore <- newTVarIO Map.empty
 
-      let env = mkCookedEnv mockState pendingStore completeStore clientStore testSecretKey testPkeSecretKey testSpWallet 3600 0
+      let env =
+            mkCookedEnv
+              mockState
+              pendingStore
+              completeStore
+              clientStore
+              testSecretKey
+              testPkeSecretKey
+              testSpWallet
+              3600
+              0
 
       prepareReq <-
         case Mock.mkPrepareReq (ClientId UUID.nil) testIntentW of
@@ -40,7 +50,7 @@ spec =
       let observerBytes = observer prepareReq
 
       buildResult <- buildWithCooked mockState env intent observerBytes
-      let BuildTxResult{tx = builtTx} = buildResult
+      let BuildTxResult {tx = builtTx} = buildResult
           rawBody = serialiseTxBody builtTx
       case maskTxBody rawBody of
         Left err -> expectationFailure (T.unpack err) >> fail "maskTxBody failed"

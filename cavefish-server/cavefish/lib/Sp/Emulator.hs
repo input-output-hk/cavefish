@@ -53,23 +53,23 @@ mkCookedEnv ::
   Integer ->
   Env
 mkCookedEnv mockState pendingStore completeStore clientRegStore spSk pkeSk spWallet ttl spFee = env
- where
-  pkePk = toPublicKey pkeSk
-  env =
-    Env
-      { spSk
-      , pending = pendingStore
-      , complete = completeStore
-      , clientRegistration = clientRegStore
-      , ttl
-      , spWallet
-      , resolveWallet = defaultWalletResolver
-      , spFee
-      , pkeSecret = pkeSk
-      , pkePublic = pkePk
-      , build = buildWithCooked mockState env
-      , submit = submitWithCooked mockState env
-      }
+  where
+    pkePk = toPublicKey pkeSk
+    env =
+      Env
+        { spSk
+        , pending = pendingStore
+        , complete = completeStore
+        , clientRegistration = clientRegStore
+        , ttl
+        , spWallet
+        , resolveWallet = defaultWalletResolver
+        , spFee
+        , pkeSecret = pkeSk
+        , pkePublic = pkePk
+        , build = buildWithCooked mockState env
+        , submit = submitWithCooked mockState env
+        }
 
 buildWithCooked ::
   TVar MockChainState ->

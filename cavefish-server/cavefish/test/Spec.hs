@@ -25,9 +25,9 @@ import Crypto.Error (CryptoFailable (..))
 import qualified Crypto.PubKey.Ed25519 as Ed
 import Data.Bits (xor)
 import qualified Data.ByteArray as BA
+import qualified Data.ByteArray.Encoding as BAE
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import qualified Data.ByteArray.Encoding as BAE
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -42,7 +42,26 @@ import Servant.Client (BaseUrl (..), Scheme (..))
 import qualified Servant.Client as SC
 import Sp.App (Env (..), runApp)
 import Sp.Emulator (buildWithCooked, initialMockState, mkCookedEnv)
-import Sp.Server (CavefishApi, ClientInfo (..), ClientsResp (..), FinaliseReq (..), FinaliseResp (..), FinaliseResult (..), PendingItem (..), PendingResp (..), PendingSummary (..), PrepareReq (..), PrepareResp (..), RegisterReq (..), RegisterResp (..), SubmittedSummary (..), TransactionResp (..), finaliseH, mkApp, transactionH)
+import Sp.Server (
+  CavefishApi,
+  ClientInfo (..),
+  ClientsResp (..),
+  FinaliseReq (..),
+  FinaliseResp (..),
+  FinaliseResult (..),
+  PendingItem (..),
+  PendingResp (..),
+  PendingSummary (..),
+  PrepareReq (..),
+  PrepareResp (..),
+  RegisterReq (..),
+  RegisterResp (..),
+  SubmittedSummary (..),
+  TransactionResp (..),
+  finaliseH,
+  mkApp,
+  transactionH,
+ )
 import Sp.State (ClientId (..), ClientRegistrationStore, CompleteStore, Pending (..), PendingStore)
 import Test.Common
 import Test.Hspec
@@ -61,7 +80,16 @@ runClientOrFail clientEnv action = do
 
 mkEnv :: PendingStore -> CompleteStore -> ClientRegistrationStore -> TVar MockChainState -> Env
 mkEnv pendingStore completeStore clientRegVar mockStateVar =
-  mkCookedEnv mockStateVar pendingStore completeStore clientRegVar testSecretKey testPkeSecretKey testSpWallet 3600 0
+  mkCookedEnv
+    mockStateVar
+    pendingStore
+    completeStore
+    clientRegVar
+    testSecretKey
+    testPkeSecretKey
+    testSpWallet
+    3600
+    0
 
 mkClientEnv :: Env -> Client.ClientEnv
 mkClientEnv env =
@@ -115,7 +143,7 @@ spec = do
         Right resp -> expectationFailure ("expected missing transaction but got " <> show resp)
         Left err -> expectationFailure ("expected missing transaction but got error: " <> show err)
 
-      prepareResp@PrepareResp{txId = gotTxId, txAbs = gotTxAbs, proof = gotProof, witnessBundleHex} <-
+      prepareResp@PrepareResp {txId = gotTxId, txAbs = gotTxAbs, proof = gotProof, witnessBundleHex} <-
         runHandlerOrFail (Mock.prepareAndVerifyWithClient mockClient testIntentW)
       gotTxId `shouldBe` expectedTxId
       gotTxAbs `shouldBe` expectedTxAbs
@@ -139,11 +167,14 @@ spec = do
       gotProof `shouldBe` expectedProof
       witnessBundleBytes <-
         case BAE.convertFromBase BAE.Base16 (TE.encodeUtf8 witnessBundleHex) of
-          Left err -> expectationFailure ("failed to decode witness bundle hex: " <> err) >> fail "invalid witness bundle"
+          Left err ->
+            expectationFailure ("failed to decode witness bundle hex: " <> err) >> fail "invalid witness bundle"
           Right bs -> pure bs
       clientBundle <-
         case deserialiseClientWitnessBundle witnessBundleBytes of
-          Left err -> expectationFailure ("failed to decode witness bundle: " <> Text.unpack err) >> fail "invalid witness bundle"
+          Left err ->
+            expectationFailure ("failed to decode witness bundle: " <> Text.unpack err)
+              >> fail "invalid witness bundle"
           Right bundle -> pure bundle
       cwbCiphertext clientBundle `shouldBe` storedCiphertext
       cwbAuxNonce clientBundle `shouldBe` storedAuxNonce
@@ -157,13 +188,13 @@ spec = do
 
       pendingStatus <- fetchTransaction expectedTxId
       case pendingStatus of
-        Right (TransactionPending PendingSummary{pendingExpiresAt, pendingClientId}) -> do
+        Right (TransactionPending PendingSummary {pendingExpiresAt, pendingClientId}) -> do
           pendingExpiresAt `shouldBe` storedExpiry
           pendingClientId `shouldBe` expectedClientUuid
         Right resp -> expectationFailure ("expected pending transaction but got " <> show resp)
         Left err -> expectationFailure ("expected pending transaction but got error: " <> show err)
 
-      FinaliseResp{txId = finalTxId, result = finalResult, submittedAt = finalSubmittedAt} <-
+      FinaliseResp {txId = finalTxId, result = finalResult, submittedAt = finalSubmittedAt} <-
         runHandlerOrFail (Mock.finaliseWithClient mockClient prepareResp)
       pendingAfter <- readTVarIO pendingStore
       Map.notMember expectedTxIdValue pendingAfter `shouldBe` True
@@ -172,7 +203,7 @@ spec = do
 
       submittedStatus <- fetchTransaction expectedTxId
       case submittedStatus of
-        Right (TransactionSubmitted SubmittedSummary{submittedTx, submittedAt, submittedClientId}) -> do
+        Right (TransactionSubmitted SubmittedSummary {submittedTx, submittedAt, submittedClientId}) -> do
           submittedTx `shouldBe` CardanoEmulatorEraTx expectedTx
           submittedAt `shouldBe` finalSubmittedAt
           submittedClientId `shouldBe` expectedClientUuid
@@ -212,7 +243,7 @@ spec = do
             validFinaliseReq
               { lcSig = corruptSignature (lcSig validFinaliseReq)
               }
-      FinaliseResp{txId = finalTxId, result = finalResult} <-
+      FinaliseResp {txId = finalTxId, result = finalResult} <-
         runHandlerOrFail (runApp env $ finaliseH invalidFinaliseReq)
       finalTxId `shouldBe` expectedTxId
       finalResult `shouldBe` Rejected "invalid client signature"
@@ -230,10 +261,10 @@ spec = do
       let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey (Ed.toPublic testSecretKey)
       mockClient <- runHandlerOrFail (Mock.register mockClient0)
       let ClientId clientUuid = Mock.mcClientId mockClient
-      ClientsResp{clients = clientInfos} <-
+      ClientsResp {clients = clientInfos} <-
         runHandlerOrFail (Mock.getClientsWithClient mockClient)
       clientInfos
-        `shouldBe` [ClientInfo{clientId = clientUuid, publicKey = expectedPublicKey}]
+        `shouldBe` [ClientInfo {clientId = clientUuid, publicKey = expectedPublicKey}]
 
     it "pending endpoint returns stored pending transactions" $ do
       pendingStore <- newTVarIO Map.empty
@@ -263,7 +294,7 @@ spec = do
       pendingMap <- readTVarIO pendingStore
       case Map.lookup expectedTxIdValue pendingMap of
         Nothing -> expectationFailure "pending entry not stored"
-        Just Pending{expiry = expectedExpiry, creator} -> do
+        Just Pending {expiry = expectedExpiry, creator} -> do
           creator `shouldBe` registeredClientId
           let expectedItem =
                 PendingItem
@@ -272,7 +303,7 @@ spec = do
                   , expiresAt = expectedExpiry
                   , clientId = clientUuid
                   }
-          PendingResp{pending = items} <-
+          PendingResp {pending = items} <-
             runHandlerOrFail (Mock.getPendingWithClient mockClient)
           items `shouldBe` [expectedItem]
 
@@ -284,19 +315,19 @@ spec = do
       mockStateVar <- newTVarIO initialMockState
       let env = mkEnv pendingStore completeStore clientRegVar mockStateVar
           clientEnv = mkClientEnv env
-      FinaliseResp{result = finalResult} <-
+      FinaliseResp {result = finalResult} <-
         runHandlerOrFail $
           Client.withSession clientEnv $
             \session -> Client.runIntent session testIntentW
       finalResult `shouldBe` Finalised
-      PendingResp{pending = pendingAfter} <-
+      PendingResp {pending = pendingAfter} <-
         runHandlerOrFail (Client.runClient clientEnv Client.listPending)
       pendingAfter `shouldBe` []
       let expectedPublicKey = renderHex (BA.convert (Ed.toPublic testClientSecretKey))
-      ClientsResp{clients = clientInfos} <-
+      ClientsResp {clients = clientInfos} <-
         runHandlerOrFail (Client.runClient clientEnv Client.listClients)
       case clientInfos of
-        [ClientInfo{publicKey}] -> publicKey `shouldBe` expectedPublicKey
+        [ClientInfo {publicKey}] -> publicKey `shouldBe` expectedPublicKey
         _ -> expectationFailure "expected exactly one registered client"
 
   describe "Http server roundtrip" $ do
@@ -311,19 +342,21 @@ spec = do
         manager <- newManager defaultManagerSettings
         let baseUrl = BaseUrl Http "127.0.0.1" port ""
             servantEnv = SC.mkClientEnv manager baseUrl
-            (prepareClient :<|> finaliseClient :<|> registerClient :<|> clientsClient :<|> pendingClient :<|> transactionClient) =
+            ( prepareClient :<|> finaliseClient :<|> registerClient :<|> clientsClient :<|> pendingClient
+                :<|> transactionClient
+              ) =
               SC.client (Proxy @CavefishApi)
 
         -- Register the client to the server
         registerResp <-
-          runClientOrFail servantEnv (registerClient RegisterReq{publicKey = Ed.toPublic testClientSecretKey})
+          runClientOrFail servantEnv (registerClient RegisterReq {publicKey = Ed.toPublic testClientSecretKey})
         let expectedPublicKey = renderHex (BA.convert (Ed.toPublic testClientSecretKey))
 
         -- Test that the client was registered
-        ClientsResp{clients = clientInfos} <- runClientOrFail servantEnv clientsClient
+        ClientsResp {clients = clientInfos} <- runClientOrFail servantEnv clientsClient
         let registeredId = registerResp.id
         clientInfos
-          `shouldBe` [ClientInfo{clientId = registeredId, publicKey = expectedPublicKey}]
+          `shouldBe` [ClientInfo {clientId = registeredId, publicKey = expectedPublicKey}]
 
         -- Ask the SP about pending transactions...there should be none
         PendingResp ps <-
@@ -332,7 +365,7 @@ spec = do
 
         -- Ask the SP to construct a transaction based on an intent
         prepareReq <- mkPrepareReqOrFail (ClientId registeredId) testIntentW
-        PrepareResp{txId, txAbs, proof, changeDelta} <-
+        PrepareResp {txId, txAbs, proof, changeDelta} <-
           runClientOrFail servantEnv (prepareClient prepareReq)
         let unknownTxId =
               case Text.uncons txId of
@@ -355,7 +388,14 @@ spec = do
         pendingTransactionResp <-
           runClientOrFail servantEnv (transactionClient txId)
         case (ps, pendingTransactionResp) of
-          ([PendingItem{txId = pendingTxId, expiresAt = pendingExpiresAtExpected, clientId = pendingClientIdExpected}], TransactionPending PendingSummary{pendingExpiresAt, pendingClientId}) -> do
+          ( [ PendingItem
+                { txId = pendingTxId
+                , expiresAt = pendingExpiresAtExpected
+                , clientId = pendingClientIdExpected
+                }
+              ]
+            , TransactionPending PendingSummary {pendingExpiresAt, pendingClientId}
+            ) -> do
             pendingTxId `shouldBe` txId
             pendingExpiresAt `shouldBe` pendingExpiresAtExpected
             pendingClientId `shouldBe` registeredId
@@ -369,7 +409,7 @@ spec = do
 
         -- Tell the SP to submit the transaction
         let finaliseReq = mkFinaliseReq testClientSecretKey txId (hashTxAbs txAbs)
-        finaliseResp@FinaliseResp{txId, submittedAt, result} <-
+        finaliseResp@FinaliseResp {txId, submittedAt, result} <-
           runClientOrFail servantEnv (finaliseClient finaliseReq)
         result `shouldBe` Finalised
 
@@ -382,7 +422,7 @@ spec = do
 
         -- Ask the SP about the in-flight transaction ID. It should be `TransactionSubmitted`.
         case transactionResp of
-          TransactionSubmitted SubmittedSummary{submittedTx, submittedAt = submittedAt', submittedClientId} -> do
+          TransactionSubmitted SubmittedSummary {submittedTx, submittedAt = submittedAt', submittedClientId} -> do
             case submittedTx of
               CardanoEmulatorEraTx cardanoTx -> do
                 let submittedTxId =
@@ -390,7 +430,7 @@ spec = do
                 submittedTxId `shouldBe` txId
             submittedAt' `shouldBe` submittedAt
             submittedClientId `shouldBe` registeredId
-          TransactionPending{} ->
+          TransactionPending {} ->
             expectationFailure "expected submitted transaction, but it is still pending"
           TransactionMissing ->
             expectationFailure "expected submitted transaction, but it is missing"
