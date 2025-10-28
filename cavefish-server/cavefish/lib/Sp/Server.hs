@@ -44,7 +44,29 @@ import Sp.State (ClientId (ClientId), ClientRegistration (..), Completed (..), P
 
 type CavefishApi =
   "prepare" :> ReqBody '[JSON] PrepareReq :> Post '[JSON] PrepareResp
-    -- TODO WG: Need more in the middle
+    {- The expected flow we require (after `prepare`):
+        Signer (LC)                     Service Provider (SP)
+        ----------------------------------------------------------------
+        WBPS Execution for m := tx||auxnt        Produce commitment comtx
+                                      (comtx, TxAbs) - PrepareResp
+                                      <-----------
+        Produce blind sig. com. `R = g^r`
+                                            R - CommitReq
+                                      ----------->
+                                                Produce challenge `c` and proof `π`
+                                          (c, π) - CommitResp
+                                      <-----------
+                Check proof `π`
+                                            s - FinaliseReq
+                Produce `s = r + cx`  -----------> Produce signature `σ = (R, s)`
+
+      The final shape will be something like:
+
+      "prepare" :: PrepareReq -> (comtx, TxAbs)
+      "commit" :: R -> (c, π)
+      "finalise" :: s -> FinaliseResp
+    -}
+    :<|> "commit" :> ReqBody '[JSON] CommitReq :> Post '[JSON] CommitResp
     :<|> "finalise" :> ReqBody '[JSON] FinaliseReq :> Post '[JSON] FinaliseResp
     :<|> "register" :> ReqBody '[JSON] RegisterReq :> Post '[JSON] RegisterResp
     :<|> "clients" :> Get '[JSON] ClientsResp
@@ -214,6 +236,18 @@ instance FromJSON PrepareResp
 
 instance ToJSON PrepareResp
 
+data CommitReq = CommitReq {txId :: Text, bigR :: Ed.PublicKey} deriving (Eq, Show, Generic)
+
+instance FromJSON CommitReq
+
+instance ToJSON CommitReq
+
+data CommitResp = CommitResp {pi :: Int, c :: Int} deriving (Eq, Show, Generic)
+
+instance FromJSON CommitResp
+
+instance ToJSON CommitResp
+
 data FinaliseReq = FinaliseReq
   { txId :: Text
   , lcSig :: ByteString
@@ -255,7 +289,7 @@ instance ToJSON FinaliseResp
 instance FromJSON FinaliseResp
 
 server :: ServerT CavefishApi AppM
-server = prepareH :<|> finaliseH :<|> registerH :<|> clientsH :<|> pendingH :<|> transactionH
+server = prepareH :<|> commitH :<|> finaliseH :<|> registerH :<|> clientsH :<|> pendingH :<|> transactionH
 
 prepareH :: PrepareReq -> AppM PrepareResp
 prepareH PrepareReq {..} = do
@@ -315,6 +349,8 @@ prepareH PrepareReq {..} = do
           , ciphertext
           , auxNonce = auxNonceBytes
           , rho = rhoBytes
+          , commitment = Nothing
+          , challenge = Nothing
           }
 
   pure
@@ -325,6 +361,43 @@ prepareH PrepareReq {..} = do
       , changeDelta = cd
       , witnessBundleHex
       }
+
+-- TODO WG: Once the crypto machinery lands, we can generate the pair `(c, π)`
+--          and plug this handler into the middle of the prepare/finalise flow.
+commitH :: CommitReq -> AppM CommitResp
+commitH CommitReq {..} = do
+  env@Env {..} <- ask
+  now <- liftIO getCurrentTime
+  case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txId) of
+    Left _ ->
+      throwError err400 {errBody = "malformed tx id"}
+    Right wantedTxId -> do
+      mp <- liftIO . atomically $ do
+        m <- readTVar pending
+        pure (Map.lookup wantedTxId m)
+      case mp of
+        Nothing ->
+          throwError err404 {errBody = "unknown or expired tx"}
+        Just pendingEntry@Pending {..} -> do
+          when (now > expiry) $ do
+            liftIO . atomically $
+              modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
+            throwError err410 {errBody = "pending expired"}
+          _ <- either throwError pure (decryptPendingPayload env pendingEntry)
+          mClient <- liftIO . atomically $ do
+            registry <- readTVar clientRegistration
+            pure (Map.lookup creator registry)
+          case mClient of
+            Nothing ->
+              throwError err403 {errBody = "unknown client"}
+            Just _ ->
+              case commitment of
+                Just _ ->
+                  throwError err409 {errBody = "commitment already recorded"}
+                Nothing -> do
+                  liftIO . atomically $
+                    modifyTVar' pending (Map.adjust (\p -> p {commitment = Just bigR}) wantedTxId)
+                  pure CommitResp {pi = 0, c = 0}
 
 finaliseH :: FinaliseReq -> AppM FinaliseResp
 finaliseH FinaliseReq {..} = do
@@ -343,7 +416,7 @@ finaliseH FinaliseReq {..} = do
         Just pendingEntry@Pending {..} -> do
           when (now > expiry) $ do
             liftIO . atomically $
-              modifyTVar' pending (Map.delete wantedTxId)
+              modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
             pure ()
           if now > expiry
             then pure $ FinaliseResp txId now (Rejected "pending expired")
@@ -365,7 +438,7 @@ finaliseH FinaliseReq {..} = do
                         Right _ -> do
                           let completed = Completed {tx, submittedAt = now, creator}
                           liftIO . atomically $ do
-                            modifyTVar' pending (Map.delete wantedTxId)
+                            modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
                             modifyTVar' complete (Map.insert wantedTxId completed)
                           pure $ FinaliseResp txId now Finalised
                     else pure $ FinaliseResp txId now (Rejected "invalid client signature")
