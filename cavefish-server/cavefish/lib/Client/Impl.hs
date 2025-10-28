@@ -5,10 +5,12 @@
 --  transactions, and listing pending requests and registered clients.
 module Client.Impl (
   ClientEnv (..),
+  ClientState (..),
+  ClientSession (..),
   ClientM,
   runClient,
   withSession,
-  ClientSession (..),
+  commit,
   startSession,
   throw422,
   eitherAs422,
@@ -34,18 +36,31 @@ import Client.Mock (
   verifySatisfies,
  )
 import Control.Monad.Except (MonadError, liftEither, throwError)
-import Control.Monad.Reader (MonadReader, ReaderT, ask, runReaderT)
+import Control.Monad.Reader (MonadIO (liftIO), MonadReader, ReaderT, ask, runReaderT)
+import Control.Monad.State (MonadState (..), StateT, modify)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State (evalStateT)
 import Core.Intent (IntentW)
+import Crypto.Error (CryptoFailable (..))
 import Crypto.PubKey.Ed25519 (PublicKey, SecretKey)
+import Crypto.PubKey.Ed25519 qualified as Ed
+import Crypto.Random (MonadRandom (..))
 import Data.Bifunctor (first)
+import Data.ByteString (ByteString)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Servant (Handler, ServerError)
 import Sp.Server (ClientsResp, FinaliseResp, PendingResp, PrepareResp)
 
 -- | Monad for client operations against the server.
-newtype ClientM a = ClientM (ReaderT ClientEnv Handler a)
-  deriving newtype (Functor, Applicative, Monad, MonadReader ClientEnv, MonadError ServerError)
+newtype ClientM a = ClientM (ReaderT ClientEnv (StateT ClientState Handler) a)
+  deriving newtype
+    (Functor, Applicative, Monad, MonadReader ClientEnv, MonadState ClientState, MonadError ServerError)
+
+newtype ClientState = ClientState
+  { littleRs :: Map Text SecretKey
+  }
 
 -- | Environment required to run client operations against the server.
 data ClientEnv = ClientEnv
@@ -61,7 +76,8 @@ newtype ClientSession = ClientSession
 
 -- | Run a ClientM action with the given ClientEnv.
 runClient :: ClientEnv -> ClientM a -> Handler a
-runClient env (ClientM m) = runReaderT m env
+runClient env (ClientM m) = do
+  flip evalStateT (ClientState mempty) $ runReaderT m env
 
 -- | Create a client session and run the given action within that session.
 withSession ::
@@ -97,6 +113,16 @@ prepareAndValidate session intent = do
       >> verifyPrepareProofWithClient (client session) resp
   pure resp
 
+commit :: Text -> ClientM Ed.PublicKey
+commit txId = do
+  randomBytes :: ByteString <- liftHandler $ liftIO $ getRandomBytes 32
+  r <- case Ed.secretKey randomBytes of
+    CryptoPassed c -> pure c
+    CryptoFailed _ -> throwError (as422 "couldn't generate secret key during commit")
+  modify (\ClientState {littleRs} -> ClientState $ Map.insert txId r littleRs)
+  let bigR = Ed.toPublic r
+  pure bigR
+
 finalise :: ClientSession -> PrepareResp -> ClientM FinaliseResp
 finalise ClientSession {client} resp = liftHandler (finaliseWithClient client resp)
 
@@ -119,4 +145,4 @@ ensure :: Text -> Bool -> Either Text ()
 ensure msg ok = if ok then Right () else Left msg
 
 liftHandler :: Handler a -> ClientM a
-liftHandler = ClientM . lift
+liftHandler = ClientM . lift . lift
