@@ -20,6 +20,7 @@ import Core.Api.Messages (
   ClientInfo (..),
   ClientsResp (..),
   CommitReq (..),
+  CommitResp (..),
   FinaliseReq (..),
   FinaliseResp (..),
   FinaliseResult (..),
@@ -198,7 +199,7 @@ spec = do
       let commitBigR = Ed.toPublic testCommitSecretKey
       commitResp <- runHandlerOrFail (Mock.runCommit (mcRun mockClient) gotTxId commitBigR)
       Mock.verifyCommitProofWithClient mockClient prepareResp commitResp `shouldBe` Right ()
-      Server.pi commitResp `shouldBe` expectedProof
+      commitResp.pi `shouldBe` expectedProof
 
       FinaliseResp {txId = finalTxId, result = finalResult, submittedAt = finalSubmittedAt} <-
         runHandlerOrFail (Mock.finaliseWithClient mockClient prepareResp)
