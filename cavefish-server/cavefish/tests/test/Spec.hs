@@ -10,7 +10,7 @@ module Spec (spec) where
 
 import Cardano.Api qualified as Api
 import Client.Impl qualified as Client
-import Client.Mock (mkFinaliseReq)
+import Client.Mock (MockClient (..), mkFinaliseReq)
 import Client.Mock qualified as Mock
 import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
 import Control.Monad.Trans.Except (runExceptT)
@@ -19,6 +19,8 @@ import Core.Api.AppContext (Env (..), runApp)
 import Core.Api.Messages (
   ClientInfo (..),
   ClientsResp (..),
+  CommitReq (..),
+  CommitResp (..),
   FinaliseReq (..),
   FinaliseResp (..),
   FinaliseResult (..),
@@ -100,7 +102,6 @@ mkClientEnv env =
   Client.ClientEnv
     { Client.run = runApp env
     , Client.lcSk = testClientSecretKey
-    , Client.spPk = Ed.toPublic testSecretKey
     }
 
 spec :: Spec
@@ -113,7 +114,7 @@ spec = do
       clientRegVar <- newTVarIO Map.empty
       mockStateVar <- newTVarIO initialMockState
       let env = mkEnv pendingStore completeStore clientRegVar mockStateVar
-      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey (Ed.toPublic testSecretKey)
+      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey
       mockClient <- runHandlerOrFail (Mock.register mockClient0)
       let registeredClientId = Mock.mcClientId mockClient
       prepareReq <- mkPrepareReqOrFail registeredClientId testIntentW
@@ -147,8 +148,8 @@ spec = do
         Right resp -> expectationFailure ("expected missing transaction but got " <> show resp)
         Left err -> expectationFailure ("expected missing transaction but got error: " <> show err)
 
-      prepareResp@PrepareResp {txId = gotTxId, txAbs = gotTxAbs, proof = gotProof, witnessBundleHex} <-
-        runHandlerOrFail (Mock.prepareAndVerifyWithClient mockClient testIntentW)
+      prepareResp@PrepareResp {txId = gotTxId, txAbs = gotTxAbs, witnessBundleHex} <-
+        runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
       gotTxId `shouldBe` expectedTxId
       gotTxAbs `shouldBe` expectedTxAbs
       satisfies expectedDelta internalIntent gotTxAbs `shouldBe` True
@@ -168,7 +169,6 @@ spec = do
             } = pendingEntry
           storedCipherDigest = ciphertextDigest storedCiphertext
           expectedProof = ProofEd25519 (mkProof (spSk env) expectedTxIdValue expectedTxAbsHash storedCipherDigest)
-      gotProof `shouldBe` expectedProof
       witnessBundleBytes <-
         case BAE.convertFromBase BAE.Base16 (TE.encodeUtf8 witnessBundleHex) of
           Left err ->
@@ -186,8 +186,6 @@ spec = do
       storedTxAbsHash `shouldBe` expectedTxAbsHash
       let storedTxAbs = cardanoTxToTxAbs (CardanoEmulatorEraTx storedTx)
       satisfies expectedDelta internalIntent storedTxAbs `shouldBe` True
-      let storedProof = ProofEd25519 (mkProof (spSk env) expectedTxIdValue storedTxAbsHash storedCipherDigest)
-      gotProof `shouldBe` storedProof
       storedCreator `shouldBe` registeredClientId
 
       pendingStatus <- fetchTransaction expectedTxId
@@ -197,6 +195,11 @@ spec = do
           pendingClientId `shouldBe` expectedClientUuid
         Right resp -> expectationFailure ("expected pending transaction but got " <> show resp)
         Left err -> expectationFailure ("expected pending transaction but got error: " <> show err)
+
+      let commitBigR = Ed.toPublic testCommitSecretKey
+      commitResp <- runHandlerOrFail (Mock.runCommit (mcRun mockClient) gotTxId commitBigR)
+      Mock.verifyCommitProofWithClient mockClient prepareResp commitResp `shouldBe` Right ()
+      commitResp.pi `shouldBe` expectedProof
 
       FinaliseResp {txId = finalTxId, result = finalResult, submittedAt = finalSubmittedAt} <-
         runHandlerOrFail (Mock.finaliseWithClient mockClient prepareResp)
@@ -221,7 +224,7 @@ spec = do
       clientRegVar <- newTVarIO Map.empty
       mockStateVar <- newTVarIO initialMockState
       let env = mkEnv pendingStore completeStore clientRegVar mockStateVar
-      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey (Ed.toPublic testSecretKey)
+      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey
       mockClient <- runHandlerOrFail (Mock.register mockClient0)
       let registeredClientId = Mock.mcClientId mockClient
       prepareReq <- mkPrepareReqOrFail registeredClientId testIntentW
@@ -239,9 +242,12 @@ spec = do
       let expectedTxIdValue = Api.getTxId (Api.getTxBody expectedTx)
           expectedTxId = Api.serialiseToRawBytesHexText expectedTxIdValue
           expectedTxAbsHash = hashTxAbs expectedTxAbs
-      _ <- runHandlerOrFail (Mock.prepareAndVerifyWithClient mockClient testIntentW)
+      _ <- runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
       pendingMap <- readTVarIO pendingStore
       Map.member expectedTxIdValue pendingMap `shouldBe` True
+      let commitBigR = Ed.toPublic testCommitSecretKey
+      _ <- runHandlerOrFail (Mock.runCommit (mcRun mockClient) expectedTxId commitBigR)
+
       let validFinaliseReq = Mock.mkFinaliseReq (Mock.mcLcSk mockClient) expectedTxId expectedTxAbsHash
           invalidFinaliseReq =
             validFinaliseReq
@@ -262,7 +268,7 @@ spec = do
       mockStateVar <- newTVarIO initialMockState
       let env = mkEnv pendingStore completeStore clientRegVar mockStateVar
           expectedPublicKey = renderHex (BA.convert (Ed.toPublic testClientSecretKey))
-      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey (Ed.toPublic testSecretKey)
+      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey
       mockClient <- runHandlerOrFail (Mock.register mockClient0)
       let ClientId clientUuid = Mock.mcClientId mockClient
       ClientsResp {clients = clientInfos} <-
@@ -276,7 +282,7 @@ spec = do
       clientRegVar <- newTVarIO Map.empty
       mockStateVar <- newTVarIO initialMockState
       let env = mkEnv pendingStore completeStore clientRegVar mockStateVar
-      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey (Ed.toPublic testSecretKey)
+      let mockClient0 = Mock.initMockClient (runApp env) testClientSecretKey
       mockClient <- runHandlerOrFail (Mock.register mockClient0)
       let ClientId clientUuid = Mock.mcClientId mockClient
       let registeredClientId = ClientId clientUuid
@@ -294,7 +300,7 @@ spec = do
       let expectedTxIdValue = Api.getTxId (Api.getTxBody expectedTx)
           expectedTxId = Api.serialiseToRawBytesHexText expectedTxIdValue
           expectedTxAbsHash = hashTxAbs expectedTxAbs
-      _ <- runHandlerOrFail (Mock.prepareAndVerifyWithClient mockClient testIntentW)
+      _ <- runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
       pendingMap <- readTVarIO pendingStore
       case Map.lookup expectedTxIdValue pendingMap of
         Nothing -> expectationFailure "pending entry not stored"
@@ -346,7 +352,7 @@ spec = do
         manager <- newManager defaultManagerSettings
         let baseUrl = BaseUrl Http "127.0.0.1" port ""
             servantEnv = SC.mkClientEnv manager baseUrl
-            ( prepareClient :<|> _commitClient :<|> finaliseClient :<|> registerClient :<|> clientsClient
+            ( prepareClient :<|> commitClient :<|> finaliseClient :<|> registerClient :<|> clientsClient
                 :<|> pendingClient
                 :<|> transactionClient
               ) =
@@ -413,6 +419,10 @@ spec = do
             expectationFailure "expected pending transaction, but it is already submitted"
           (_, TransactionMissing) ->
             expectationFailure "expected pending transaction, but it is missing"
+
+        -- Commit with big R
+        let commitReq = CommitReq {txId, bigR = Ed.toPublic testCommitSecretKey}
+        _ <- runClientOrFail servantEnv (commitClient commitReq)
 
         -- Tell the SP to submit the transaction
         let finaliseReq = mkFinaliseReq testClientSecretKey txId (hashTxAbs txAbs)
