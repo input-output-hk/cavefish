@@ -15,6 +15,7 @@ import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.State.Strict (runStateT)
 import Control.Monad.Trans.Writer (WriterT (..))
 import Cooked (MockChain, MockChainError, MockChainT (..), Wallet)
+import Cooked.Skeleton (TxSkelOut)
 import Cooked.MockChain (registerStakingCred)
 import Cooked.MockChain.MockChainState (
   MockChainState (..),
@@ -34,6 +35,7 @@ import Core.TxBuilder (buildTx)
 import Crypto.PubKey.Ed25519 (SecretKey)
 import Data.ByteString (ByteString)
 import Data.Default (def)
+import Data.Foldable (traverse_)
 import Data.Text (Text)
 import Data.Time.Clock (NominalDiffTime)
 import Ledger (
@@ -84,17 +86,21 @@ buildWithCooked ::
   TVar MockChainState ->
   Env ->
   Intent ->
-  ByteString ->
+  Maybe ByteString ->
   IO BuildTxResult
 buildWithCooked mockState env intent observerBytes = do
   st0 <- readTVarIO mockState
   let (result, st1) =
         runMockChainPure st0 $ do
-          let stakeValidator = stakeValidatorFromBytes observerBytes
+          let stakeValidator = fmap stakeValidatorFromBytes observerBytes
               cred =
-                ScriptAddr.toCredential
-                  (Versioned (getStakeValidator stakeValidator) PlutusV2)
-          registerStakingCred cred 0 0
+                fmap
+                  ( \sv ->
+                      ScriptAddr.toCredential
+                        (Versioned (getStakeValidator sv) PlutusV2)
+                  )
+                  stakeValidator
+          traverse_ (\c -> registerStakingCred c 0 0) cred
           buildTx intent observerBytes env
   case result of
     Left err -> fail ("buildTx failed: " <> show err)

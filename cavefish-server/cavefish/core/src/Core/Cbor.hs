@@ -15,7 +15,6 @@ module Core.Cbor (
   deserialiseClientWitnessBundle,
 ) where
 
-import Cardano.Api (ConwayEra)
 import Cardano.Api qualified as Api
 import Cardano.Api.Shelley qualified as Api.Shelley
 import Cardano.Binary qualified as CBOR
@@ -123,7 +122,7 @@ data WitnessBundle = WitnessBundle
   , txAbs :: ByteString
   , txBody :: ByteString
   , txBodyMasked :: ByteString
-  , observer :: ByteString
+  , observer :: Maybe ByteString
   , auxNonce :: ByteString
   , encryptedTx :: PkeCiphertext
   }
@@ -131,7 +130,7 @@ data WitnessBundle = WitnessBundle
 mkWitnessBundle ::
   Api.Tx Api.ConwayEra ->
   TxAbs Api.ConwayEra ->
-  ByteString ->
+  Maybe ByteString ->
   ByteString ->
   PkeCiphertext ->
   Either Text WitnessBundle
@@ -156,7 +155,7 @@ encodeWitnessBundle WitnessBundle {txId, txAbs, txBody, txBodyMasked, observer, 
     <> E.encodeBytes txAbs
     <> E.encodeBytes txBody
     <> E.encodeBytes txBodyMasked
-    <> E.encodeBytes observer
+    <> maybe E.encodeNull E.encodeBytes observer
     <> E.encodeBytes auxNonce
     <> E.encodeBytes (serialiseCiphertext encryptedTx)
 
