@@ -35,6 +35,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.IsList (IsList (toList))
 import Ledger (Slot (Slot))
 import Ledger.Crypto (PubKey (PubKey))
 import PlutusLedgerApi.V1 (fromBuiltin)
@@ -94,7 +95,7 @@ encodeExtended = \case
 
 encodeValue :: Api.Value -> E.Encoding
 encodeValue value =
-  let pairs = Api.valueToList value
+  let pairs = toList value
    in E.encodeListLen (fromIntegral (length pairs))
         <> foldMap encodeValueEntry pairs
 
