@@ -67,6 +67,7 @@ library
     Core.Api.State
     Core.Cbor
     Core.Intent
+    Core.Logging
     Core.Observers.Observer
     Core.PaymentProof
     Core.Pke
@@ -84,8 +85,10 @@ library
     , cardano-ledger-core
     , cborg
     , containers
+    , contra-tracer
     , cooked-validators
     , crypton
+    , io-classes
     , memory
     , mtl
     , plutus-core
@@ -106,7 +109,13 @@ library
 test-suite test
   import:         base, project-config
   type:           exitcode-stdio-1.0
-  main-is:        Main.hs
+  main-is:        Spec.hs
   hs-source-dirs: test
-  other-modules:  Spec
-  build-depends:  hspec
+  other-modules:
+  build-depends:
+    , aeson
+    , cavefish-core
+    , contra-tracer
+    , tasty
+    , tasty-hunit
+    , temporary
