@@ -43,6 +43,10 @@ let
   };
 
   tools = allTools.${ghc};
+  hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
+    #!/bin/bash
+    exec haskell-language-server
+  '';
 
   cardanoPackages =
     if pkgs.hostPlatform.isAarch64 then
@@ -107,6 +111,7 @@ let
 
   commonPkgs = [
     tools.haskell-language-server
+    hlswrapper
     tools.stylish-haskell
     tools.fourmolu
     tools.cabal
@@ -158,8 +163,6 @@ let
       ${preCommitCheck.shellHook}
       export TMPDIR=/tmp
       export PS1="\n\[\033[1;32m\][nix-shell:\w]\$\[\033[0m\] "
-      alias ll="ls -l --color=auto"
-      alias haskell-language-server-wrapper="haskell-language-server"
 
       if [ ! -d "node_modules/snarkjs" ]; then
         npm install snarkjs@0.7.0 --save-dev
