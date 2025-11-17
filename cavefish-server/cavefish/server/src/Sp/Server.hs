@@ -28,8 +28,8 @@ import Core.Api.Messages (
 import Data.Text (Text)
 import Network.Wai (Application)
 import Network.Wai.Middleware.Cors (
-  cors,
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
+  cors,
   simpleCorsResourcePolicy,
  )
 import Servant (
