@@ -33,7 +33,7 @@ import Core.Api.AppContext (
  )
 import Core.Api.State (
   ClientId (ClientId),
-  ClientRegistration (ClientRegistration, signerPublicKey),
+  ClientRegistration (ClientRegistration, userPublicKey, xPublicKey),
   Completed (Completed, creator, submittedAt, tx),
   Pending (
     Pending,
@@ -111,7 +111,7 @@ import Servant (
  )
 import WBPS qualified
 import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as W
-import WBPS.Core (SignerKey)
+import WBPS.Core (SignerKey, WbpsPublicKey)
 
 -- | Cavefish API a
 data TransactionResp
@@ -178,7 +178,7 @@ instance FromJSON ClientsResp
 
 data ClientInfo = ClientInfo
   { clientId :: UUID
-  , signerPublicKey :: Text
+  , userPublicKey :: Text
   }
   deriving (Eq, Show, Generic)
 
@@ -207,20 +207,23 @@ instance ToJSON PendingItem
 
 instance FromJSON PendingItem
 
-newtype RegisterReq = RegisterReq
-  { signerPublicKey :: Ed.PublicKey
+data RegisterReq = RegisterReq
+  { userPublicKey :: Ed.PublicKey
+  , xPublicKey :: WbpsPublicKey
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON RegisterReq where
   parseJSON = withObject "RegisterReq" $ \o -> do
-    signerPublicKey <- parsePublicKey =<< o .: "signerPublicKey"
-    pure RegisterReq {signerPublicKey}
+    userPublicKey <- parsePublicKey =<< o .: "userPublicKey"
+    xPublicKey <- o .: "X"
+    pure RegisterReq {userPublicKey, xPublicKey}
 
 instance ToJSON RegisterReq where
   toJSON RegisterReq {..} =
     object
-      [ "signerPublicKey" .= renderHex (renderPublicKey signerPublicKey)
+      [ "userPublicKey" .= renderHex (renderPublicKey userPublicKey)
+      , "X" .= xPublicKey
       ]
 
 data RegisterResp = RegisterResp
@@ -465,8 +468,8 @@ finaliseH FinaliseReq {..} = do
               case mClient of
                 Nothing ->
                   pure $ FinaliseResp txId now (Rejected "unknown client")
-                Just ClientRegistration {signerPublicKey} ->
-                  if verifyClientSignature signerPublicKey txAbsHash lcSig
+                Just ClientRegistration {userPublicKey} ->
+                  if verifyClientSignature userPublicKey txAbsHash lcSig
                     then do
                       res <- liftIO (submit tx mockState)
                       case res of
@@ -481,13 +484,13 @@ finaliseH FinaliseReq {..} = do
                     else pure $ FinaliseResp txId now (Rejected "invalid client signature")
 
 registerH :: RegisterReq -> AppM RegisterResp
-registerH RegisterReq {signerPublicKey} = do
+registerH RegisterReq {userPublicKey, xPublicKey} = do
   Env {clientRegistration, spSk, wbpsScheme} <- ask
   signerKey <-
     maybe
       (throwError err422 {errBody = "invalid signer public key"})
       pure
-      (mkSignerKey signerPublicKey)
+      (mkSignerKey userPublicKey)
   result <- liftIO $ WBPS.withFileSchemeIO wbpsScheme (WBPS.getVerificationContext signerKey)
   verificationValue <-
     either
@@ -495,9 +498,23 @@ registerH RegisterReq {signerPublicKey} = do
       )
       pure
       result
+  let userPublicKeyHex = renderHex (renderPublicKey userPublicKey)
+  storeResult <-
+    liftIO $
+      WBPS.withFileSchemeIO
+        wbpsScheme
+        (WBPS.storeAccountArtifacts signerKey userPublicKeyHex xPublicKey)
+  either
+    ( \failures ->
+        throwError err500 {errBody = BL8.pack ("failed to persist account artifacts: " <> show failures)}
+    )
+    pure
+    storeResult
   uuid <- liftIO nextRandom
   liftIO . atomically $
-    modifyTVar' clientRegistration (Map.insert (ClientId uuid) (ClientRegistration signerPublicKey))
+    modifyTVar'
+      clientRegistration
+      (Map.insert (ClientId uuid) (ClientRegistration userPublicKey xPublicKey))
   pure RegisterResp {id = uuid, spPk = Ed.toPublic spSk, verificationContext = verificationValue}
 
 clientsH :: AppM ClientsResp
@@ -507,10 +524,10 @@ clientsH = do
   pure . ClientsResp $ fmap mkClientInfo regs
   where
     mkClientInfo :: (ClientId, ClientRegistration) -> ClientInfo
-    mkClientInfo (ClientId uuid, ClientRegistration {signerPublicKey}) =
+    mkClientInfo (ClientId uuid, ClientRegistration {userPublicKey}) =
       ClientInfo
         { clientId = uuid
-        , signerPublicKey = renderHex (renderPublicKey signerPublicKey)
+        , userPublicKey = renderHex (renderPublicKey userPublicKey)
         }
 
 pendingH :: AppM PendingResp

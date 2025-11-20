@@ -81,7 +81,7 @@ instance ToJSON RegisterHelperReq
 instance FromJSON RegisterHelperReq
 
 data RegisterHelperPayload = RegisterHelperPayload
-  { registerReq :: RegisterReq
+  { userPublicKey :: Text
   , clientSecret :: Text
   }
   deriving (Eq, Show, Generic)

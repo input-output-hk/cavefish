@@ -5,7 +5,9 @@ module WBPS (
   register,
   withFileSchemeIO,
   SignerKey,
+  WbpsPublicKey (..),
   getVerificationContext,
+  storeAccountArtifacts,
   RegistrationFailure (..),
 ) where
 
@@ -17,7 +19,7 @@ import Cardano.Crypto.DSIGN.Class (
   seedSizeDSIGN,
  )
 import Cardano.Crypto.DSIGN.Ed25519 (Ed25519DSIGN)
-import Control.Exception (SomeException)
+import Control.Exception (SomeException, displayException, try)
 import Control.Monad (unless, when)
 import Control.Monad.Error.Class
 import Control.Monad.Except (runExceptT)
@@ -26,10 +28,13 @@ import Control.Monad.RWS (MonadReader, asks)
 import Control.Monad.Reader (ask, runReaderT)
 import Control.Monad.Trans.Maybe
 import Data.Aeson (Value, eitherDecode)
+import Data.Aeson qualified as Aeson
 import Data.Bool (bool)
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor
+import Data.Text (Text)
+import Data.Text.IO qualified as TIO
 import Data.Validation (Validation (..))
 import GHC.Base (when)
 import Path
@@ -37,7 +42,7 @@ import Path.IO
 import Shh hiding (Failure)
 import WBPS.Adapter.CardanoCryptoClass.Crypto
 import WBPS.Adapter.Data
-import WBPS.Core (SignerKey)
+import WBPS.Core (SignerKey, WbpsPublicKey)
 import WBPS.Core.FileScheme
 import WBPS.Core.Primitives.Snarkjs
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
@@ -83,6 +88,7 @@ data RegistrationFailure
   = AccountIdInvalidToCreateAFolder AccountId
   | VerificationContextMissing Account
   | VerificationContextInvalidJSON Account String
+  | AccountMetadataWriteFailed Account (Path Rel File) String
   deriving (Show, Eq)
 
 accountId :: SignerKey -> AccountId
@@ -121,6 +127,38 @@ loadVerificationContext accountDir verificationContextRel = do
   case eitherDecode bytes of
     Left err -> throwError [VerificationContextInvalidJSON accountDir err]
     Right value -> pure value
+
+storeAccountArtifacts ::
+  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailure] m) =>
+  SignerKey ->
+  Text ->
+  WbpsPublicKey ->
+  m ()
+storeAccountArtifacts signerKey userPublicKeyHex wbpsPublicKey = do
+  FileScheme
+    { accounts
+    , accountPublicKey = accountPublicKeyRel
+    , wbpsPublicKeyFile = wbpsPublicKeyRel
+    } <-
+    ask
+  accountDir <- accountDirectory accounts signerKey
+  writeTextFile accountDir accountPublicKeyRel userPublicKeyHex
+  writeJsonFile accountDir wbpsPublicKeyRel wbpsPublicKey
+  where
+    writeTextFile accountDir rel contents = do
+      let fp = accountDir </> rel
+      result <- liftIO . try $ TIO.writeFile (Path.toFilePath fp) contents
+      case result of
+        Left (err :: SomeException) ->
+          throwError [AccountMetadataWriteFailed accountDir rel (displayException err)]
+        Right () -> pure ()
+    writeJsonFile accountDir rel value = do
+      let fp = accountDir </> rel
+      result <- liftIO . try $ BL.writeFile (Path.toFilePath fp) (Aeson.encode value)
+      case result of
+        Left (err :: SomeException) ->
+          throwError [AccountMetadataWriteFailed accountDir rel (displayException err)]
+        Right () -> pure ()
 
 -- Below is Experimental (under progress)
 

@@ -17,7 +17,7 @@ import Control.Monad.Trans.Except (runExceptT)
 import Cooked.MockChain.MockChainState (MockChainState)
 import Core.Api.AppContext (Env (spSk), runApp)
 import Core.Api.Messages (
-  ClientInfo (ClientInfo, clientId, signerPublicKey),
+  ClientInfo (ClientInfo, clientId, userPublicKey),
   ClientsResp (ClientsResp, clients),
   CommitReq (CommitReq, bigR, txId),
   CommitResp (pi),
@@ -29,7 +29,7 @@ import Core.Api.Messages (
   PendingSummary (PendingSummary, pendingClientId, pendingExpiresAt),
   PrepareReq (intent, observer),
   PrepareResp (PrepareResp, txAbs, txId, witnessBundleHex),
-  RegisterReq (RegisterReq, signerPublicKey),
+  RegisterReq (RegisterReq, userPublicKey, xPublicKey),
   RegisterResp (RegisterResp, id, verificationContext),
   SubmittedSummary (SubmittedSummary, submittedAt, submittedClientId, submittedTx),
   TransactionResp (TransactionMissing, TransactionPending, TransactionSubmitted),
@@ -97,7 +97,7 @@ import Test.Common (
   testSpWallet,
  )
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
-import WBPS.Core (SignerKey)
+import WBPS.Core (SignerKey, WbpsPublicKey (WbpsPublicKey, wpkX, wpkY))
 import WBPS.Core.FileScheme (
   FileScheme (FileScheme, accounts, verificationContext),
   mkFileSchemeFromRoot,
@@ -130,9 +130,16 @@ mkEnv wbpsScheme pendingStore completeStore clientRegVar mockStateVar =
     0
     wbpsScheme
 
-expectedSignerPublicKeyHex :: Text
-expectedSignerPublicKeyHex =
+expectedUserPublicKeyHex :: Text
+expectedUserPublicKeyHex =
   renderHex (BA.convert (Ed.toPublic testClientSecretKey))
+
+testWbpsPublicKey :: WbpsPublicKey
+testWbpsPublicKey =
+  WbpsPublicKey
+    { wpkX = BS.replicate 32 0x11
+    , wpkY = BS.replicate 32 0x22
+    }
 
 mkClientEnv :: Env -> Client.ClientEnv
 mkClientEnv env =
@@ -352,7 +359,7 @@ spec = do
       ClientsResp {clients = clientInfos} <-
         runHandlerOrFail (Mock.getClientsWithClient mockClient)
       clientInfos
-        `shouldBe` [ClientInfo {clientId = clientUuid, signerPublicKey = expectedSignerPublicKeyHex}]
+        `shouldBe` [ClientInfo {clientId = clientUuid, userPublicKey = expectedUserPublicKeyHex}]
 
     it "pending endpoint returns stored pending transactions" $ do
       pendingStore <- newTVarIO Map.empty
@@ -414,7 +421,7 @@ spec = do
       ClientsResp {clients = clientInfos} <-
         runHandlerOrFail (Client.runClient clientEnv Client.listClients)
       case clientInfos of
-        [ClientInfo {signerPublicKey}] -> signerPublicKey `shouldBe` expectedSignerPublicKeyHex
+        [ClientInfo {userPublicKey}] -> userPublicKey `shouldBe` expectedUserPublicKeyHex
         _ -> expectationFailure "expected exactly one registered client"
 
   describe "Http server roundtrip" $ do
@@ -441,7 +448,8 @@ spec = do
             servantEnv
             ( registerClient
                 RegisterReq
-                  { signerPublicKey = Ed.toPublic testClientSecretKey
+                  { userPublicKey = Ed.toPublic testClientSecretKey
+                  , xPublicKey = testWbpsPublicKey
                   }
             )
 
@@ -454,7 +462,7 @@ spec = do
         -- Test that the client was registered
         ClientsResp {clients = clientInfos} <- runClientOrFail servantEnv clientsClient
         clientInfos
-          `shouldBe` [ClientInfo {clientId = registeredId, signerPublicKey = expectedSignerPublicKeyHex}]
+          `shouldBe` [ClientInfo {clientId = registeredId, userPublicKey = expectedUserPublicKeyHex}]
 
         -- Ask the SP about pending transactions...there should be none
         PendingResp ps <-

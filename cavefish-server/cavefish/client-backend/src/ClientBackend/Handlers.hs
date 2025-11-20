@@ -70,10 +70,10 @@ registerHelperH RegisterHelperReq {secretKey} = do
   pure . RegisterHelperResp $
     do
       (secret, secretHex) <- secretResult
-      let registerReq = RegisterReq {signerPublicKey = Ed.toPublic secret}
+      let userPublicKeyHex = renderHex (BA.convert (Ed.toPublic secret))
       pure
         RegisterHelperPayload
-          { registerReq = registerReq
+          { userPublicKey = userPublicKeyHex
           , clientSecret = secretHex
           }
 

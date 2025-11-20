@@ -21,7 +21,7 @@ import Core.Api.Messages (
   PendingResp,
   PrepareReq (PrepareReq, clientId, intent, observer),
   PrepareResp (PrepareResp, changeDelta, txAbs, txId, witnessBundleHex),
-  RegisterReq (RegisterReq, signerPublicKey),
+  RegisterReq (RegisterReq, userPublicKey, xPublicKey),
   RegisterResp (RegisterResp, id, spPk, verificationContext),
   clientSignatureMessage,
   clientsH,
@@ -45,11 +45,13 @@ import Data.Bifunctor (first)
 import Data.ByteArray qualified as BA
 import Data.ByteArray.Encoding qualified as BAE
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as TE
 import Servant (Handler, ServerError, err422, errBody)
+import WBPS.Core (WbpsPublicKey (WbpsPublicKey))
 
 type RunServer = forall a. AppM a -> Handler a
 
@@ -108,7 +110,12 @@ registerClient run req = run $ registerH req
 register :: UnregisteredMockClient -> Handler MockClient
 register UnregisteredMockClient {..} = do
   registerResp@RegisterResp {id = uuid, spPk} <-
-    registerClient umcRun RegisterReq {signerPublicKey = Ed.toPublic umcLcSk}
+    registerClient
+      umcRun
+      RegisterReq
+        { userPublicKey = Ed.toPublic umcLcSk
+        , xPublicKey = mockWbpsPublicKey (Ed.toPublic umcLcSk)
+        }
   pure
     MockClient
       { mcRun = umcRun
@@ -184,3 +191,10 @@ decodeHex label hexText =
   case BAE.convertFromBase BAE.Base16 (TE.encodeUtf8 hexText) of
     Left err -> Left (Text.concat ["failed to decode ", label, ": ", Text.pack err])
     Right bs -> Right bs
+
+-- TODO WG: This is done correctly for the frontend, but this is still just a placeholder (uses JS on the frontend, not done the Haskell implementation of g^x yet)
+mockWbpsPublicKey :: Ed.PublicKey -> WbpsPublicKey
+mockWbpsPublicKey pk =
+  let raw = BA.convert pk
+      mirrored = BS.reverse raw
+   in WbpsPublicKey raw mirrored
