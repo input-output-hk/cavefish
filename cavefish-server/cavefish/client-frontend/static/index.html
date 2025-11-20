@@ -126,8 +126,14 @@
       <label for="clientSecret">Client Secret (hex)</label>
       <textarea id="clientSecret" spellcheck="false"></textarea>
 
-      <label for="pk">Derived Public Key (hex)</label>
+      <label for="pk">Cardano public key (userPublicKey, hex)</label>
       <input id="pk" type="text" spellcheck="false" autocomplete="off" readonly>
+
+      <label for="wbpsSecret">WBPS Secret x (hex)</label>
+      <textarea id="wbpsSecret" spellcheck="false" readonly></textarea>
+
+      <label for="wbpsPublic">WBPS public key X (hex)</label>
+      <textarea id="wbpsPublic" spellcheck="false" readonly></textarea>
 
       <div class="actions">
         <button id="generateKeyBtn" type="button">Generate Key Pair</button>
@@ -287,16 +293,18 @@
     </section>
   </form>
 
+  <script type="module" src="wbps-keygen.js"></script>
   <script>
     (function () {
+      const getKeygen = () => window.WBPSKeygen;
       const elements = collectElements();
       const steps = Array.from(document.querySelectorAll('.step'));
       const state = createInitialState();
       const storage = initStorage();
-      const verificationContextStoreKey = (clientId) =>
-        clientId ? `cavefish:verificationContext:${clientId}` : null;
-      const persistVerificationContext = (clientId, payload) => {
-        const key = verificationContextStoreKey(clientId);
+      const registerArtifactsStoreKey = (clientId) =>
+        clientId ? `cavefish:registerArtifacts:${clientId}` : null;
+      const persistRegisterArtifacts = (clientId, payload) => {
+        const key = registerArtifactsStoreKey(clientId);
         if (!storage || !key || !payload) {
           return;
         }
@@ -304,8 +312,8 @@
           storage.setItem(key, JSON.stringify(payload));
         } catch (_) { }
       };
-      const loadStoredVerificationContext = (clientId) => {
-        const key = verificationContextStoreKey(clientId);
+      const loadRegisterArtifacts = (clientId) => {
+        const key = registerArtifactsStoreKey(clientId);
         if (!storage || !key) {
           return null;
         }
@@ -315,6 +323,14 @@
         } catch (_) {
           return null;
         }
+      };
+
+      const formatWbpsPublicKey = (pk) =>
+        pk && pk.x && pk.y ? `(${pk.x}, ${pk.y})` : '';
+
+      const syncWbpsFields = () => {
+        elements.wbpsSecret.value = state.xHex ?? '';
+        elements.wbpsPublic.value = formatWbpsPublicKey(state.X);
       };
 
       function initStorage() {
@@ -343,8 +359,16 @@
         showInfo,
       });
 
-      const updateSecretDisplay = (value) => {
-        elements.clientSecretDisplay.textContent = value ? value : 'No secret loaded.';
+      const updateSecretDisplay = () => {
+        const lines = [];
+        if (state.clientSecretHex) {
+          lines.push(`Cardano secret: ${state.clientSecretHex}`);
+        }
+        if (state.xHex) {
+          lines.push(`WBPS secret (x): ${state.xHex}`);
+        }
+        elements.clientSecretDisplay.textContent =
+          lines.length > 0 ? lines.join('\n') : 'No secret loaded.';
       };
 
       const flowPhases = ['prepare', 'satisfies', 'commit', 'verify', 'finalise'];
@@ -354,6 +378,15 @@
           state.registerResp = null;
           state.spPublicKey = null;
           state.verificationContext = null;
+          state.clientSecretHex = null;
+          state.xHex = null;
+          state.X = null;
+          state.vkLocal = null;
+          elements.clientSecret.value = '';
+          elements.finaliseSecret.value = '';
+          elements.pk.value = '';
+          syncWbpsFields();
+          updateSecretDisplay();
         }
         state.intentW = null;
         state.prepareResp = null;
@@ -381,7 +414,7 @@
         if (
           !helperPayload
           || typeof helperPayload !== 'object'
-          || !helperPayload.registerReq
+          || !helperPayload.userPublicKey
           || !helperPayload.clientSecret
         ) {
           throw new Error('Helper did not return register payload.');
@@ -389,13 +422,36 @@
         return helperPayload;
       };
 
-      const applyRegisterPayload = (registerReq, clientSecret) => {
+      const requireKeygen = () => {
+        const keygen = getKeygen();
+        if (!keygen) {
+          throw new Error('WBPS keygen unavailable. Ensure wbps-keygen.js is loaded (offline?).');
+        }
+        return keygen;
+      };
+
+      const applyRegisterPayload = (helperPayload) => {
+        const keygen = requireKeygen();
+        const { userPublicKey, clientSecret } = helperPayload;
         state.clientSecretHex = clientSecret;
         elements.clientSecret.value = clientSecret;
         elements.finaliseSecret.value = clientSecret;
-        updateSecretDisplay(clientSecret);
+
+        if (!state.xHex || !state.X) {
+          const keypair = keygen.generateLongLivedKeypair();
+          state.xHex = keygen.bigintToHex(keypair.x);
+          state.X = keygen.pointToHex(keypair.X);
+        }
+
+        syncWbpsFields();
         elements.lcSig.value = '';
-        elements.pk.value = registerReq.signerPublicKey ?? '';
+        elements.pk.value = userPublicKey ?? '';
+        updateSecretDisplay();
+
+        return {
+          userPublicKey,
+          X: state.X,
+        };
       };
 
       const setDisabled = (element, disabled) => {
@@ -404,7 +460,9 @@
         }
       };
 
-      updateSecretDisplay(elements.clientSecret.value.trim());
+      state.clientSecretHex = elements.clientSecret.value.trim() || null;
+      updateSecretDisplay();
+      syncWbpsFields();
 
       setDisabled(elements.fillSpendBtn, true);
       setDisabled(elements.fillChangeBtn, true);
@@ -588,7 +646,7 @@
       elements.clientSecret.addEventListener('input', () => {
         const value = elements.clientSecret.value.trim();
         state.clientSecretHex = value || null;
-        updateSecretDisplay(value);
+        updateSecretDisplay();
         elements.finaliseSecret.value = value;
       });
 
@@ -711,11 +769,16 @@
         registerButton.disabled = true;
 
         try {
-          const helperPayload = await fetchRegisterPayload(null);
-          const { registerReq, clientSecret } = helperPayload;
-          applyRegisterPayload(registerReq, clientSecret);
           resetFlowProgress({ includeRegister: true, clearClientId: true });
-          elements.outputs.register.textContent = formatJson({ helper: helperPayload });
+          const helperPayload = await fetchRegisterPayload(null);
+          const preparedReq = applyRegisterPayload(helperPayload);
+          elements.outputs.register.textContent = formatJson({
+            helper: helperPayload,
+            generated: {
+              registerReq: preparedReq,
+              wbpsSecret: state.xHex,
+            },
+          });
           showInfo('register', 'Key pair generated. Ready to register.');
         } catch (err) {
           showError('register', err.message);
@@ -740,22 +803,44 @@
 
           try {
             const helperPayload = await fetchRegisterPayload(secretRaw);
-            const { registerReq, clientSecret } = helperPayload;
-            applyRegisterPayload(registerReq, clientSecret);
+            const registerReqWithWbps = applyRegisterPayload(helperPayload);
 
             showInfo('register', 'Submitting registration to service…');
-            const registerResp = await requestService('register', '/register', registerReq);
+            const registerResp = await requestService('register', '/register', registerReqWithWbps);
             state.registerResp = registerResp;
             state.spPublicKey = registerResp?.spPk ?? null;
             state.verificationContext = registerResp?.verificationContext ?? null;
-            if (registerResp && registerResp.id && state.verificationContext) {
+            const vkLocal =
+              state.verificationContext && registerReqWithWbps
+                ? {
+                  verificationContext: state.verificationContext,
+                  userPublicKey: registerReqWithWbps.userPublicKey ?? null,
+                  X: registerReqWithWbps.X ?? null,
+                }
+                : null;
+            state.vkLocal = vkLocal;
+            if (registerResp && registerResp.id && vkLocal) {
               elements.clientId.value = registerResp.id;
-              persistVerificationContext(registerResp.id, state.verificationContext);
+              persistRegisterArtifacts(registerResp.id, {
+                clientSecret: state.clientSecretHex,
+                wbpsSecret: state.xHex,
+                X: state.X,
+                verificationContext: state.verificationContext,
+                vkLocal,
+              });
             }
             resetFlowProgress();
             elements.outputs.register.textContent = formatJson({
               helper: helperPayload,
+              request: registerReqWithWbps,
               response: registerResp ?? {},
+              registrationArtifacts: {
+                vkLocal,
+                secrets: {
+                  cardano: state.clientSecretHex,
+                  x: state.xHex,
+                },
+              },
             });
             showInfo('register', 'Registered successfully.');
             showStep(1);
@@ -911,6 +996,8 @@
           helperBase: byId('helperBase'),
           clientSecret: byId('clientSecret'),
           pk: byId('pk'),
+          wbpsSecret: byId('wbpsSecret'),
+          wbpsPublic: byId('wbpsPublic'),
           clientId: byId('clientId'),
           spendFromAddress: byId('spendFromAddress'),
           changeToAddress: byId('changeToAddress'),
@@ -982,9 +1069,12 @@
           commitResp: null,
           finaliseResp: null,
           clientSecretHex: null,
+          xHex: null,
+          X: null,
           commitHelper: null,
           spPublicKey: null,
           verificationContext: null,
+          vkLocal: null,
           intentW: null,
           satisfiesResult: null,
           verifyResult: null,

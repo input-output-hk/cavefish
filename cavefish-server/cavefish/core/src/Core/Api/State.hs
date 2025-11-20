@@ -17,6 +17,7 @@ import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Conc (TVar)
 import GHC.Generics (Generic)
+import WBPS.Core (WbpsPublicKey)
 
 data Pending = Pending
   { tx :: Tx ConwayEra
@@ -44,20 +45,23 @@ newtype ClientId = ClientId {unClientId :: UUID}
   deriving (Eq, Show, Ord, Generic)
   deriving newtype (FromJSON, ToJSON)
 
-newtype ClientRegistration = ClientRegistration
-  { signerPublicKey :: PublicKey
+data ClientRegistration = ClientRegistration
+  { userPublicKey :: PublicKey
+  , xPublicKey :: WbpsPublicKey
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON ClientRegistration where
   parseJSON = withObject "ClientRegistration" $ \o -> do
-    signerPublicKey <- parsePublicKey =<< o .: "signerPublicKey"
-    pure ClientRegistration {signerPublicKey}
+    userPublicKey <- parsePublicKey =<< o .: "userPublicKey"
+    xPublicKey <- o .: "X"
+    pure ClientRegistration {userPublicKey, xPublicKey}
 
 instance ToJSON ClientRegistration where
-  toJSON ClientRegistration {signerPublicKey} =
+  toJSON ClientRegistration {userPublicKey, xPublicKey} =
     object
-      [ "signerPublicKey" .= renderHex (renderPublicKey signerPublicKey)
+      [ "userPublicKey" .= renderHex (renderPublicKey userPublicKey)
+      , "X" .= xPublicKey
       ]
 
 type ClientRegistrationStore = TVar (Map ClientId ClientRegistration)
