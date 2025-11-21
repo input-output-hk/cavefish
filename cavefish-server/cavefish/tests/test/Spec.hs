@@ -27,8 +27,6 @@ import Core.Api.Messages (
   PendingItem (PendingItem, clientId, expiresAt, txAbsHash, txId),
   PendingResp (PendingResp, pending),
   PendingSummary (PendingSummary, pendingClientId, pendingExpiresAt),
-  PrepareReq (intent, observer),
-  PrepareResp (PrepareResp, txAbs, txId, witnessBundleHex),
   SubmittedSummary (SubmittedSummary, submittedAt, submittedClientId, submittedTx),
   TransactionResp (TransactionMissing, TransactionPending, TransactionSubmitted),
   finaliseH,
@@ -55,6 +53,7 @@ import Core.Intent (
 import Core.PaymentProof (ProofResult (ProofEd25519), hashTxAbs)
 import Core.Pke (ciphertextDigest)
 import Core.Proof (mkProof, renderHex)
+import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.Register qualified as Register
 import Core.TxAbs (cardanoTxToTxAbs)
 import Crypto.PubKey.Ed25519 qualified as Ed
@@ -151,7 +150,7 @@ spec = do
   wbpsScheme <- runIO (mkFileSchemeFromRoot "../../wbps")
   CborSpec.spec
   describe "buildTx integration" $ do
-    it "prepare -> finalise roundtrip uses buildTx" $ do
+    it "demonstrateCommitment -> finalise roundtrip uses buildTx" $ do
       pendingStore <- newTVarIO Map.empty
       completeStore <- newTVarIO Map.empty
       clientRegVar <- newTVarIO Map.empty
@@ -194,8 +193,8 @@ spec = do
         Right resp -> expectationFailure ("expected missing transaction but got " <> show resp)
         Left err -> expectationFailure ("expected missing transaction but got error: " <> show err)
 
-      prepareResp@PrepareResp {txId = gotTxId, txAbs = gotTxAbs, witnessBundleHex} <-
-        runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
+      prepareResp@DemonstrateCommitment.Outputs {txId = gotTxId, txAbs = gotTxAbs, witnessBundleHex} <-
+        runHandlerOrFail (Mock.demonstrateCommitmentWithClient mockClient testIntentW)
       gotTxId `shouldBe` expectedTxId
       gotTxAbs `shouldBe` expectedTxAbs
       satisfies expectedDelta internalIntent gotTxAbs `shouldBe` True
@@ -288,7 +287,7 @@ spec = do
       let expectedTxIdValue = Api.getTxId (Api.getTxBody expectedTx)
           expectedTxId = Api.serialiseToRawBytesHexText expectedTxIdValue
           expectedTxAbsHash = hashTxAbs expectedTxAbs
-      _ <- runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
+      _ <- runHandlerOrFail (Mock.demonstrateCommitmentWithClient mockClient testIntentW)
       pendingMap <- readTVarIO pendingStore
       Map.member expectedTxIdValue pendingMap `shouldBe` True
       let commitBigR = Ed.toPublic testCommitSecretKey
@@ -383,7 +382,7 @@ spec = do
       let expectedTxIdValue = Api.getTxId (Api.getTxBody expectedTx)
           expectedTxId = Api.serialiseToRawBytesHexText expectedTxIdValue
           expectedTxAbsHash = hashTxAbs expectedTxAbs
-      _ <- runHandlerOrFail (Mock.prepareWithClient mockClient testIntentW)
+      _ <- runHandlerOrFail (Mock.demonstrateCommitmentWithClient mockClient testIntentW)
       pendingMap <- readTVarIO pendingStore
       case Map.lookup expectedTxIdValue pendingMap of
         Nothing -> expectationFailure "pending entry not stored"
@@ -401,7 +400,7 @@ spec = do
           items `shouldBe` [expectedItem]
 
   describe "Client implementation" $ do
-    it "runIntent performs prepare/verify/finalise" $ do
+    it "runIntent performs demonstrateCommitment/verify/finalise" $ do
       pendingStore <- newTVarIO Map.empty
       completeStore <- newTVarIO Map.empty
       clientRegVar <- newTVarIO Map.empty
@@ -423,7 +422,7 @@ spec = do
         _ -> expectationFailure "expected exactly one registered client"
 
   describe "Http server roundtrip" $ do
-    it "prepare -> finalise roundtrip uses buildTx" $ do
+    it "demonstrateCommitment -> finalise roundtrip uses buildTx" $ do
       pendingStore <- newTVarIO Map.empty
       completeStore <- newTVarIO Map.empty
       clientRegVar <- newTVarIO Map.empty
@@ -469,7 +468,7 @@ spec = do
 
         -- Ask the SP to construct a transaction based on an intent
         prepareReq <- mkPrepareReqOrFail (ClientId registeredId) testIntentW
-        PrepareResp {txId, txAbs} <-
+        DemonstrateCommitment.Outputs {txId, txAbs} <-
           runClientOrFail servantEnv (prepareClient prepareReq)
         let unknownTxId =
               case Text.uncons txId of
@@ -543,10 +542,10 @@ spec = do
           TransactionMissing ->
             expectationFailure "expected submitted transaction, but it is missing"
 
-mkPrepareReqOrFail :: ClientId -> IntentW -> IO PrepareReq
+mkPrepareReqOrFail :: ClientId -> IntentW -> IO DemonstrateCommitment.Inputs
 mkPrepareReqOrFail cid iw =
   case Mock.mkPrepareReq cid iw of
-    Left err -> expectationFailure (Text.unpack err) >> fail "invalid prepare request"
+    Left err -> expectationFailure (Text.unpack err) >> fail "invalid demonstrateCommitment request"
     Right req -> pure req
 
 corruptSignature :: ByteString -> ByteString

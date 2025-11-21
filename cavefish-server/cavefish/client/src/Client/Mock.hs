@@ -19,14 +19,11 @@ import Core.Api.Messages (
   FinaliseReq (FinaliseReq, lcSig, txId),
   FinaliseResp,
   PendingResp,
-  PrepareReq (PrepareReq, clientId, intent, observer),
-  PrepareResp (PrepareResp, changeDelta, txAbs, txId, witnessBundleHex),
   clientSignatureMessage,
   clientsH,
   commitH,
   finaliseH,
   pendingH,
-  prepareH,
  )
 import Core.Api.State (ClientId (ClientId))
 import Core.Cbor (
@@ -36,6 +33,7 @@ import Core.Cbor (
 import Core.Intent (IntentW, satisfies, toInternalIntent)
 import Core.Observers.Observer (intentStakeValidatorBytes)
 import Core.PaymentProof (hashTxAbs, verifyPaymentProof)
+import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.Register qualified as Register
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.Aeson (Value)
@@ -74,11 +72,11 @@ initMockClient run lcSk =
     }
 
 -- | Create a PrepareReq from the given client ID and intent.
-mkPrepareReq :: ClientId -> IntentW -> Either Text PrepareReq
+mkPrepareReq :: ClientId -> IntentW -> Either Text DemonstrateCommitment.Inputs
 mkPrepareReq clientId intentW = do
   internalIntent <- toInternalIntent intentW
   observerBytes <- intentStakeValidatorBytes internalIntent
-  pure PrepareReq {intent = intentW, observer = Just observerBytes, clientId}
+  pure DemonstrateCommitment.Inputs {intent = intentW, observer = Just observerBytes, clientId}
 
 -- | Create a FinaliseReq from the given secret key, transaction ID, and transaction abstract hash.
 mkFinaliseReq :: Ed.SecretKey -> Text -> ByteString -> FinaliseReq
@@ -87,8 +85,8 @@ mkFinaliseReq secretKey txId txAbsHash =
       signature = Ed.sign secretKey (Ed.toPublic secretKey) message
    in FinaliseReq {txId = txId, lcSig = BA.convert signature}
 
-verifyCommitProof :: Ed.PublicKey -> PrepareResp -> CommitResp -> Either Text ()
-verifyCommitProof publicKey PrepareResp {txId = txIdText, txAbs, witnessBundleHex} CommitResp {pi = piGiven} = do
+verifyCommitProof :: Ed.PublicKey -> DemonstrateCommitment.Outputs -> CommitResp -> Either Text ()
+verifyCommitProof publicKey DemonstrateCommitment.Outputs {txId = txIdText, txAbs, witnessBundleHex} CommitResp {pi = piGiven} = do
   witnessBytes <- decodeHex "witness bundle" witnessBundleHex
   ClientWitnessBundle {cwbCiphertext = ciphertext, cwbAuxNonce = auxNonceBytes, cwbTxId = bundleTxId} <-
     first (const "failed to decode witness bundle") (deserialiseClientWitnessBundle witnessBytes)
@@ -140,44 +138,46 @@ getPendingWithClient :: MockClient -> Handler PendingResp
 getPendingWithClient mockClient = getPending (mcRun mockClient)
 
 -- | Prepare an intent with the server.
-prepare :: RunServer -> ClientId -> IntentW -> Handler PrepareResp
-prepare run clientId intentW =
+demonstrateCommitment :: RunServer -> ClientId -> IntentW -> Handler DemonstrateCommitment.Outputs
+demonstrateCommitment run clientId intentW =
   case mkPrepareReq clientId intentW of
     Left err -> throwError (as422 err)
-    Right req -> run (prepareH req)
+    Right req -> run (DemonstrateCommitment.handle req)
 
 -- | Prepare an intent using the given mock client.
-prepareWithClient :: MockClient -> IntentW -> Handler PrepareResp
-prepareWithClient mockClient intentW = do
-  prepare (mcRun mockClient) mockClient.mcClientId intentW
+demonstrateCommitmentWithClient :: MockClient -> IntentW -> Handler DemonstrateCommitment.Outputs
+demonstrateCommitmentWithClient mockClient intentW = do
+  demonstrateCommitment (mcRun mockClient) mockClient.mcClientId intentW
 
 -- | Submit a commit message (big R) for the given transaction.
 runCommit :: RunServer -> Text -> Ed.PublicKey -> Handler CommitResp
 runCommit run txId bigR = run (commitH CommitReq {txId, bigR})
 
 -- | Prepare an intent and verify the proof using the given mock client.
-prepareAndVerifyWithClient :: MockClient -> IntentW -> Handler PrepareResp
-prepareAndVerifyWithClient mockClient intentW = do
-  prepareWithClient mockClient intentW
+demonstrateCommitmentWithClientAndVerifyWithClient ::
+  MockClient -> IntentW -> Handler DemonstrateCommitment.Outputs
+demonstrateCommitmentWithClientAndVerifyWithClient mockClient intentW = do
+  demonstrateCommitmentWithClient mockClient intentW
 
 -- | Finalise a prepared transaction with the server.
-finalise :: RunServer -> Ed.SecretKey -> PrepareResp -> Handler FinaliseResp
-finalise run secretKey PrepareResp {txId, txAbs} =
+finalise :: RunServer -> Ed.SecretKey -> DemonstrateCommitment.Outputs -> Handler FinaliseResp
+finalise run secretKey DemonstrateCommitment.Outputs {txId, txAbs} =
   let txAbsHash = hashTxAbs txAbs
       req = mkFinaliseReq secretKey txId txAbsHash
    in run (finaliseH req)
 
 -- | Finalise a prepared transaction using the given mock client.
-finaliseWithClient :: MockClient -> PrepareResp -> Handler FinaliseResp
+finaliseWithClient :: MockClient -> DemonstrateCommitment.Outputs -> Handler FinaliseResp
 finaliseWithClient mockClient = finalise (mcRun mockClient) (mcLcSk mockClient)
 
 -- | Verify that the prepared transaction proof is valid with the given client.
-verifyCommitProofWithClient :: MockClient -> PrepareResp -> CommitResp -> Either Text ()
+verifyCommitProofWithClient ::
+  MockClient -> DemonstrateCommitment.Outputs -> CommitResp -> Either Text ()
 verifyCommitProofWithClient mockClient = verifyCommitProof (mcSpPk mockClient)
 
 -- | Verify that the prepared transaction satisfies the intent.
-verifySatisfies :: IntentW -> PrepareResp -> Either Text Bool
-verifySatisfies intentW PrepareResp {txAbs, changeDelta} = do
+verifySatisfies :: IntentW -> DemonstrateCommitment.Outputs -> Either Text Bool
+verifySatisfies intentW DemonstrateCommitment.Outputs {txAbs, changeDelta} = do
   internal <- toInternalIntent intentW
   pure (satisfies changeDelta internal txAbs)
 
