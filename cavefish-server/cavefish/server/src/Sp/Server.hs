@@ -14,17 +14,15 @@ import Core.Api.Messages (
   PendingResp,
   PrepareReq,
   PrepareResp,
-  RegisterReq,
-  RegisterResp,
   TransactionResp,
   clientsH,
   commitH,
   finaliseH,
   pendingH,
   prepareH,
-  registerH,
   transactionH,
  )
+import Core.SP.Register qualified as Register
 import Data.Text (Text)
 import Network.Wai (Application)
 import Network.Wai.Middleware.Cors (
@@ -46,7 +44,8 @@ import Servant (
 import Servant.API ((:<|>) ((:<|>)), (:>))
 
 type CavefishApi =
-  "prepare" :> ReqBody '[JSON] PrepareReq :> Post '[JSON] PrepareResp
+  "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
+    :<|> "prepare" :> ReqBody '[JSON] PrepareReq :> Post '[JSON] PrepareResp
     {- The expected flow we require (after `prepare`):
         Signer (LC)                     Service Provider (SP)
         ----------------------------------------------------------------
@@ -71,7 +70,6 @@ type CavefishApi =
     -}
     :<|> "commit" :> ReqBody '[JSON] CommitReq :> Post '[JSON] CommitResp
     :<|> "finalise" :> ReqBody '[JSON] FinaliseReq :> Post '[JSON] FinaliseResp
-    :<|> "register" :> ReqBody '[JSON] RegisterReq :> Post '[JSON] RegisterResp
     :<|> "clients" :> Get '[JSON] ClientsResp
     :<|> "pending" :> Get '[JSON] PendingResp
     :<|> "transaction" :> Capture "id" Text :> Get '[JSON] TransactionResp
@@ -90,4 +88,11 @@ mkApp env =
         serve cavefishApi (hoistServer cavefishApi (runApp env) server)
 
 server :: ServerT CavefishApi AppM
-server = prepareH :<|> commitH :<|> finaliseH :<|> registerH :<|> clientsH :<|> pendingH :<|> transactionH
+server =
+  Register.handle
+    :<|> prepareH
+    :<|> commitH
+    :<|> finaliseH
+    :<|> clientsH
+    :<|> pendingH
+    :<|> transactionH
