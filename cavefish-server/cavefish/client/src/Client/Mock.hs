@@ -21,8 +21,8 @@ import Core.Api.Messages (
   PendingResp,
   PrepareReq (PrepareReq, clientId, intent, observer),
   PrepareResp (PrepareResp, changeDelta, txAbs, txId, witnessBundleHex),
-  RegisterReq (RegisterReq, publicKey),
-  RegisterResp (RegisterResp, id, spPk),
+  RegisterReq (RegisterReq, userPublicKey, xPublicKey),
+  RegisterResp (RegisterResp, id, spPk, verificationContext),
   clientSignatureMessage,
   clientsH,
   commitH,
@@ -40,15 +40,18 @@ import Core.Intent (IntentW, satisfies, toInternalIntent)
 import Core.Observers.Observer (intentStakeValidatorBytes)
 import Core.PaymentProof (hashTxAbs, verifyPaymentProof)
 import Crypto.PubKey.Ed25519 qualified as Ed
+import Data.Aeson (Value)
 import Data.Bifunctor (first)
 import Data.ByteArray qualified as BA
 import Data.ByteArray.Encoding qualified as BAE
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as TE
 import Servant (Handler, ServerError, err422, errBody)
+import WBPS.Core (WbpsPublicKey (WbpsPublicKey))
 
 type RunServer = forall a. AppM a -> Handler a
 
@@ -62,6 +65,7 @@ data MockClient = MockClient
   , mcLcSk :: Ed.SecretKey
   , mcSpPk :: Ed.PublicKey
   , mcClientId :: ClientId
+  , mcVerificationContext :: Value
   }
 
 initMockClient :: RunServer -> Ed.SecretKey -> UnregisteredMockClient
@@ -99,14 +103,27 @@ verifyCommitProof publicKey PrepareResp {txId = txIdText, txAbs, witnessBundleHe
   verifyPaymentProof publicKey piGiven txAbs txId ciphertext auxNonceBytes
 
 -- | Register the client with the server.
-registerClient :: RunServer -> Ed.PublicKey -> Handler RegisterResp
-registerClient run publicKey = run $ registerH RegisterReq {publicKey}
+registerClient :: RunServer -> RegisterReq -> Handler RegisterResp
+registerClient run req = run $ registerH req
 
 -- | Register the mock client with the server.
 register :: UnregisteredMockClient -> Handler MockClient
 register UnregisteredMockClient {..} = do
-  RegisterResp {id = uuid, spPk} <- registerClient umcRun (Ed.toPublic umcLcSk)
-  pure MockClient {mcRun = umcRun, mcLcSk = umcLcSk, mcSpPk = spPk, mcClientId = ClientId uuid}
+  registerResp@RegisterResp {id = uuid, spPk} <-
+    registerClient
+      umcRun
+      RegisterReq
+        { userPublicKey = Ed.toPublic umcLcSk
+        , xPublicKey = mockWbpsPublicKey (Ed.toPublic umcLcSk)
+        }
+  pure
+    MockClient
+      { mcRun = umcRun
+      , mcLcSk = umcLcSk
+      , mcSpPk = spPk
+      , mcClientId = ClientId uuid
+      , mcVerificationContext = registerResp.verificationContext
+      }
 
 -- | List clients from the server.
 getClients :: RunServer -> Handler ClientsResp
@@ -174,3 +191,10 @@ decodeHex label hexText =
   case BAE.convertFromBase BAE.Base16 (TE.encodeUtf8 hexText) of
     Left err -> Left (Text.concat ["failed to decode ", label, ": ", Text.pack err])
     Right bs -> Right bs
+
+-- TODO WG: This is done correctly for the frontend, but this is still just a placeholder (uses JS on the frontend, not done the Haskell implementation of g^x yet)
+mockWbpsPublicKey :: Ed.PublicKey -> WbpsPublicKey
+mockWbpsPublicKey pk =
+  let raw = BA.convert pk
+      mirrored = BS.reverse raw
+   in WbpsPublicKey raw mirrored

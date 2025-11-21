@@ -33,7 +33,7 @@ genFixtureNominalCase rootFolders = do
 specs :: RootFolders -> TestTree
 specs rootFolders =
   testProperty
-    "Register - Client can register and obtain verification keys for upcoming proof verification"
+    "Register - Client can register and obtain a verification context for upcoming proof verification"
     $ forAll (genFixtureNominalCase rootFolders)
     $ \FixtureNominalCase {signerKeyPair = KeyPair {..}, fileScheme = scheme} ->
       ioProperty $

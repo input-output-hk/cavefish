@@ -1,15 +1,23 @@
 module Core.Api.State where
 
-import Cardano.Api (ConwayEra, FromJSON, ToJSON, Tx, TxId)
+import Cardano.Api (ConwayEra, Tx, TxId)
 import Cooked.MockChain.MockChainState (MockChainState)
 import Core.Pke (PkeCiphertext)
+import Core.Proof (parseHex, renderHex)
+import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 (PublicKey)
+import Crypto.PubKey.Ed25519 qualified as Ed
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
+import Data.Aeson.Types (Parser)
+import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
 import Data.Map (Map)
+import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Conc (TVar)
 import GHC.Generics (Generic)
+import WBPS.Core (WbpsPublicKey)
 
 data Pending = Pending
   { tx :: Tx ConwayEra
@@ -37,15 +45,35 @@ newtype ClientId = ClientId {unClientId :: UUID}
   deriving (Eq, Show, Ord, Generic)
   deriving newtype (FromJSON, ToJSON)
 
-newtype ClientRegistration = ClientRegistration
-  { publicKey :: PublicKey
+data ClientRegistration = ClientRegistration
+  { userPublicKey :: PublicKey
+  , xPublicKey :: WbpsPublicKey
   }
   deriving (Eq, Show, Generic)
 
-instance FromJSON ClientRegistration
+instance FromJSON ClientRegistration where
+  parseJSON = withObject "ClientRegistration" $ \o -> do
+    userPublicKey <- parsePublicKey =<< o .: "userPublicKey"
+    xPublicKey <- o .: "X"
+    pure ClientRegistration {userPublicKey, xPublicKey}
 
-instance ToJSON ClientRegistration
+instance ToJSON ClientRegistration where
+  toJSON ClientRegistration {userPublicKey, xPublicKey} =
+    object
+      [ "userPublicKey" .= renderHex (renderPublicKey userPublicKey)
+      , "X" .= xPublicKey
+      ]
 
 type ClientRegistrationStore = TVar (Map ClientId ClientRegistration)
 
 type CompleteStore = TVar (Map TxId Completed)
+
+parsePublicKey :: Text -> Parser PublicKey
+parsePublicKey vkHex = do
+  bytes <- parseHex vkHex
+  case Ed.publicKey bytes of
+    CryptoFailed _ -> fail "invalid public key"
+    CryptoPassed vk -> pure vk
+
+renderPublicKey :: PublicKey -> ByteString
+renderPublicKey = BA.convert

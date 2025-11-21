@@ -88,6 +88,8 @@ library
     , crypton
     , memory
     , mtl
+    , path
+    , path-io
     , plutus-core
     , plutus-ledger
     , plutus-ledger-api
@@ -99,6 +101,7 @@ library
     , text
     , time
     , uuid
+    , wbps
 
   if flag(ide-stub)
     cpp-options: -DIDE_STUB
