@@ -12,16 +12,14 @@ import Core.Api.Messages (
   FinaliseReq,
   FinaliseResp,
   PendingResp,
-  PrepareReq,
-  PrepareResp,
   TransactionResp,
   clientsH,
   commitH,
   finaliseH,
   pendingH,
-  prepareH,
   transactionH,
  )
+import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.Register qualified as Register
 import Data.Text (Text)
 import Network.Wai (Application)
@@ -45,29 +43,9 @@ import Servant.API ((:<|>) ((:<|>)), (:>))
 
 type CavefishApi =
   "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
-    :<|> "prepare" :> ReqBody '[JSON] PrepareReq :> Post '[JSON] PrepareResp
-    {- The expected flow we require (after `prepare`):
-        Signer (LC)                     Service Provider (SP)
-        ----------------------------------------------------------------
-        WBPS Execution for m := tx||auxnt        Produce commitment comtx
-                                      (comtx, TxAbs) - PrepareResp
-                                      <-----------
-        Produce blind sig. com. `R = g^r`
-                                            R - CommitReq
-                                      ----------->
-                                                Produce challenge `c` and proof `π`
-                                          (c, π) - CommitResp
-                                      <-----------
-                Check proof `π`
-                                            s - FinaliseReq
-                Produce `s = r + cx`  -----------> Produce signature `σ = (R, s)`
-
-      The final shape will be something like:
-
-      "prepare" :: PrepareReq -> (comtx, TxAbs)
-      "commit" :: R -> (c, π)
-      "finalise" :: s -> FinaliseResp
-    -}
+    :<|> "demonstrateCommitment"
+      :> ReqBody '[JSON] DemonstrateCommitment.Inputs
+      :> Post '[JSON] DemonstrateCommitment.Outputs
     :<|> "commit" :> ReqBody '[JSON] CommitReq :> Post '[JSON] CommitResp
     :<|> "finalise" :> ReqBody '[JSON] FinaliseReq :> Post '[JSON] FinaliseResp
     :<|> "clients" :> Get '[JSON] ClientsResp
@@ -90,7 +68,7 @@ mkApp env =
 server :: ServerT CavefishApi AppM
 server =
   Register.handle
-    :<|> prepareH
+    :<|> DemonstrateCommitment.handle
     :<|> commitH
     :<|> finaliseH
     :<|> clientsH

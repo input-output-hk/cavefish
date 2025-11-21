@@ -199,43 +199,6 @@ instance ToJSON PendingItem
 
 instance FromJSON PendingItem
 
--- | Request to prepare a transaction.
-data PrepareReq = PrepareReq
-  { intent :: IntentW
-  , observer :: Maybe ByteString
-  , clientId :: ClientId
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON PrepareReq where
-  parseJSON = withObject "PrepareReq" $ \o -> do
-    intent <- o .: "intent"
-    obsHex :: Maybe Text <- o .: "observer"
-    observer <- traverse parseHex obsHex
-    clientId <- o .: "clientId"
-    pure PrepareReq {..}
-
-instance ToJSON PrepareReq where
-  toJSON PrepareReq {..} =
-    object
-      [ "intent" .= intent
-      , "observer" .= fmap renderHex observer
-      , "clientId" .= clientId
-      ]
-
-data PrepareResp = PrepareResp
-  { txId :: Text
-  , txAbs :: TxAbs Api.ConwayEra
-  , -- We need to include a `consumed - produced` here, otherwise the client can't run `satisfies` for `ChangeTo`
-    changeDelta :: ChangeDelta
-  , witnessBundleHex :: Text
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON PrepareResp
-
-instance ToJSON PrepareResp
-
 data CommitReq = CommitReq {txId :: Text, bigR :: Ed.PublicKey} deriving (Eq, Show, Generic)
 
 instance FromJSON CommitReq
@@ -288,76 +251,8 @@ instance ToJSON FinaliseResp
 
 instance FromJSON FinaliseResp
 
-prepareH :: PrepareReq -> AppM PrepareResp
-prepareH PrepareReq {..} = do
-  Env {pending, clientRegistration, ttl, pkePublic, build} <- ask
-  internalIntent <- liftIO $ either (ioError . userError . T.unpack) pure (toInternalIntent intent)
-
-  clientKnown <- liftIO . atomically $ do
-    registry <- readTVar clientRegistration
-    pure (Map.member clientId registry)
-  unless clientKnown $
-    throwError err403 {errBody = "unknown client"}
-
-  -- TODO WG: We can't do this exactly, but it'd be nice to say at this point whether or not the observer is coherent with the intent
-  -- expectedObserverBytes <-
-  --   liftIO $ either (ioError . userError . T.unpack) pure (intentStakeValidatorBytes intent)
-
-  -- when (observer /= expectedObserverBytes) $
-  --   throwError err422{errBody = "observer script does not match intent"}
-
-  BuildTxResult {tx = tx, txAbs = txAbs, mockState = builtState, changeDelta = cd} <-
-    liftIO $ build internalIntent observer
-
-  auxNonceBytes :: ByteString <- liftIO $ getRandomBytes 32
-  rhoBytes :: ByteString <- liftIO $ getRandomBytes 32
-
-  let payload = serialiseTx tx <> auxNonceBytes
-      toServerErr msg = err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
-      toPkeErr err = err500 {errBody = BL.fromStrict (TE.encodeUtf8 ("pke encryption failed: " <> renderError err))}
-  -- The part from the paper: C ← PKE.Enc(ek, m; ρ) with ek = pkePublic, m = serialiseTx tx <> auxNonceBytes
-  ciphertext <- liftEither $ first toPkeErr (encrypt pkePublic payload rhoBytes)
-  witnessBundle <-
-    liftEither $ first toServerErr $ mkWitnessBundle tx txAbs observer auxNonceBytes ciphertext
-  let witnessBundleHex = renderHex (serialiseClientWitnessBundle witnessBundle)
-
-  unless (satisfies cd internalIntent txAbs) $
-    throwError err422 {errBody = "transaction does not satisfy intent"}
-
-  let txBody = Api.getTxBody tx
-      txId = Api.getTxId txBody
-      txIdTxt = Api.serialiseToRawBytesHexText txId
-      txAbsHash :: ByteString
-      txAbsHash = hashTxAbs txAbs
-  now <- liftIO getCurrentTime
-  let expiry = addUTCTime ttl now
-  liftIO . atomically $
-    modifyTVar' pending $
-      Map.insert
-        txId
-        Pending
-          { tx
-          , txAbsHash
-          , expiry
-          , mockState = builtState
-          , creator = clientId
-          , ciphertext
-          , auxNonce = auxNonceBytes
-          , rho = rhoBytes
-          , commitment = Nothing
-          , challenge = Nothing
-          }
-
-  pure
-    PrepareResp
-      { txId = txIdTxt
-      , txAbs
-      , changeDelta = cd
-      , witnessBundleHex
-      }
-
 -- TODO WG: Once the crypto machinery lands, we can generate the pair `(c, π)`
---          and plug this handler into the middle of the prepare/finalise flow.
+--          and plug this handler into the middle of the demonstrateCommitment/finalise flow.
 commitH :: CommitReq -> AppM CommitResp
 commitH CommitReq {..} = do
   env@Env {..} <- ask
