@@ -29,12 +29,9 @@ import Core.Api.Messages (
   PendingSummary (PendingSummary, pendingClientId, pendingExpiresAt),
   PrepareReq (intent, observer),
   PrepareResp (PrepareResp, txAbs, txId, witnessBundleHex),
-  RegisterReq (RegisterReq, userPublicKey, xPublicKey),
-  RegisterResp (RegisterResp, id, verificationContext),
   SubmittedSummary (SubmittedSummary, submittedAt, submittedClientId, submittedTx),
   TransactionResp (TransactionMissing, TransactionPending, TransactionSubmitted),
   finaliseH,
-  mkSignerKey,
   transactionH,
  )
 import Core.Api.State (
@@ -58,6 +55,7 @@ import Core.Intent (
 import Core.PaymentProof (ProofResult (ProofEd25519), hashTxAbs)
 import Core.Pke (ciphertextDigest)
 import Core.Proof (mkProof, renderHex)
+import Core.SP.Register qualified as Register
 import Core.TxAbs (cardanoTxToTxAbs)
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.Aeson qualified as Aeson
@@ -436,7 +434,7 @@ spec = do
         manager <- newManager defaultManagerSettings
         let baseUrl = BaseUrl SC.Http "127.0.0.1" port ""
             servantEnv = SC.mkClientEnv manager baseUrl
-            ( prepareClient :<|> commitClient :<|> finaliseClient :<|> registerClient :<|> clientsClient
+            ( registerClient :<|> prepareClient :<|> commitClient :<|> finaliseClient :<|> clientsClient
                 :<|> pendingClient
                 :<|> transactionClient
               ) =
@@ -447,13 +445,13 @@ spec = do
           runClientOrFail
             servantEnv
             ( registerClient
-                RegisterReq
+                Register.Inputs
                   { userPublicKey = Ed.toPublic testClientSecretKey
                   , xPublicKey = testWbpsPublicKey
                   }
             )
 
-        let RegisterResp {verificationContext = verificationPayload, id = registeredId} = registerResp
+        let Register.Outputs {verificationContext = verificationPayload, id = registeredId} = registerResp
 
         case verificationPayload of
           Aeson.Object _ -> pure ()
@@ -559,7 +557,7 @@ corruptSignature bs =
 
 expectSignerKey :: IO SignerKey
 expectSignerKey =
-  case mkSignerKey (Ed.toPublic testClientSecretKey) of
+  case Register.mkSignerKey (Ed.toPublic testClientSecretKey) of
     Nothing -> expectationFailure "expected valid signer key for test client" >> fail "invalid signer key"
     Just signerKey -> pure signerKey
 

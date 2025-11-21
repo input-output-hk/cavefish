@@ -21,15 +21,12 @@ import Core.Api.Messages (
   PendingResp,
   PrepareReq (PrepareReq, clientId, intent, observer),
   PrepareResp (PrepareResp, changeDelta, txAbs, txId, witnessBundleHex),
-  RegisterReq (RegisterReq, userPublicKey, xPublicKey),
-  RegisterResp (RegisterResp, id, spPk, verificationContext),
   clientSignatureMessage,
   clientsH,
   commitH,
   finaliseH,
   pendingH,
   prepareH,
-  registerH,
  )
 import Core.Api.State (ClientId (ClientId))
 import Core.Cbor (
@@ -39,6 +36,7 @@ import Core.Cbor (
 import Core.Intent (IntentW, satisfies, toInternalIntent)
 import Core.Observers.Observer (intentStakeValidatorBytes)
 import Core.PaymentProof (hashTxAbs, verifyPaymentProof)
+import Core.SP.Register qualified as Register
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.Aeson (Value)
 import Data.Bifunctor (first)
@@ -103,16 +101,16 @@ verifyCommitProof publicKey PrepareResp {txId = txIdText, txAbs, witnessBundleHe
   verifyPaymentProof publicKey piGiven txAbs txId ciphertext auxNonceBytes
 
 -- | Register the client with the server.
-registerClient :: RunServer -> RegisterReq -> Handler RegisterResp
-registerClient run req = run $ registerH req
+registerClient :: RunServer -> Register.Inputs -> Handler Register.Outputs
+registerClient runServer inputs = runServer $ Register.handle inputs
 
 -- | Register the mock client with the server.
 register :: UnregisteredMockClient -> Handler MockClient
 register UnregisteredMockClient {..} = do
-  registerResp@RegisterResp {id = uuid, spPk} <-
+  registerResp@Register.Outputs {id = uuid, spPk} <-
     registerClient
       umcRun
-      RegisterReq
+      Register.Inputs
         { userPublicKey = Ed.toPublic umcLcSk
         , xPublicKey = mockWbpsPublicKey (Ed.toPublic umcLcSk)
         }

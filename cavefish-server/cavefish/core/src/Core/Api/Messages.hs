@@ -9,7 +9,6 @@
 module Core.Api.Messages where
 
 import Cardano.Api qualified as Api
-import Cardano.Crypto.DSIGN (rawDeserialiseVerKeyDSIGN)
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', readTVar, readTVarIO)
 import Control.Monad (unless, when)
 import Control.Monad.Except (liftEither)
@@ -33,7 +32,7 @@ import Core.Api.AppContext (
  )
 import Core.Api.State (
   ClientId (ClientId),
-  ClientRegistration (ClientRegistration, userPublicKey, xPublicKey),
+  ClientRegistration (ClientRegistration, userPublicKey),
   Completed (Completed, creator, submittedAt, tx),
   Pending (
     Pending,
@@ -48,7 +47,6 @@ import Core.Api.State (
     tx,
     txAbsHash
   ),
-  parsePublicKey,
   renderPublicKey,
  )
 import Core.Cbor (mkWitnessBundle, serialiseClientWitnessBundle, serialiseTx)
@@ -81,11 +79,9 @@ import Data.Aeson (
   (.=),
  )
 import Data.Bifunctor (first)
-import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
@@ -94,7 +90,6 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import Data.UUID (UUID)
-import Data.UUID.V4 (nextRandom)
 import GHC.Generics (Generic)
 import Ledger.Tx.CardanoAPI (CardanoTx, pattern CardanoEmulatorEraTx)
 import Servant (
@@ -109,9 +104,6 @@ import Servant (
   errBody,
   throwError,
  )
-import WBPS qualified
-import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as W
-import WBPS.Core (SignerKey, WbpsPublicKey)
 
 -- | Cavefish API a
 data TransactionResp
@@ -206,50 +198,6 @@ data PendingItem = PendingItem
 instance ToJSON PendingItem
 
 instance FromJSON PendingItem
-
-data RegisterReq = RegisterReq
-  { userPublicKey :: Ed.PublicKey
-  , xPublicKey :: WbpsPublicKey
-  }
-  deriving (Eq, Show, Generic)
-
-instance FromJSON RegisterReq where
-  parseJSON = withObject "RegisterReq" $ \o -> do
-    userPublicKey <- parsePublicKey =<< o .: "userPublicKey"
-    xPublicKey <- o .: "X"
-    pure RegisterReq {userPublicKey, xPublicKey}
-
-instance ToJSON RegisterReq where
-  toJSON RegisterReq {..} =
-    object
-      [ "userPublicKey" .= renderHex (renderPublicKey userPublicKey)
-      , "X" .= xPublicKey
-      ]
-
-data RegisterResp = RegisterResp
-  { id :: UUID
-  , spPk :: Ed.PublicKey
-  , verificationContext :: Value
-  }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON RegisterResp where
-  toJSON RegisterResp {id, spPk, verificationContext} =
-    object
-      [ "id" .= id
-      , "spPk" .= renderHex (BA.convert spPk)
-      , "verificationContext" .= verificationContext
-      ]
-
-instance FromJSON RegisterResp where
-  parseJSON = withObject "RegisterResp" $ \o -> do
-    id <- o .: "id"
-    spHex :: Text <- o .: "spPk"
-    bytes <- parseHex spHex
-    verificationContext <- o .: "verificationContext"
-    case Ed.publicKey bytes of
-      CryptoFailed err -> fail ("invalid service public key: " <> show err)
-      CryptoPassed pk -> pure RegisterResp {spPk = pk, id, verificationContext}
 
 -- | Request to prepare a transaction.
 data PrepareReq = PrepareReq
@@ -483,40 +431,6 @@ finaliseH FinaliseReq {..} = do
                           pure $ FinaliseResp txId now Finalised
                     else pure $ FinaliseResp txId now (Rejected "invalid client signature")
 
-registerH :: RegisterReq -> AppM RegisterResp
-registerH RegisterReq {userPublicKey, xPublicKey} = do
-  Env {clientRegistration, spSk, wbpsScheme} <- ask
-  signerKey <-
-    maybe
-      (throwError err422 {errBody = "invalid signer public key"})
-      pure
-      (mkSignerKey userPublicKey)
-  result <- liftIO $ WBPS.withFileSchemeIO wbpsScheme (WBPS.getVerificationContext signerKey)
-  verificationValue <-
-    either
-      ( \failures -> throwError err500 {errBody = BL8.pack ("verification context unavailable: " <> show failures)}
-      )
-      pure
-      result
-  let userPublicKeyHex = renderHex (renderPublicKey userPublicKey)
-  storeResult <-
-    liftIO $
-      WBPS.withFileSchemeIO
-        wbpsScheme
-        (WBPS.storeAccountArtifacts signerKey userPublicKeyHex xPublicKey)
-  either
-    ( \failures ->
-        throwError err500 {errBody = BL8.pack ("failed to persist account artifacts: " <> show failures)}
-    )
-    pure
-    storeResult
-  uuid <- liftIO nextRandom
-  liftIO . atomically $
-    modifyTVar'
-      clientRegistration
-      (Map.insert (ClientId uuid) (ClientRegistration userPublicKey xPublicKey))
-  pure RegisterResp {id = uuid, spPk = Ed.toPublic spSk, verificationContext = verificationValue}
-
 clientsH :: AppM ClientsResp
 clientsH = do
   Env {clientRegistration} <- ask
@@ -574,10 +488,6 @@ verifyClientSignature pk txAbsHash sigBytes =
     CryptoPassed sig ->
       let message = clientSignatureMessage txAbsHash
        in Ed.verify pk message sig
-
-mkSignerKey :: Ed.PublicKey -> Maybe SignerKey
-mkSignerKey pk =
-  W.PublicKey <$> rawDeserialiseVerKeyDSIGN (BA.convert pk)
 
 decryptPendingPayload :: Env -> Pending -> Either ServerError ByteString
 decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
