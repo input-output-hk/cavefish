@@ -83,6 +83,7 @@ library
     , transformers
     , wai
     , wai-cors
+    , wbps
 
   if flag(ide-stub)
     cpp-options: -DIDE_STUB
@@ -99,6 +100,7 @@ executable cavefish-server
     , crypton
     , stm
     , warp
+    , wbps
 
   if flag(ide-stub)
     cpp-options: -DIDE_STUB

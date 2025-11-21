@@ -9,18 +9,31 @@
 module Core.Api.Messages where
 
 import Cardano.Api qualified as Api
-import Control.Concurrent.STM (atomically, modifyTVar', readTVar, readTVarIO)
+import Cardano.Crypto.DSIGN (rawDeserialiseVerKeyDSIGN)
+import Control.Concurrent.STM (TVar, atomically, modifyTVar', readTVar, readTVarIO)
 import Control.Monad (unless, when)
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (MonadReader (ask))
 import Core.Api.AppContext (
   AppM,
-  Env (Env, build, clientRegistration, complete, pending, pkePublic, pkeSecret, spSk, submit, ttl),
+  Env (
+    Env,
+    build,
+    clientRegistration,
+    complete,
+    pending,
+    pkePublic,
+    pkeSecret,
+    spSk,
+    submit,
+    ttl,
+    wbpsScheme
+  ),
  )
 import Core.Api.State (
   ClientId (ClientId),
-  ClientRegistration (ClientRegistration, publicKey),
+  ClientRegistration (ClientRegistration, userPublicKey, xPublicKey),
   Completed (Completed, creator, submittedAt, tx),
   Pending (
     Pending,
@@ -35,6 +48,8 @@ import Core.Api.State (
     tx,
     txAbsHash
   ),
+  parsePublicKey,
+  renderPublicKey,
  )
 import Core.Cbor (mkWitnessBundle, serialiseClientWitnessBundle, serialiseTx)
 import Core.Intent (
@@ -45,7 +60,12 @@ import Core.Intent (
   toInternalIntent,
  )
 import Core.PaymentProof (ProofResult (ProofEd25519), hashTxAbs)
-import Core.Pke (ciphertextDigest, decrypt, encrypt, renderError)
+import Core.Pke (
+  ciphertextDigest,
+  decrypt,
+  encrypt,
+  renderError,
+ )
 import Core.Proof (mkProof, parseHex, renderHex)
 import Core.TxAbs (TxAbs)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
@@ -65,6 +85,8 @@ import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.ByteString.Lazy.Char8 qualified as BL8
+import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
 import Data.Text (Text)
@@ -87,6 +109,9 @@ import Servant (
   errBody,
   throwError,
  )
+import WBPS qualified
+import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as W
+import WBPS.Core (SignerKey, WbpsPublicKey)
 
 -- | Cavefish API a
 data TransactionResp
@@ -153,7 +178,7 @@ instance FromJSON ClientsResp
 
 data ClientInfo = ClientInfo
   { clientId :: UUID
-  , publicKey :: Text
+  , userPublicKey :: Text
   }
   deriving (Eq, Show, Generic)
 
@@ -182,34 +207,38 @@ instance ToJSON PendingItem
 
 instance FromJSON PendingItem
 
-newtype RegisterReq = RegisterReq
-  { publicKey :: Ed.PublicKey
+data RegisterReq = RegisterReq
+  { userPublicKey :: Ed.PublicKey
+  , xPublicKey :: WbpsPublicKey
   }
   deriving (Eq, Show, Generic)
 
 instance FromJSON RegisterReq where
   parseJSON = withObject "RegisterReq" $ \o -> do
-    pkHex :: Text <- o .: "publicKey"
-    bytes <- parseHex pkHex
-    case Ed.publicKey bytes of
-      CryptoFailed err -> fail (show err)
-      CryptoPassed pk -> pure (RegisterReq pk)
+    userPublicKey <- parsePublicKey =<< o .: "userPublicKey"
+    xPublicKey <- o .: "X"
+    pure RegisterReq {userPublicKey, xPublicKey}
 
 instance ToJSON RegisterReq where
   toJSON RegisterReq {..} =
-    object ["publicKey" .= renderHex (BA.convert publicKey)]
+    object
+      [ "userPublicKey" .= renderHex (renderPublicKey userPublicKey)
+      , "X" .= xPublicKey
+      ]
 
 data RegisterResp = RegisterResp
   { id :: UUID
   , spPk :: Ed.PublicKey
+  , verificationContext :: Value
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON RegisterResp where
-  toJSON RegisterResp {id, spPk} =
+  toJSON RegisterResp {id, spPk, verificationContext} =
     object
       [ "id" .= id
       , "spPk" .= renderHex (BA.convert spPk)
+      , "verificationContext" .= verificationContext
       ]
 
 instance FromJSON RegisterResp where
@@ -217,9 +246,10 @@ instance FromJSON RegisterResp where
     id <- o .: "id"
     spHex :: Text <- o .: "spPk"
     bytes <- parseHex spHex
+    verificationContext <- o .: "verificationContext"
     case Ed.publicKey bytes of
       CryptoFailed err -> fail ("invalid service public key: " <> show err)
-      CryptoPassed pk -> pure RegisterResp {spPk = pk, id}
+      CryptoPassed pk -> pure RegisterResp {spPk = pk, id, verificationContext}
 
 -- | Request to prepare a transaction.
 data PrepareReq = PrepareReq
@@ -384,25 +414,20 @@ commitH :: CommitReq -> AppM CommitResp
 commitH CommitReq {..} = do
   env@Env {..} <- ask
   now <- liftIO getCurrentTime
-  case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txId) of
-    Left _ ->
+  case parseTxIdHex txId of
+    Nothing ->
       throwError err400 {errBody = "malformed tx id"}
-    Right wantedTxId -> do
-      mp <- liftIO . atomically $ do
-        m <- readTVar pending
-        pure (Map.lookup wantedTxId m)
+    Just wantedTxId -> do
+      mp <- lookupPendingEntry pending wantedTxId
       case mp of
         Nothing ->
           throwError err404 {errBody = "unknown or expired tx"}
         Just pendingEntry@Pending {..} -> do
           when (now > expiry) $ do
-            liftIO . atomically $
-              modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
+            removePendingEntry pending wantedTxId
             throwError err410 {errBody = "pending expired"}
           _ <- either throwError pure (decryptPendingPayload env pendingEntry)
-          mClient <- liftIO . atomically $ do
-            registry <- readTVar clientRegistration
-            pure (Map.lookup creator registry)
+          mClient <- lookupClientRegistration clientRegistration creator
           case mClient of
             Nothing ->
               throwError err403 {errBody = "unknown client"}
@@ -422,36 +447,29 @@ finaliseH :: FinaliseReq -> AppM FinaliseResp
 finaliseH FinaliseReq {..} = do
   env@Env {..} <- ask
   now <- liftIO getCurrentTime
-  case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txId) of
-    Left _ ->
+  case parseTxIdHex txId of
+    Nothing ->
       pure $ FinaliseResp txId now (Rejected "malformed tx id")
-    Right wantedTxId -> do
-      mp <- liftIO . atomically $ do
-        m <- readTVar pending
-        pure (Map.lookup wantedTxId m)
+    Just wantedTxId -> do
+      mp <- lookupPendingEntry pending wantedTxId
       case mp of
         Nothing ->
           pure $ FinaliseResp txId now (Rejected "unknown or expired tx")
-        Just pendingEntry@Pending {..} -> do
-          when (now > expiry) $ do
-            liftIO . atomically $
-              modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
-            pure ()
-          if now > expiry
-            then pure $ FinaliseResp txId now (Rejected "pending expired")
-            else do
+        Just pendingEntry@Pending {..}
+          | now > expiry -> do
+              removePendingEntry pending wantedTxId
+              pure $ FinaliseResp txId now (Rejected "pending expired")
+          | otherwise -> do
               unless
                 (isJust commitment)
                 (throwError err410 {errBody = "commitment must be made before submission"})
               _payload <- either throwError pure (decryptPendingPayload env pendingEntry)
-              mClient <- liftIO . atomically $ do
-                registry <- readTVar clientRegistration
-                pure (Map.lookup creator registry)
+              mClient <- lookupClientRegistration clientRegistration creator
               case mClient of
                 Nothing ->
                   pure $ FinaliseResp txId now (Rejected "unknown client")
-                Just ClientRegistration {publicKey} ->
-                  if verifyClientSignature publicKey txAbsHash lcSig
+                Just ClientRegistration {userPublicKey} ->
+                  if verifyClientSignature userPublicKey txAbsHash lcSig
                     then do
                       res <- liftIO (submit tx mockState)
                       case res of
@@ -460,19 +478,44 @@ finaliseH FinaliseReq {..} = do
                         Right _ -> do
                           let completed = Completed {tx, submittedAt = now, creator}
                           liftIO . atomically $ do
-                            modifyTVar' pending (Map.delete wantedTxId) -- TODO WG: Possible an unfriendly way to handle this
+                            modifyTVar' pending (Map.delete wantedTxId)
                             modifyTVar' complete (Map.insert wantedTxId completed)
                           pure $ FinaliseResp txId now Finalised
                     else pure $ FinaliseResp txId now (Rejected "invalid client signature")
 
 registerH :: RegisterReq -> AppM RegisterResp
-registerH RegisterReq {publicKey} = do
-  Env {clientRegistration, spSk} <- ask
+registerH RegisterReq {userPublicKey, xPublicKey} = do
+  Env {clientRegistration, spSk, wbpsScheme} <- ask
+  signerKey <-
+    maybe
+      (throwError err422 {errBody = "invalid signer public key"})
+      pure
+      (mkSignerKey userPublicKey)
+  result <- liftIO $ WBPS.withFileSchemeIO wbpsScheme (WBPS.getVerificationContext signerKey)
+  verificationValue <-
+    either
+      ( \failures -> throwError err500 {errBody = BL8.pack ("verification context unavailable: " <> show failures)}
+      )
+      pure
+      result
+  let userPublicKeyHex = renderHex (renderPublicKey userPublicKey)
+  storeResult <-
+    liftIO $
+      WBPS.withFileSchemeIO
+        wbpsScheme
+        (WBPS.storeAccountArtifacts signerKey userPublicKeyHex xPublicKey)
+  either
+    ( \failures ->
+        throwError err500 {errBody = BL8.pack ("failed to persist account artifacts: " <> show failures)}
+    )
+    pure
+    storeResult
   uuid <- liftIO nextRandom
-  liftIO $
-    atomically $
-      modifyTVar' clientRegistration (Map.insert (ClientId uuid) (ClientRegistration publicKey))
-  pure RegisterResp {id = uuid, spPk = Ed.toPublic spSk}
+  liftIO . atomically $
+    modifyTVar'
+      clientRegistration
+      (Map.insert (ClientId uuid) (ClientRegistration userPublicKey xPublicKey))
+  pure RegisterResp {id = uuid, spPk = Ed.toPublic spSk, verificationContext = verificationValue}
 
 clientsH :: AppM ClientsResp
 clientsH = do
@@ -481,10 +524,10 @@ clientsH = do
   pure . ClientsResp $ fmap mkClientInfo regs
   where
     mkClientInfo :: (ClientId, ClientRegistration) -> ClientInfo
-    mkClientInfo (ClientId uuid, ClientRegistration {publicKey}) =
+    mkClientInfo (ClientId uuid, ClientRegistration {userPublicKey}) =
       ClientInfo
         { clientId = uuid
-        , publicKey = renderHex (BA.convert publicKey)
+        , userPublicKey = renderHex (renderPublicKey userPublicKey)
         }
 
 pendingH :: AppM PendingResp
@@ -506,20 +549,17 @@ pendingH = do
 transactionH :: Text -> AppM TransactionResp
 transactionH txIdText = do
   Env {complete, pending} <- ask
-  txId <-
-    case Api.deserialiseFromRawBytesHex @Api.TxId (TE.encodeUtf8 txIdText) of
-      Left _ -> throwError err400 {errBody = "malformed tx id"}
-      Right parsedTxId -> pure parsedTxId
-  completes <- liftIO (readTVarIO complete)
-  case Map.lookup txId completes of
-    Just Completed {tx, submittedAt, creator = ClientId creatorId} ->
-      pure $ TransactionSubmitted (SubmittedSummary (CardanoEmulatorEraTx tx) submittedAt creatorId)
-    Nothing -> do
-      pendings <- liftIO (readTVarIO pending)
-      case Map.lookup txId pendings of
-        Just Pending {expiry, creator = ClientId creatorId} ->
-          pure $ TransactionPending (PendingSummary expiry creatorId)
-        Nothing -> pure TransactionMissing
+  case parseTxIdHex txIdText of
+    Nothing -> throwError err400 {errBody = "malformed tx id"}
+    Just txId -> do
+      completes <- Map.lookup txId <$> liftIO (readTVarIO complete)
+      pendings <- lookupPendingEntry pending txId
+      let toSubmitted Completed {tx, submittedAt, creator = ClientId creatorId} =
+            TransactionSubmitted (SubmittedSummary (CardanoEmulatorEraTx tx) submittedAt creatorId)
+          toPending Pending {expiry, creator = ClientId creatorId} =
+            TransactionPending (PendingSummary expiry creatorId)
+      let fallback = maybe TransactionMissing toPending pendings
+      pure $ maybe fallback toSubmitted completes
 
 finaliseSigTag :: ByteString
 finaliseSigTag = "cavefish/finalise/v1"
@@ -534,6 +574,10 @@ verifyClientSignature pk txAbsHash sigBytes =
     CryptoPassed sig ->
       let message = clientSignatureMessage txAbsHash
        in Ed.verify pk message sig
+
+mkSignerKey :: Ed.PublicKey -> Maybe SignerKey
+mkSignerKey pk =
+  W.PublicKey <$> rawDeserialiseVerKeyDSIGN (BA.convert pk)
 
 decryptPendingPayload :: Env -> Pending -> Either ServerError ByteString
 decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
@@ -560,3 +604,26 @@ decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, a
                           "ciphertext payload mismatch: aux nonce differ"
                       }
                 else Right payload
+
+parseTxIdHex :: Text -> Maybe Api.TxId
+parseTxIdHex =
+  either (const Nothing) Just
+    . Api.deserialiseFromRawBytesHex @Api.TxId
+    . TE.encodeUtf8
+
+lookupPendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> AppM (Maybe Pending)
+lookupPendingEntry store txId =
+  liftIO . atomically $ do
+    entries <- readTVar store
+    pure (Map.lookup txId entries)
+
+lookupClientRegistration ::
+  TVar (Map ClientId ClientRegistration) -> ClientId -> AppM (Maybe ClientRegistration)
+lookupClientRegistration store clientId =
+  liftIO . atomically $ do
+    registry <- readTVar store
+    pure (Map.lookup clientId registry)
+
+removePendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> AppM ()
+removePendingEntry store txId =
+  liftIO . atomically $ modifyTVar' store (Map.delete txId)

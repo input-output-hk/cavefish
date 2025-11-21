@@ -65,6 +65,7 @@ library
 
   build-depends:
     , aeson
+    , base16-bytestring
     , bytestring
     , cardano-crypto-class
     , hex-text
@@ -83,9 +84,16 @@ test-suite wbps-unit-tests
   main-is:        Main.hs
   other-modules:
   build-depends:
+    , aeson
+    , bytestring
+    , directory
+    , filepath
+    , path
+    , path-io
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , temporary
     , wbps
 
 test-suite wbps-integration-tests
