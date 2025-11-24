@@ -57,33 +57,17 @@ library
 
   build-depends:
     , aeson
-    , bytestring
     , cardano-api
-    , cardano-binary
-    , cardano-crypto-class
-    , cardano-ledger-alonzo
-    , cardano-ledger-core
     , cavefish-client
     , cavefish-core
-    , cborg
-    , containers
     , cooked-validators
     , crypton
-    , data-default
     , memory
     , mtl
-    , plutus-core
     , plutus-ledger
-    , plutus-ledger-api
     , plutus-script-utils
-    , plutus-tx
-    , plutus-tx-plugin
-    , servant
     , servant-server
-    , stm
     , text
-    , time
-    , transformers
     , wai
     , wai-cors
 
@@ -92,11 +76,5 @@ executable cavefish-client-backend
   hs-source-dirs: app
   main-is:        Main.hs
   build-depends:
-    , bytestring
     , cavefish-client-backend
-    , cooked-validators
-    , crypton
-    , stm
-    , wai
-    , wai-cors
     , warp
