@@ -1,5 +1,4 @@
 -- | Cavefish server main module.
--- {-# OPTIONS_GHC -Wno-unused-imports #-}
 --  This module initializes and starts the Cavefish server, setting up the necessary
 --  environment and configurations.
 module Main where
@@ -15,14 +14,14 @@ import Blammo.Logging.Simple (
 import Control.Concurrent.STM (newTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Cooked (wallet)
-import Core.Api.AppContext (HttpServerConfig (port), httpServerConfig, waiMiddleware)
+import Core.Api.AppContext (HttpServerConfig (port), httpServerConfig)
 import Core.Pke (deriveSecretKey)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.ByteString qualified as BS
 import Network.Wai.Handler.Warp qualified as Warp
 import Sp.Emulator (initialMockState, mkCookedEnv)
-import Sp.Server (mkApp, withRequestLogging)
+import Sp.Server (mkApp)
 import System.IO (hPutStrLn, stderr)
 import WBPS.Core.FileScheme (mkFileSchemeFromRoot)
 
@@ -58,11 +57,10 @@ main = runSimpleLoggingT $ do
           (wallet 1)
           wbpsScheme
           logger
-      app = mkApp env
 
   logInfo $ "Cavefish HTTP Server" :# ["configuration" .= (httpServerConfig env)]
 
-  liftIO
-    $ Warp.run
+  liftIO $
+    Warp.run
       (port . httpServerConfig $ env)
-    $ withRequestLogging env (waiMiddleware env app)
+      (mkApp env)

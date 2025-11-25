@@ -66,6 +66,7 @@ library
     Sp.Server
 
   build-depends:
+    , aeson
     , Blammo
     , Blammo-wai
     , bytestring
