@@ -80,7 +80,6 @@ library
   build-depends:
     , aeson
     , Blammo
-    , Blammo-wai
     , bytestring
     , cardano-api
     , cardano-binary
@@ -105,8 +104,6 @@ library
     , text
     , time
     , uuid
-    , wai
-    , warp
     , wbps
 
   if flag(ide-stub)
