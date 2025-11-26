@@ -93,6 +93,7 @@ library
 executable cavefish-server
   import:         base, project-config
   hs-source-dirs: app
+  data-file:      config/config.toml
   main-is:        Main.hs
   build-depends:
     , Blammo

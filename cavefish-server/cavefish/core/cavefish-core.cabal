@@ -63,6 +63,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Core.Api.AppContext
+    Core.Api.Config
     Core.Api.Messages
     Core.Api.State
     Core.Cbor
@@ -90,6 +91,7 @@ library
     , containers
     , cooked-validators
     , crypton
+    , data-default
     , lens
     , memory
     , mtl
@@ -103,6 +105,7 @@ library
     , stm
     , text
     , time
+    , toml-parser
     , uuid
     , wbps
 
