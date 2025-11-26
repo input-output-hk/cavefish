@@ -6,10 +6,12 @@ import Blammo.Logging.Simple (defaultLogSettings, newLogger)
 import Cardano.Api qualified as Api
 import Client.Mock qualified as Mock
 import Control.Concurrent.STM (newTVarIO)
+import Core.Api.Config (Config)
 import Core.Api.State (ClientId (ClientId))
 import Core.Cbor (maskTxBody, serialiseTxBody)
 import Core.Intent (BuildTxResult (BuildTxResult, tx), toInternalIntent)
 import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
+import Data.Default (def)
 import Data.Map.Strict qualified as Map
 import Data.Text qualified as T
 import Data.UUID qualified as UUID
@@ -33,6 +35,7 @@ spec =
       clientStore <- newTVarIO Map.empty
       wbpsScheme <- mkFileSchemeFromRoot "../../wbps"
       logger <- newLogger defaultLogSettings
+      let config :: Config = def
 
       let env =
             mkCookedEnv
@@ -45,6 +48,7 @@ spec =
               testSpWallet
               wbpsScheme
               logger
+              config
 
       prepareReq <-
         case Mock.mkPrepareReq (ClientId UUID.nil) testIntentW of

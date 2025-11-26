@@ -12,25 +12,15 @@ import Core.Api.State (ClientRegistrationStore, CompleteStore, PendingStore)
 import Core.Intent (BuildTxResult, Intent)
 import Core.Pke (PkePublicKey, PkeSecretKey)
 import Crypto.PubKey.Ed25519 (SecretKey)
-import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock (NominalDiffTime)
-import GHC.Generics (Generic)
 import Ledger.Address qualified as Ledger
 import Ledger.CardanoWallet qualified as CW
 import Servant.Server (Handler)
 import Servant.Server.Internal.ServerError (ServerError)
 import WBPS.Core.FileScheme (FileScheme)
-
-data HttpServerConfig = HttpServerConfig
-  { host :: String
-  , port :: Int
-  }
-  deriving (Show, Generic)
-
-instance ToJSON HttpServerConfig
 
 data Env = Env
   { spSk :: SecretKey
@@ -52,7 +42,6 @@ data Env = Env
       Api.Tx Api.ConwayEra ->
       MockChainState ->
       IO (Either Text ())
-  , httpServerConfig :: HttpServerConfig
   , logger :: Logger
   }
 

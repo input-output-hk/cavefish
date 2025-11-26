@@ -14,28 +14,48 @@ import Blammo.Logging.Simple (
 import Control.Concurrent.STM (newTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Cooked (wallet)
-import Core.Api.AppContext (HttpServerConfig (port), httpServerConfig)
+import Core.Api.Config (
+  Config (httpServer, wbps),
+  HttpServer (HttpServer, port),
+  Wbps (Wbps),
+  loadConfig,
+ )
 import Core.Pke (deriveSecretKey)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.ByteString qualified as BS
 import Network.Wai.Handler.Warp qualified as Warp
+import Paths_cavefish_server (getDataFileName)
 import Sp.Emulator (initialMockState, mkCookedEnv)
 import Sp.Server (mkApp)
 import System.IO (hPutStrLn, stderr)
 import WBPS.Core.FileScheme (mkFileSchemeFromRoot)
 
+-- | The name of the configuration file
+-- See relevant `data-file` entry in the .cabal file for more details.
+configFileName :: FilePath
+configFileName = "config/config.toml"
+
+getConfigFileName :: FilePath -> IO FilePath
+getConfigFileName = getDataFileName
+
 main :: IO ()
 main = runSimpleLoggingT $ do
+  configFilePath <-
+    liftIO $
+      getConfigFileName configFileName >>= \configFile -> do
+        liftIO $ hPutStrLn stderr ("Using config file: " <> configFile) >> pure configFile
+  config <- loadConfig configFilePath
   mockState <- liftIO $ newTVarIO initialMockState
   pendingStore <- liftIO $ newTVarIO mempty
   completeStore <- liftIO $ newTVarIO mempty
   clientStore <- liftIO $ newTVarIO mempty
-  let wbpsRoot = "wbps" -- TODO WG: Probably get this from some sort of config
-  wbpsScheme <- liftIO $ mkFileSchemeFromRoot wbpsRoot
+  let (Wbps path) = wbps config
+  wbpsScheme <- liftIO $ mkFileSchemeFromRoot path
+  let HttpServer {port} = httpServer config
   logger <- liftIO $ newLogger defaultLogSettings
-  liftIO $ hPutStrLn stderr ("Using WBPS root: " <> wbpsRoot)
   logInfo "Starting Cavefish Server"
+  logInfo $ "Cavefish Configurations" :# ["configuration" .= config]
 
   let spSk =
         case Ed.secretKey (BS.pack [1 .. 32]) of
@@ -57,10 +77,9 @@ main = runSimpleLoggingT $ do
           (wallet 1)
           wbpsScheme
           logger
-
-  logInfo $ "Cavefish HTTP Server" :# ["configuration" .= (httpServerConfig env)]
+          config
 
   liftIO $
     Warp.run
-      (port . httpServerConfig $ env)
+      port
       (mkApp env)
