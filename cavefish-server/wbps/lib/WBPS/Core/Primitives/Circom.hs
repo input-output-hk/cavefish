@@ -45,6 +45,7 @@ compileBuildCommitment BuildCommitmentCompileScheme {..} =
       circuitsDirSibling = includeRoot </> "circuits"
       circuitsBaseSibling = siblingRoot </> "wbps"
       vendorCircomlibDir = circuitsBaseSibling </> "vendor" </> "circomlib" </> "circuits"
+      vendorCircomlibLocal = includeRoot </> "vendor" </> "circomlib" </> "circuits"
       circomlibDirNode = includeRootRoot </> "node_modules" </> "circomlib" </> "circuits"
    in circom
         circuitPath
@@ -63,6 +64,8 @@ compileBuildCommitment BuildCommitmentCompileScheme {..} =
         circuitsDirSibling
         "-l"
         circuitsBaseSibling
+        "-l"
+        vendorCircomlibLocal
         "-l"
         vendorCircomlibDir
         "-l"
