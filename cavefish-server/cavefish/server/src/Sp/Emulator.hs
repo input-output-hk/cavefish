@@ -27,7 +27,6 @@ import Core.Api.AppContext (
     build,
     clientRegistration,
     complete,
-    httpServerConfig,
     logger,
     pending,
     pkePublic,
@@ -40,9 +39,9 @@ import Core.Api.AppContext (
     ttl,
     wbpsScheme
   ),
-  HttpServerConfig (HttpServerConfig),
   defaultWalletResolver,
  )
+import Core.Api.Config qualified as Cfg
 import Core.Api.State (ClientRegistrationStore, CompleteStore, PendingStore)
 import Core.Intent (
   BuildTxResult (BuildTxResult, changeDelta, mockState, tx, txAbs),
@@ -82,6 +81,7 @@ mkCookedEnv ::
   Wallet ->
   FileScheme ->
   Logger ->
+  Cfg.Config ->
   Env
 mkCookedEnv
   mockState
@@ -92,7 +92,9 @@ mkCookedEnv
   pkeSk
   spWallet
   wbpsSchemeValue
-  logger = env
+  logger
+  config =
+    env
     where
       pkePk = toPublicKey pkeSk
       env =
@@ -101,16 +103,15 @@ mkCookedEnv
           , pending = pendingStore
           , complete = completeStore
           , clientRegistration = clientRegStore
-          , ttl = (fromInteger 3600)
+          , ttl = fromInteger $ Cfg.seconds $ Cfg.transactionExpiry config
           , spWallet
           , resolveWallet = defaultWalletResolver
-          , spFee = 0
+          , spFee = Cfg.amount (Cfg.serviceProviderFee config)
           , pkeSecret = pkeSk
           , pkePublic = pkePk
           , wbpsScheme = wbpsSchemeValue
           , build = buildWithCooked mockState env
           , submit = submitWithCooked mockState env
-          , httpServerConfig = HttpServerConfig "0.0.0.0" 8080
           , logger
           }
 
