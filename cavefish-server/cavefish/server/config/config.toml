@@ -1,0 +1,19 @@
+## Cavefish Server Configuration
+[config]
+
+## Http Server Configurations
+[httpServer]
+host = "0.0.0.0"
+port = 8080
+
+## Weakly Blind Predicate Signature configurations
+[wbps]
+path = "wbps"
+
+## Intent Service Provider Fee
+[serviceProviderFee]
+amount = 200
+
+## Transaction Expiry
+[transactionExpiry]
+seconds = 3000

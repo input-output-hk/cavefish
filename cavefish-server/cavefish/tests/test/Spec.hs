@@ -18,6 +18,7 @@ import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
 import Control.Monad.Trans.Except (runExceptT)
 import Cooked.MockChain.MockChainState (MockChainState)
 import Core.Api.AppContext (Env (spSk), runApp)
+import Core.Api.Config (Config)
 import Core.Api.Messages (
   ClientInfo (ClientInfo, clientId, userPublicKey),
   ClientsResp (ClientsResp, clients),
@@ -66,6 +67,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.ByteString.Lazy qualified as BL
+import Data.Default (def)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -122,16 +124,18 @@ mkEnv ::
   Logger ->
   Env
 mkEnv wbpsScheme pendingStore completeStore clientRegVar mockStateVar logger =
-  mkCookedEnv
-    mockStateVar
-    pendingStore
-    completeStore
-    clientRegVar
-    testSecretKey
-    testPkeSecretKey
-    testSpWallet
-    wbpsScheme
-    logger
+  let config :: Config = def
+   in mkCookedEnv
+        mockStateVar
+        pendingStore
+        completeStore
+        clientRegVar
+        testSecretKey
+        testPkeSecretKey
+        testSpWallet
+        wbpsScheme
+        logger
+        config
 
 expectedUserPublicKeyHex :: Text
 expectedUserPublicKeyHex =
