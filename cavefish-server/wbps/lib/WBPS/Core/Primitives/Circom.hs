@@ -41,17 +41,11 @@ compileBuildCommitment BuildCommitmentCompileScheme {..} =
       includeRoot = takeDirectory includeDirClean
       includeRootRoot = takeDirectory includeRoot
       siblingRoot = takeDirectory includeRootRoot
-      topRoot = takeDirectory siblingRoot
       circuitsDirLocal = includeDirClean </> "circuits"
       circuitsDirSibling = includeRoot </> "circuits"
       circuitsBaseSibling = siblingRoot </> "wbps"
-      circuitsBaseTop = topRoot </> "wbps"
       vendorCircomlibDir = circuitsBaseSibling </> "vendor" </> "circomlib" </> "circuits"
-      vendorCircomlibLocal = includeRoot </> "vendor" </> "circomlib" </> "circuits"
-      vendorCircomlibTop = circuitsBaseTop </> "vendor" </> "circomlib" </> "circuits"
       circomlibDirNode = includeRootRoot </> "node_modules" </> "circomlib" </> "circuits"
-      poseidon2Dir = circuitsBaseSibling </> "circuits" </> "hashing" </> "poseidon2"
-      poseidon2DirTop = circuitsBaseTop </> "circuits" </> "hashing" </> "poseidon2"
    in circom
         circuitPath
         "--r1cs"
@@ -70,15 +64,7 @@ compileBuildCommitment BuildCommitmentCompileScheme {..} =
         "-l"
         circuitsBaseSibling
         "-l"
-        vendorCircomlibLocal
-        "-l"
         vendorCircomlibDir
-        "-l"
-        vendorCircomlibTop
-        "-l"
-        poseidon2Dir
-        "-l"
-        poseidon2DirTop
         "-l"
         circomlibDirNode
 
