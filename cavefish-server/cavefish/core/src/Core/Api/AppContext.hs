@@ -1,6 +1,14 @@
 module Core.Api.AppContext where
 
+import Blammo.Logging.Simple (
+  HasLogger (loggerL),
+  Logger,
+  MonadLogger,
+  MonadLoggerIO,
+  WithLogger (WithLogger),
+ )
 import Cardano.Api qualified as Api
+import Control.Lens (lens)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
@@ -10,15 +18,25 @@ import Core.Api.State (ClientRegistrationStore, CompleteStore, PendingStore)
 import Core.Intent (BuildTxResult, Intent)
 import Core.Pke (PkePublicKey, PkeSecretKey)
 import Crypto.PubKey.Ed25519 (SecretKey)
+import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock (NominalDiffTime)
+import GHC.Generics (Generic)
 import Ledger.Address qualified as Ledger
 import Ledger.CardanoWallet qualified as CW
 import Servant.Server (Handler)
 import Servant.Server.Internal.ServerError (ServerError)
 import WBPS.Core.FileScheme (FileScheme)
+
+data HttpServerConfig = HttpServerConfig
+  { host :: String
+  , port :: Int
+  }
+  deriving (Show, Generic)
+
+instance ToJSON HttpServerConfig
 
 data Env = Env
   { spSk :: SecretKey
@@ -40,10 +58,23 @@ data Env = Env
       Api.Tx Api.ConwayEra ->
       MockChainState ->
       IO (Either Text ())
+  , httpServerConfig :: HttpServerConfig
+  , logger :: Logger
   }
 
+instance HasLogger Env where
+  loggerL = lens logger (\x y -> x {logger = y})
+
 newtype AppM a = AppM {unAppM :: ReaderT Env Handler a}
-  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader Env, MonadError ServerError)
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadReader Env
+    , MonadError ServerError
+    )
+  deriving (MonadLogger, MonadLoggerIO) via (WithLogger Env Handler)
 
 runApp :: Env -> AppM a -> Handler a
 runApp env (AppM m) = runReaderT m env
