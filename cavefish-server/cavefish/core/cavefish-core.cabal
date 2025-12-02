@@ -79,6 +79,7 @@ library
 
   build-depends:
     , aeson
+    , Blammo
     , bytestring
     , cardano-api
     , cardano-binary
@@ -89,6 +90,7 @@ library
     , containers
     , cooked-validators
     , crypton
+    , lens
     , memory
     , mtl
     , plutus-core
