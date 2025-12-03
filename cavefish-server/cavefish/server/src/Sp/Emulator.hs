@@ -8,7 +8,6 @@
 --    mock chain state.
 module Sp.Emulator where
 
-import Blammo.Logging.Simple (Logger)
 import Cardano.Api qualified as Api
 import Control.Concurrent.STM (TVar, atomically, readTVarIO, writeTVar)
 import Control.Monad.Identity (runIdentity)
@@ -27,7 +26,6 @@ import Core.Api.AppContext (
     build,
     clientRegistration,
     complete,
-    logger,
     pending,
     pkePublic,
     pkeSecret,
@@ -80,7 +78,6 @@ mkCookedEnv ::
   PkeSecretKey ->
   Wallet ->
   FileScheme ->
-  Logger ->
   Cfg.Config ->
   Env
 mkCookedEnv
@@ -92,7 +89,6 @@ mkCookedEnv
   pkeSk
   spWallet
   wbpsSchemeValue
-  logger
   config =
     env
     where
@@ -112,7 +108,6 @@ mkCookedEnv
           , wbpsScheme = wbpsSchemeValue
           , build = buildWithCooked mockState env
           , submit = submitWithCooked mockState env
-          , logger
           }
 
 -- | Build a transaction using the Cooked mock chain.
