@@ -89,7 +89,6 @@ test-suite test
 
   build-depends:
     , aeson
-    , Blammo
     , bytestring
     , cardano-api
     , cavefish-client

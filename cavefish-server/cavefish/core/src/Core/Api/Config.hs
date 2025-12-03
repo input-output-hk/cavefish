@@ -5,7 +5,7 @@
 module Core.Api.Config where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Aeson (ToJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.Text.IO qualified
 import GHC.Generics (Generic)
@@ -31,6 +31,8 @@ data HttpServer = HttpServer
 
 instance ToJSON HttpServer
 
+instance FromJSON HttpServer
+
 instance Default HttpServer where
   def =
     HttpServer
@@ -45,6 +47,8 @@ newtype Wbps = Wbps
   deriving (Show, Generic)
 
 instance ToJSON Wbps
+
+instance FromJSON Wbps
 
 instance FromValue Wbps where
   fromValue = parseTableFromValue (Wbps <$> reqKey "path")
@@ -63,6 +67,8 @@ newtype ServiceProviderFee = ServiceProviderFee
 
 instance ToJSON ServiceProviderFee
 
+instance FromJSON ServiceProviderFee
+
 instance FromValue ServiceProviderFee where
   fromValue = parseTableFromValue (ServiceProviderFee <$> reqKey "amount")
 
@@ -79,6 +85,8 @@ newtype TransactionExpiry = TransactionExpiry
   deriving (Show, Generic)
 
 instance ToJSON TransactionExpiry
+
+instance FromJSON TransactionExpiry
 
 instance FromValue TransactionExpiry where
   fromValue = parseTableFromValue (TransactionExpiry <$> reqKey "seconds")
@@ -100,6 +108,8 @@ data Config = Config
   deriving (FromValue) via GenericTomlTable Config
 
 instance ToJSON Config
+
+instance FromJSON Config
 
 instance Default Config where
   def =

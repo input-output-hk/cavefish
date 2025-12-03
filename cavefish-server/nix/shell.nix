@@ -45,7 +45,7 @@ let
   tools = allTools.${ghc};
 
   hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
-    #!/bin/bash
+    #!/usr/bin/env bash
     exec haskell-language-server
   '';
 
