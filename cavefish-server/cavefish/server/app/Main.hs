@@ -3,14 +3,6 @@
 --  environment and configurations.
 module Main where
 
-import Blammo.Logging.Simple (
-  Message ((:#)),
-  defaultLogSettings,
-  logInfo,
-  newLogger,
-  runSimpleLoggingT,
-  (.=),
- )
 import Control.Concurrent.STM (newTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Cooked (wallet)
@@ -20,6 +12,8 @@ import Core.Api.Config (
   Wbps (Wbps),
   loadConfig,
  )
+import Core.CavefishLogEvent (CavefishLogEvent (LogSPConfigLoaded))
+import Core.Logging (Verbosity (Verbose), traceWith, withTracer)
 import Core.Pke (deriveSecretKey)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 qualified as Ed
@@ -40,12 +34,13 @@ getConfigFileName :: FilePath -> IO FilePath
 getConfigFileName = getDataFileName
 
 main :: IO ()
-main = runSimpleLoggingT $ do
+main = (withTracer $ Verbose "SP.Server") $ \tr -> do
   configFilePath <-
     liftIO $
       getConfigFileName configFileName >>= \configFile -> do
         liftIO $ hPutStrLn stderr ("Using config file: " <> configFile) >> pure configFile
   config <- loadConfig configFilePath
+  traceWith tr $ LogSPConfigLoaded config
   mockState <- liftIO $ newTVarIO initialMockState
   pendingStore <- liftIO $ newTVarIO mempty
   completeStore <- liftIO $ newTVarIO mempty
@@ -53,10 +48,6 @@ main = runSimpleLoggingT $ do
   let (Wbps path) = wbps config
   wbpsScheme <- liftIO $ mkFileSchemeFromRoot path
   let HttpServer {port} = httpServer config
-  logger <- liftIO $ newLogger defaultLogSettings
-  logInfo "Starting Cavefish Server"
-  logInfo $ "Cavefish Configurations" :# ["configuration" .= config]
-
   let spSk =
         case Ed.secretKey (BS.pack [1 .. 32]) of
           CryptoPassed sk -> sk
@@ -76,7 +67,6 @@ main = runSimpleLoggingT $ do
           pkeSk
           (wallet 1)
           wbpsScheme
-          logger
           config
 
   liftIO $

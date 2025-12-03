@@ -66,8 +66,10 @@ library
     Core.Api.Config
     Core.Api.Messages
     Core.Api.State
+    Core.CavefishLogEvent
     Core.Cbor
     Core.Intent
+    Core.Logging
     Core.Observers.Observer
     Core.PaymentProof
     Core.Pke
@@ -80,7 +82,7 @@ library
 
   build-depends:
     , aeson
-    , Blammo
+    , async
     , bytestring
     , cardano-api
     , cardano-binary
@@ -88,12 +90,16 @@ library
     , cardano-ledger-alonzo
     , cardano-ledger-core
     , cborg
+    , clock
     , containers
+    , contra-tracer
     , cooked-validators
     , crypton
     , data-default
+    , exceptions
     , lens
     , memory
+    , monad-time
     , mtl
     , plutus-core
     , plutus-ledger
@@ -101,6 +107,7 @@ library
     , plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
+    , say
     , servant-server
     , stm
     , text

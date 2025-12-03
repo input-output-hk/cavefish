@@ -4,7 +4,6 @@
 
 module Sp.Server where
 
-import Blammo.Logging.Simple (HasLogger, (.=))
 import Core.Api.AppContext (AppM, Env, runApp)
 import Core.Api.Messages (
   ClientsResp,
@@ -20,15 +19,13 @@ import Core.Api.Messages (
 import Core.SP.AskSubmission qualified as AskSubmission
 import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.Register qualified as Register
-import Data.Aeson (KeyValue)
 import Data.Text (Text)
-import Network.Wai (Application, Middleware)
+import Network.Wai (Application)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
   cors,
   simpleCorsResourcePolicy,
  )
-import Network.Wai.Middleware.Logging (addThreadContextFromRequest, requestLogger)
 import Servant (
   Capture,
   Get,
@@ -41,6 +38,7 @@ import Servant (
   serve,
  )
 import Servant.API ((:<|>) ((:<|>)), (:>))
+import Sp.Middleware (cavefishMiddleware)
 
 type CavefishApi =
   "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
@@ -56,15 +54,6 @@ type CavefishApi =
 cavefishApi :: Proxy CavefishApi
 cavefishApi = Proxy
 
-waiLoggingMiddleware :: HasLogger env => env -> Middleware
-waiLoggingMiddleware env =
-  let
-    appInfo :: KeyValue e kv => Text -> kv
-    appInfo t = "application" .= t
-   in
-    requestLogger env
-      . addThreadContextFromRequest (const [appInfo "cavefish-server"])
-
 mkApp :: Env -> Application
 mkApp env =
   let
@@ -75,7 +64,7 @@ mkApp env =
         }
    in
     cors (const $ Just policy) $
-      waiLoggingMiddleware env $
+      cavefishMiddleware $
         serve cavefishApi $
           hoistServer cavefishApi (runApp env) server
 
