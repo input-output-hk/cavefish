@@ -36,23 +36,25 @@ import Core.Api.State (
   Pending (
     Pending,
     auxNonce,
+    challenge,
     ciphertext,
     commitment,
     creator,
     expiry,
+    message,
     tx,
     txAbsHash
   ),
   renderPublicKey,
  )
-import Core.Cbor (serialiseTx)
+import Core.Cbor (serialiseTxBody)
 import Core.PaymentProof (ProofResult (ProofEd25519))
 import Core.Pke (
   ciphertextDigest,
   decrypt,
   renderError,
  )
-import Core.Proof (mkProof, renderHex)
+import Core.Proof (mkProof, parseHex, renderHex)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.Aeson (
@@ -64,12 +66,14 @@ import Data.Aeson (
   (.:),
   (.=),
  )
+import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.UUID (UUID)
@@ -86,6 +90,7 @@ import Servant (
   errBody,
   throwError,
  )
+import WBPS.Core.BuildChallenge (buildChallenge)
 
 -- | Cavefish API a
 data TransactionResp
@@ -187,11 +192,21 @@ instance FromJSON CommitReq
 
 instance ToJSON CommitReq
 
-data CommitResp = CommitResp {pi :: ProofResult, c :: Int} deriving (Eq, Show, Generic)
+data CommitResp = CommitResp {pi :: ProofResult, c :: ByteString} deriving (Eq, Show, Generic)
 
-instance FromJSON CommitResp
+instance ToJSON CommitResp where
+  toJSON CommitResp {pi, c} =
+    object
+      [ "pi" .= pi
+      , "c" .= renderHex c
+      ]
 
-instance ToJSON CommitResp
+instance FromJSON CommitResp where
+  parseJSON = withObject "CommitResp" $ \o -> do
+    pi' <- o .: "pi"
+    cHex :: Text <- o .: "c"
+    cBytes <- parseHex cHex
+    pure CommitResp {pi = pi', c = cBytes}
 
 -- TODO WG: Once the crypto machinery lands, we can generate the pair `(c, π)`
 --          and plug this handler into the middle of the demonstrateCommitment/finalise flow.
@@ -216,17 +231,33 @@ commitH CommitReq {..} = do
           case mClient of
             Nothing ->
               throwError err403 {errBody = "unknown client"}
-            Just _ ->
+            Just ClientRegistration {userPublicKey = signerPk} ->
               case commitment of
                 Just _ ->
                   throwError err409 {errBody = "commitment already recorded"}
                 Nothing -> do
+                  -- Using tx body bytes so c/pi/signature all refer to the same message,
+                  -- since the full TX will change when witnesses are added later
+                  let txIdBytes = Api.serialiseToRawBytes (Api.getTxId (Api.getTxBody tx))
+                      rBytes = BA.convert bigR
+                      xBytes = renderPublicKey signerPk
+                  challengeDigest <-
+                    either
+                      ( \err ->
+                          let msg = "buildChallenge failed: " <> err
+                           in throwError err500 {errBody = BL.fromStrict (TE.encodeUtf8 (T.pack msg))}
+                      )
+                      pure
+                      (buildChallenge rBytes xBytes txIdBytes)
+                  let challengeBytes = BA.convert challengeDigest
                   liftIO . atomically $
-                    modifyTVar' pending (Map.adjust (\p -> p {commitment = Just bigR}) wantedTxId)
+                    modifyTVar'
+                      pending
+                      (Map.adjust (\p -> p {commitment = Just bigR, challenge = Just challengeBytes}) wantedTxId)
                   let txIdVal = Api.getTxId (Api.getTxBody tx)
                       commitmentBytes = ciphertextDigest ciphertext
                       proof = ProofEd25519 (mkProof spSk txIdVal txAbsHash commitmentBytes)
-                  pure CommitResp {pi = proof, c = 0}
+                  pure CommitResp {pi = proof, c = challengeBytes}
 
 clientsH :: AppM ClientsResp
 clientsH = do
@@ -293,7 +324,7 @@ decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, a
       let msg = "pke decrypt failed: " <> renderError err
        in Left err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
     Right payload ->
-      let txBytes = serialiseTx tx
+      let txBytes = serialiseTxBody tx
           (payloadTxBytes, payloadNonce) = BS.splitAt (BS.length txBytes) payload
        in if payloadTxBytes /= txBytes
             then

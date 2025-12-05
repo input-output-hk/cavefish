@@ -58,6 +58,7 @@ library
     WBPS.Adapter.CardanoCryptoClass.Crypto
     WBPS.Adapter.Data
     WBPS.Core
+    WBPS.Core.BuildChallenge
     WBPS.Core.BuildCommitment
     WBPS.Core.FileScheme
     WBPS.Core.Primitives.Circom
