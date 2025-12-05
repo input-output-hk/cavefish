@@ -202,7 +202,7 @@ commitH CommitReq {..} = do
               Nothing -> do
                 let Ed25519.UserWalletPublicKey (Ed25519.PublicKey adapterPk) = userWalletPublicKey
                     xBytes = Adapter.toByteString adapterPk
-                    -- Using tx body bytes so c/pi/signature all refer to the same message,
+                    -- Using tx body bytes so c/pi/signature are all derived from the same thing (TxBody),
                     -- since the full TX will change when witnesses are added later
                     txIdBytes = Api.serialiseToRawBytes (Api.getTxId (Api.getTxBody tx))
                     Ed25519.PublicKey adapterR = bigR
