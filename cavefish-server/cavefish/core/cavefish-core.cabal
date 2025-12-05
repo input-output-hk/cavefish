@@ -66,21 +66,25 @@ library
     Core.Api.Config
     Core.Api.Messages
     Core.Api.State
+    Core.CavefishLogEvent
     Core.Cbor
     Core.Intent
+    Core.Logging
     Core.Observers.Observer
     Core.PaymentProof
     Core.Pke
     Core.Proof
     Core.SP.AskSubmission
     Core.SP.DemonstrateCommitment
+    Core.SP.FetchAccount
+    Core.SP.FetchAccounts
     Core.SP.Register
     Core.TxAbs
     Core.TxBuilder
 
   build-depends:
     , aeson
-    , Blammo
+    , async
     , bytestring
     , cardano-api
     , cardano-binary
@@ -89,11 +93,13 @@ library
     , cardano-ledger-core
     , cborg
     , containers
+    , contra-tracer
     , cooked-validators
     , crypton
     , data-default
-    , lens
+    , exceptions
     , memory
+    , monad-time
     , mtl
     , plutus-core
     , plutus-ledger
@@ -101,12 +107,12 @@ library
     , plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
+    , say
     , servant-server
     , stm
     , text
     , time
     , toml-parser
-    , uuid
     , wbps
 
   if flag(ide-stub)

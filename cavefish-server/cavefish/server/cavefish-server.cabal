@@ -63,18 +63,17 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Sp.Emulator
+    Sp.Middleware
     Sp.Server
 
   build-depends:
-    , aeson
-    , Blammo
-    , Blammo-wai
     , bytestring
     , cardano-api
     , cavefish-core
+    , clock
     , cooked-validators
-    , crypton
     , data-default
+    , http-types
     , mtl
     , plutus-ledger
     , plutus-script-utils
@@ -93,15 +92,13 @@ library
 executable cavefish-server
   import:         base, project-config
   hs-source-dirs: app
-  data-file:      config/config.toml
+  data-files:     config/config.toml
   main-is:        Main.hs
   build-depends:
-    , Blammo
     , bytestring
     , cavefish-core
     , cavefish-server
     , cooked-validators
-    , crypton
     , stm
     , warp
     , wbps

@@ -1,23 +1,13 @@
 module Core.Api.AppContext where
 
-import Blammo.Logging.Simple (
-  HasLogger (loggerL),
-  Logger,
-  MonadLogger,
-  MonadLoggerIO,
-  WithLogger (WithLogger),
- )
 import Cardano.Api qualified as Api
-import Control.Lens (lens)
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
 import Cooked (MockChainState)
 import Cooked.Wallet (Wallet, knownWallets)
-import Core.Api.State (ClientRegistrationStore, CompleteStore, PendingStore)
+import Core.Api.State (CompleteStore, PendingStore)
 import Core.Intent (BuildTxResult, Intent)
-import Core.Pke (PkePublicKey, PkeSecretKey)
-import Crypto.PubKey.Ed25519 (SecretKey)
 import Data.ByteString (ByteString)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -29,16 +19,11 @@ import Servant.Server.Internal.ServerError (ServerError)
 import WBPS.Core.FileScheme (FileScheme)
 
 data Env = Env
-  { spSk :: SecretKey
-  , pending :: PendingStore
+  { pending :: PendingStore
   , complete :: CompleteStore
-  , clientRegistration :: ClientRegistrationStore
   , ttl :: NominalDiffTime
-  , spWallet :: Wallet
   , resolveWallet :: Api.AddressInEra Api.ConwayEra -> Maybe Wallet
   , spFee :: Integer
-  , pkeSecret :: PkeSecretKey
-  , pkePublic :: PkePublicKey
   , wbpsScheme :: FileScheme
   , build ::
       Intent ->
@@ -48,11 +33,7 @@ data Env = Env
       Api.Tx Api.ConwayEra ->
       MockChainState ->
       IO (Either Text ())
-  , logger :: Logger
   }
-
-instance HasLogger Env where
-  loggerL = lens logger (\x y -> x {logger = y})
 
 newtype AppM a = AppM {unAppM :: ReaderT Env Handler a}
   deriving newtype
@@ -63,7 +44,6 @@ newtype AppM a = AppM {unAppM :: ReaderT Env Handler a}
     , MonadReader Env
     , MonadError ServerError
     )
-  deriving (MonadLogger, MonadLoggerIO) via (WithLogger Env Handler)
 
 runApp :: Env -> AppM a -> Handler a
 runApp env (AppM m) = runReaderT m env

@@ -4,6 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Core.Api.Messages where
@@ -15,23 +16,9 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (MonadReader (ask))
 import Core.Api.AppContext (
   AppM,
-  Env (
-    Env,
-    build,
-    clientRegistration,
-    complete,
-    pending,
-    pkePublic,
-    pkeSecret,
-    spSk,
-    submit,
-    ttl,
-    wbpsScheme
-  ),
+  Env (..),
  )
 import Core.Api.State (
-  ClientId (ClientId),
-  ClientRegistration (ClientRegistration, userPublicKey),
   Completed (Completed, creator, submittedAt, tx),
   Pending (
     Pending,
@@ -41,22 +28,20 @@ import Core.Api.State (
     commitment,
     creator,
     expiry,
-    message,
     tx,
     txAbsHash
   ),
-  renderPublicKey,
  )
 import Core.Cbor (serialiseTxBody)
 import Core.PaymentProof (ProofResult (ProofEd25519))
 import Core.Pke (
+  PkeSecretKey,
   ciphertextDigest,
   decrypt,
   renderError,
  )
+import Core.Pke qualified as PKE
 import Core.Proof (mkProof, parseHex, renderHex)
-import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
-import Crypto.PubKey.Ed25519 qualified as Ed
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
@@ -76,13 +61,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Time.Clock (UTCTime, getCurrentTime)
-import Data.UUID (UUID)
 import GHC.Generics (Generic)
 import Ledger.Tx.CardanoAPI (CardanoTx, pattern CardanoEmulatorEraTx)
 import Servant (
   ServerError,
   err400,
-  err403,
   err404,
   err409,
   err410,
@@ -90,7 +73,9 @@ import Servant (
   errBody,
   throwError,
  )
+import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
 import WBPS.Core.BuildChallenge (buildChallenge)
+import WBPS.Core.Keys.Ed25519 qualified as Ed25519
 
 -- | Cavefish API a
 data TransactionResp
@@ -101,14 +86,14 @@ data TransactionResp
 
 data PendingSummary = PendingSummary
   { pendingExpiresAt :: UTCTime
-  , pendingClientId :: UUID
+  , pendingClientId :: Ed25519.UserWalletPublicKey
   }
   deriving (Eq, Show, Generic)
 
 data SubmittedSummary = SubmittedSummary
   { submittedTx :: CardanoTx
   , submittedAt :: UTCTime
-  , submittedClientId :: UUID
+  , submittedClientId :: Ed25519.UserWalletPublicKey
   }
   deriving (Eq, Show, Generic)
 
@@ -146,25 +131,6 @@ instance FromJSON TransactionResp where
         pure $ TransactionSubmitted (SubmittedSummary tx submittedAt clientId)
       _ -> fail "unknown transaction status"
 
-newtype ClientsResp = ClientsResp
-  { clients :: [ClientInfo]
-  }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON ClientsResp
-
-instance FromJSON ClientsResp
-
-data ClientInfo = ClientInfo
-  { clientId :: UUID
-  , userPublicKey :: Text
-  }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON ClientInfo
-
-instance FromJSON ClientInfo
-
 newtype PendingResp = PendingResp
   { pending :: [PendingItem]
   }
@@ -178,7 +144,7 @@ data PendingItem = PendingItem
   { txId :: Text
   , txAbsHash :: Text
   , expiresAt :: UTCTime
-  , clientId :: UUID
+  , clientId :: Ed25519.UserWalletPublicKey
   }
   deriving (Eq, Show, Generic)
 
@@ -186,7 +152,7 @@ instance ToJSON PendingItem
 
 instance FromJSON PendingItem
 
-data CommitReq = CommitReq {txId :: Text, bigR :: Ed.PublicKey} deriving (Eq, Show, Generic)
+data CommitReq = CommitReq {txId :: Text, bigR :: Ed25519.PublicKey} deriving (Eq, Show, Generic)
 
 instance FromJSON CommitReq
 
@@ -212,8 +178,10 @@ instance FromJSON CommitResp where
 --          and plug this handler into the middle of the demonstrateCommitment/finalise flow.
 commitH :: CommitReq -> AppM CommitResp
 commitH CommitReq {..} = do
-  env@Env {..} <- ask
+  Env {..} <- ask
   now <- liftIO getCurrentTime
+  keypair <- Ed25519.generateKeyPair -- N.H to fix
+  (_, dk) <- liftIO PKE.generateKeyPair
   case parseTxIdHex txId of
     Nothing ->
       throwError err400 {errBody = "malformed tx id"}
@@ -222,55 +190,40 @@ commitH CommitReq {..} = do
       case mp of
         Nothing ->
           throwError err404 {errBody = "unknown or expired tx"}
-        Just pendingEntry@Pending {expiry, creator, commitment, ciphertext, txAbsHash, tx} -> do
-          when (now > expiry) $ do
-            removePendingEntry pending wantedTxId
-            throwError err410 {errBody = "pending expired"}
-          _ <- either throwError pure (decryptPendingPayload env pendingEntry)
-          mClient <- lookupClientRegistration clientRegistration creator
-          case mClient of
-            Nothing ->
-              throwError err403 {errBody = "unknown client"}
-            Just ClientRegistration {userPublicKey = signerPk} ->
-              case commitment of
-                Just _ ->
-                  throwError err409 {errBody = "commitment already recorded"}
-                Nothing -> do
-                  -- Using tx body bytes so c/pi/signature all refer to the same message,
-                  -- since the full TX will change when witnesses are added later
-                  let txIdBytes = Api.serialiseToRawBytes (Api.getTxId (Api.getTxBody tx))
-                      rBytes = BA.convert bigR
-                      xBytes = renderPublicKey signerPk
-                  challengeDigest <-
-                    either
-                      ( \err ->
-                          let msg = "buildChallenge failed: " <> err
-                           in throwError err500 {errBody = BL.fromStrict (TE.encodeUtf8 (T.pack msg))}
-                      )
-                      pure
-                      (buildChallenge rBytes xBytes txIdBytes)
-                  let challengeBytes = BA.convert challengeDigest
-                  liftIO . atomically $
-                    modifyTVar'
-                      pending
-                      (Map.adjust (\p -> p {commitment = Just bigR, challenge = Just challengeBytes}) wantedTxId)
-                  let txIdVal = Api.getTxId (Api.getTxBody tx)
-                      commitmentBytes = ciphertextDigest ciphertext
-                      proof = ProofEd25519 (mkProof spSk txIdVal txAbsHash commitmentBytes)
-                  pure CommitResp {pi = proof, c = challengeBytes}
-
-clientsH :: AppM ClientsResp
-clientsH = do
-  Env {clientRegistration} <- ask
-  regs <- liftIO . atomically $ Map.toAscList <$> readTVar clientRegistration
-  pure . ClientsResp $ fmap mkClientInfo regs
-  where
-    mkClientInfo :: (ClientId, ClientRegistration) -> ClientInfo
-    mkClientInfo (ClientId uuid, ClientRegistration {userPublicKey}) =
-      ClientInfo
-        { clientId = uuid
-        , userPublicKey = renderHex (renderPublicKey userPublicKey)
-        }
+        Just
+          pendingEntry@Pending {expiry, creator = userWalletPublicKey, commitment, ciphertext, txAbsHash, tx} -> do
+            when (now > expiry) $ do
+              removePendingEntry pending wantedTxId
+              throwError err410 {errBody = "pending expired"}
+            _ <- either throwError pure (decryptPendingPayload dk pendingEntry)
+            case commitment of
+              Just _ ->
+                throwError err409 {errBody = "commitment already recorded"}
+              Nothing -> do
+                let Ed25519.UserWalletPublicKey (Ed25519.PublicKey adapterPk) = userWalletPublicKey
+                    xBytes = Adapter.toByteString adapterPk
+                    -- Using tx body bytes so c/pi/signature all refer to the same message,
+                    -- since the full TX will change when witnesses are added later
+                    txIdBytes = Api.serialiseToRawBytes (Api.getTxId (Api.getTxBody tx))
+                    Ed25519.PublicKey adapterR = bigR
+                    rBytes = Adapter.toByteString adapterR
+                challengeDigest <-
+                  either
+                    ( \err ->
+                        let msg = "buildChallenge failed: " <> err
+                         in throwError err500 {errBody = BL.fromStrict (TE.encodeUtf8 (T.pack msg))}
+                    )
+                    pure
+                    (buildChallenge rBytes xBytes txIdBytes)
+                let challengeBytes = BA.convert challengeDigest
+                liftIO . atomically $
+                  modifyTVar'
+                    pending
+                    (Map.adjust (\p -> p {commitment = Just bigR, challenge = Just challengeBytes}) wantedTxId)
+                let txIdVal = Api.getTxId (Api.getTxBody tx)
+                    commitmentBytes = ciphertextDigest ciphertext
+                    proof = ProofEd25519 (mkProof (Ed25519.privateKey keypair) txIdVal txAbsHash commitmentBytes)
+                pure CommitResp {pi = proof, c = challengeBytes}
 
 pendingH :: AppM PendingResp
 pendingH = do
@@ -280,13 +233,12 @@ pendingH = do
   where
     mkPendingItem :: Api.TxId -> Pending -> PendingItem
     mkPendingItem txId Pending {creator, txAbsHash, expiry} =
-      let ClientId creatorId = creator
-       in PendingItem
-            { txId = Api.serialiseToRawBytesHexText txId
-            , txAbsHash = renderHex txAbsHash
-            , expiresAt = expiry
-            , clientId = creatorId
-            }
+      PendingItem
+        { txId = Api.serialiseToRawBytesHexText txId
+        , txAbsHash = renderHex txAbsHash
+        , expiresAt = expiry
+        , clientId = creator
+        }
 
 transactionH :: Text -> AppM TransactionResp
 transactionH txIdText = do
@@ -296,9 +248,9 @@ transactionH txIdText = do
     Just txId -> do
       completes <- Map.lookup txId <$> liftIO (readTVarIO complete)
       pendings <- lookupPendingEntry pending txId
-      let toSubmitted Completed {tx, submittedAt, creator = ClientId creatorId} =
+      let toSubmitted Completed {tx, submittedAt, creator = creatorId} =
             TransactionSubmitted (SubmittedSummary (CardanoEmulatorEraTx tx) submittedAt creatorId)
-          toPending Pending {expiry, creator = ClientId creatorId} =
+          toPending Pending {expiry, creator = creatorId} =
             TransactionPending (PendingSummary expiry creatorId)
       let fallback = maybe TransactionMissing toPending pendings
       pure $ maybe fallback toSubmitted completes
@@ -309,16 +261,11 @@ finaliseSigTag = "cavefish/finalise/v1"
 clientSignatureMessage :: ByteString -> ByteString
 clientSignatureMessage txAbsHash = finaliseSigTag <> txAbsHash
 
-verifyClientSignature :: Ed.PublicKey -> ByteString -> ByteString -> Bool
-verifyClientSignature pk txAbsHash sigBytes =
-  case Ed.signature sigBytes of
-    CryptoFailed _ -> False
-    CryptoPassed sig ->
-      let message = clientSignatureMessage txAbsHash
-       in Ed.verify pk message sig
+verifyClientSignature :: Ed25519.UserWalletPublicKey -> ByteString -> ByteString -> Bool
+verifyClientSignature _ _ _ = False -- to be implemented
 
-decryptPendingPayload :: Env -> Pending -> Either ServerError ByteString
-decryptPendingPayload Env {pkeSecret} Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
+decryptPendingPayload :: PkeSecretKey -> Pending -> Either ServerError ByteString
+decryptPendingPayload pkeSecret Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
   case decrypt pkeSecret pendingCiphertext of
     Left err ->
       let msg = "pke decrypt failed: " <> renderError err
@@ -354,13 +301,6 @@ lookupPendingEntry store txId =
   liftIO . atomically $ do
     entries <- readTVar store
     pure (Map.lookup txId entries)
-
-lookupClientRegistration ::
-  TVar (Map ClientId ClientRegistration) -> ClientId -> AppM (Maybe ClientRegistration)
-lookupClientRegistration store clientId =
-  liftIO . atomically $ do
-    registry <- readTVar store
-    pure (Map.lookup clientId registry)
 
 removePendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> AppM ()
 removePendingEntry store txId =

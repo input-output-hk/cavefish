@@ -83,13 +83,12 @@ test-suite test
   main-is:        Main.hs
   hs-source-dirs: test
   other-modules:
+    Adapter.Cavefish.Client
     Core.CborSpec
     Spec
-    Test.Common
 
   build-depends:
     , aeson
-    , Blammo
     , bytestring
     , cardano-api
     , cavefish-client
