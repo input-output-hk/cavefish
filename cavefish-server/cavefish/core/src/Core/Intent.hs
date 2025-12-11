@@ -169,7 +169,7 @@ toIntentExpr = \case
     parseAddr :: AddressW -> Either Text (Api.AddressInEra Api.ConwayEra)
     parseAddr (AddressW addr) =
       maybe
-        (Left "invalid address")
+        (Left ("invalid address : " <> addr))
         Right
         (Api.deserialiseAddress (Api.AsAddressInEra Api.AsConwayEra) addr)
     toInt :: IntentDSL -> Either Text InternalIntentDSL
