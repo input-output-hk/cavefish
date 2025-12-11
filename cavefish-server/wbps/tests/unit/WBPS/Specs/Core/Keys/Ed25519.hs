@@ -17,7 +17,7 @@ specs =
 publicKeyJsonRoundtrips :: Property
 publicKeyJsonRoundtrips = ioProperty $ do
   keyPair <- Ed25519.generateKeyPair
-  let pk = Ed25519.publicKey keyPair
+  let pk = Ed25519.getPublicKey keyPair
       encoded = encode pk
   pure $
     case eitherDecode encoded of

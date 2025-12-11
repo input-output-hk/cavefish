@@ -4,13 +4,18 @@ module WBPS.Core.Keys.Ed25519 (
   KeyPair (..),
   PublicKey (..),
   PrivateKey (..),
-  publicKey,
-  privateKey,
+  PaymentVerificationKey (..),
+  PaymentAddess (..),
+  getPublicKey,
+  getPrivateKey,
   userWalletPK,
   generateKeyPair,
   generateKeyTuple,
+  generateWallet,
+  Wallet (..),
 ) where
 
+import Cardano.Api qualified as Api
 import Cardano.Crypto.DSIGN.Ed25519 (Ed25519DSIGN)
 import Control.Monad.IO.Class (MonadIO)
 import Crypto.Random (MonadRandom)
@@ -39,11 +44,37 @@ newtype PublicKey = PublicKey (Adapter.PublicKey Ed25519DSIGN)
 newtype PrivateKey = PrivateKey (Adapter.PrivateKey Ed25519DSIGN)
   deriving newtype (Show, Eq, ToJSON, FromJSON, IsString)
 
-publicKey :: KeyPair -> PublicKey
-publicKey (KeyPair (Adapter.KeyPair {..})) = PublicKey verificationKey
+getPublicKey :: KeyPair -> PublicKey
+getPublicKey (KeyPair (Adapter.KeyPair {..})) = PublicKey verificationKey
 
-privateKey :: KeyPair -> PrivateKey
-privateKey (KeyPair (Adapter.KeyPair {..})) = PrivateKey signatureKey
+getPrivateKey :: KeyPair -> PrivateKey
+getPrivateKey (KeyPair (Adapter.KeyPair {..})) = PrivateKey signatureKey
+
+newtype PaymentVerificationKey = PaymentVerificationKey (Api.VerificationKey Api.PaymentKey)
+  deriving newtype (Show, Eq, IsString)
+
+newtype PaymentAddess = PaymentAddess {unPaymentAddess :: Text}
+  deriving newtype (Show, Eq, IsString)
+
+paymentAddress' :: PaymentVerificationKey -> PaymentAddess
+paymentAddress' (PaymentVerificationKey paymentVKey) =
+  PaymentAddess . Api.serialiseAddress $
+    Api.makeShelleyAddressInEra
+      Api.ShelleyBasedEraConway
+      (Api.Testnet (Api.NetworkMagic 1))
+      (Api.PaymentCredentialByKey (Api.verificationKeyHash paymentVKey))
+      Api.NoStakeAddress
+
+paymentVerificationKey' ::
+  KeyPair ->
+  PaymentVerificationKey
+paymentVerificationKey' kp =
+  let PublicKey adapterPk = getPublicKey kp
+   in PaymentVerificationKey $
+        either (error . show) id $
+          Api.deserialiseFromRawBytes
+            (Api.AsVerificationKey Api.AsPaymentKey)
+            (Adapter.toByteString adapterPk)
 
 userWalletPK :: KeyPair -> UserWalletPublicKey
 userWalletPK (KeyPair (Adapter.KeyPair {..})) = UserWalletPublicKey . PublicKey $ verificationKey
@@ -54,4 +85,22 @@ generateKeyPair = KeyPair <$> Adapter.generateKeyPair @Ed25519DSIGN
 generateKeyTuple :: forall m. MonadIO m => m (PrivateKey, PublicKey)
 generateKeyTuple = do
   k <- generateKeyPair
-  return (privateKey k, publicKey k)
+  return (getPrivateKey k, getPublicKey k)
+
+data Wallet = Wallet
+  { keyPair :: KeyPair
+  , publicKey :: UserWalletPublicKey
+  , paymentVerificationKey :: PaymentVerificationKey
+  , paymentAddress :: PaymentAddess
+  }
+
+generateWallet :: forall m. MonadIO m => m Wallet
+generateWallet = do
+  keyPair <- generateKeyPair
+  return
+    Wallet
+      { keyPair
+      , publicKey = userWalletPK keyPair
+      , paymentVerificationKey = paymentVerificationKey' keyPair
+      , paymentAddress = paymentAddress' (paymentVerificationKey' keyPair)
+      }
