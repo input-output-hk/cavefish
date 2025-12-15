@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
+
 -- | Client implementation using a mock client to interact with the server.
 --
 --  This module defines the `ClientM` monad and associated functions to perform
@@ -10,56 +12,58 @@ module Client.Impl (
   ClientM,
   runClient,
   withSession,
-  commit,
   startSession,
   throw422,
   eitherAs422,
   demonstrateCommitment,
-  demonstrateCommitmentAndValidate,
-  askSubmission,
-  runIntent,
+  -- demonstrateCommitmentAndValidate,
+  -- askSubmission,
+  -- runIntent,
   listPending,
-  listClients,
+  fetchAccounts,
 ) where
 
+import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
 import Client.Mock (
-  MockClient (mcRun),
+  Registered,
   RunServer,
   as422,
   demonstrateCommitmentWithClient,
-  finaliseWithClient,
-  getClients,
   getPending,
   initMockClient,
   register,
-  runCommit,
-  verifyCommitProofWithClient,
-  verifySatisfies,
  )
+import Client.Mock qualified as ClientMock
 import Control.Monad.Except (MonadError, liftEither, throwError)
-import Control.Monad.Reader (MonadIO (liftIO), MonadReader, ReaderT, ask, runReaderT)
-import Control.Monad.State (MonadState, StateT, modify)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Reader (
+  MonadIO,
+  MonadReader (ask),
+  MonadTrans (lift),
+  ReaderT (..),
+ )
+import Control.Monad.State (MonadState, StateT)
 import Control.Monad.Trans.State (evalStateT)
-import Core.Api.Messages (ClientsResp, CommitResp, PendingResp)
-import Core.Intent (IntentW)
-import Core.SP.AskSubmission qualified as AskSubmission
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
 import Crypto.PubKey.Ed25519 (SecretKey)
-import Crypto.PubKey.Ed25519 qualified as Ed
-import Crypto.Random (MonadRandom (getRandomBytes))
 import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
 import Data.Map (Map)
-import Data.Map qualified as Map
 import Data.Text (Text)
+import Intent.Example.DSL (IntentDSL)
+import Prototype.Messages (PendingResp)
 import Servant (Handler, ServerError)
+import WBPS.Core.Keys.Ed25519 qualified as Ed25519
 
 -- | Monad for client operations against the server.
-newtype ClientM a = ClientM (ReaderT ClientEnv (StateT ClientState Handler) a)
+newtype ClientM a = ClientM (Control.Monad.Reader.ReaderT ClientEnv (StateT ClientState Handler) a)
   deriving newtype
-    (Functor, Applicative, Monad, MonadReader ClientEnv, MonadState ClientState, MonadError ServerError)
+    ( Control.Monad.Reader.MonadIO
+    , Functor
+    , Applicative
+    , Monad
+    , Control.Monad.Reader.MonadReader ClientEnv
+    , MonadState ClientState
+    , MonadError ServerError
+    )
 
 newtype ClientState = ClientState
   { littleRs :: Map Text SecretKey
@@ -67,13 +71,13 @@ newtype ClientState = ClientState
 
 -- | Environment required to run client operations against the server.
 data ClientEnv = ClientEnv
-  { run :: RunServer
-  , lcSk :: SecretKey
+  { server :: RunServer
+  , cardanoWalletKeyPair :: Ed25519.KeyPair
   }
 
 -- | Represents a client session with the server.
 newtype ClientSession = ClientSession
-  { client :: MockClient
+  { client :: Registered
   }
 
 -- | Run a ClientM action with the given ClientEnv.
@@ -92,8 +96,8 @@ withSession env action = runClient env (startSession >>= action)
 
 startSession :: ClientM ClientSession
 startSession = do
-  ClientEnv {run, lcSk} <- ask
-  let unregistered = initMockClient run lcSk
+  ClientEnv {server, cardanoWalletKeyPair} <- ask
+  let unregistered = initMockClient server cardanoWalletKeyPair
   client <- liftHandler (register unregistered)
   pure (ClientSession client)
 
@@ -104,49 +108,36 @@ eitherAs422 :: Either Text a -> ClientM a
 eitherAs422 = liftEither . first as422
 
 -- | Prepare an intent with the server.
-demonstrateCommitment :: ClientSession -> IntentW -> ClientM DemonstrateCommitment.Outputs
+demonstrateCommitment :: ClientSession -> IntentDSL -> ClientM DemonstrateCommitment.Outputs
 demonstrateCommitment ClientSession {client} intent = liftHandler (demonstrateCommitmentWithClient client intent)
 
-demonstrateCommitmentAndValidate ::
-  ClientSession -> IntentW -> ClientM DemonstrateCommitment.Outputs
-demonstrateCommitmentAndValidate session intent = do
-  resp <- demonstrateCommitment session intent
-  commitResp <- commit (mcRun session.client) resp.txId
-  eitherAs422 $
-    (verifySatisfies intent resp >>= ensure "Satisfies failed")
-      >> verifyCommitProofWithClient (client session) resp commitResp
-  pure resp
+-- demonstrateCommitmentAndValidate ::
+--   ClientSession -> IntentDSL -> ClientM DemonstrateCommitment.Outputs
+-- demonstrateCommitmentAndValidate session intent = do
+--   resp <- demonstrateCommitment session intent
+--   commitResp <- commit (getServer session) resp.txId
+--   eitherAs422 $
+--     (verifySatisfies intent resp >>= ensure "Satisfies failed")
+--       >> verifyCommitProofWithClient (client session) resp commitResp
+--   pure resp
 
-commit :: RunServer -> Text -> ClientM CommitResp
-commit run txId = do
-  randomBytes :: ByteString <- liftHandler $ liftIO $ getRandomBytes 32
-  r <- case Ed.secretKey randomBytes of
-    CryptoPassed c -> pure c
-    CryptoFailed _ -> throwError (as422 "couldn't generate secret key during commit")
-  modify (\ClientState {littleRs} -> ClientState $ Map.insert txId r littleRs)
-  let bigR = Ed.toPublic r
-  liftHandler (runCommit run txId bigR)
+-- askSubmission :: ClientSession -> DemonstrateCommitment.Outputs -> ClientM AskSubmission.Outputs
+-- askSubmission ClientSession {client} resp = liftHandler (askSubmissionWithClient client resp)
 
-askSubmission :: ClientSession -> DemonstrateCommitment.Outputs -> ClientM AskSubmission.Outputs
-askSubmission ClientSession {client} resp = liftHandler (finaliseWithClient client resp)
-
-runIntent :: ClientSession -> IntentW -> ClientM AskSubmission.Outputs
-runIntent session intent = do
-  resp <- demonstrateCommitmentAndValidate session intent
-  askSubmission session resp
+-- runIntent :: ClientSession -> IntentDSL -> ClientM AskSubmission.Outputs
+-- runIntent session intent = do
+--   resp <- demonstrateCommitmentAndValidate session intent
+--   askSubmission session resp
 
 listPending :: ClientM PendingResp
 listPending = do
-  ClientEnv {run} <- ask
-  liftHandler (getPending run)
+  ClientEnv {server} <- ask
+  liftHandler (getPending server)
 
-listClients :: ClientM ClientsResp
-listClients = do
-  ClientEnv {run} <- ask
-  liftHandler (getClients run)
-
-ensure :: Text -> Bool -> Either Text ()
-ensure msg ok = if ok then Right () else Left msg
+fetchAccounts :: ClientM FetchAccounts.Outputs
+fetchAccounts = do
+  ClientEnv {server} <- ask
+  liftHandler (ClientMock.fetchAccounts server)
 
 liftHandler :: Handler a -> ClientM a
 liftHandler = ClientM . lift . lift

@@ -54,29 +54,46 @@ library
   import:          base, project-config
   hs-source-dirs:  lib
   exposed-modules:
-    WBPS
     WBPS.Adapter.CardanoCryptoClass.Crypto
     WBPS.Adapter.Data
-    WBPS.Core
+    WBPS.Adapter.Monad.Control
+    WBPS.Adapter.Path
+    WBPS.Commitment
     WBPS.Core.BuildCommitment
+    WBPS.Core.Cardano.Cbor
+    WBPS.Core.Cardano.TxAbs
     WBPS.Core.FileScheme
+    WBPS.Core.Keys.Ed25519
+    WBPS.Core.Keys.ElGamal
     WBPS.Core.Primitives.Circom
     WBPS.Core.Primitives.Snarkjs
     WBPS.Core.Primitives.SnarkjsOverFileScheme
+    WBPS.Registration
 
   build-depends:
     , aeson
     , base16-bytestring
     , bytestring
+    , cardano-api            ^>=10.16.1.0
+    , cardano-binary         ^>=1.7.1.0
     , cardano-crypto-class
+    , cardano-ledger-alonzo  ^>=1.13.0.0
+    , cardano-ledger-api     ^>=1.11.0.0
+    , cardano-ledger-core    ^>=1.17.0.0
+    , cborg                  ^>=0.2.10.0
+    , containers             ^>=0.6.7
     , cryptonite
     , filepath
     , hex-text
     , memory
     , mtl
-    , path                  >=0.9.0 && <0.10
-    , path-io               >=1.8.0 && <1.9
-    , shh                   >=0.7.0 && <0.8
+    , path                   >=0.9.0      && <0.10
+    , path-io                >=1.8.0      && <1.9
+    , plutus-ledger          ^>=1.4.0.0
+    , plutus-ledger-api      ^>=1.45.0.0
+    , process
+    , scientific             ^>=0.3.8.0
+    , shh                    >=0.7.0      && <0.8
     , text
     , transformers
     , validation
@@ -87,7 +104,7 @@ test-suite wbps-unit-tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests/unit
   main-is:        Main.hs
-  other-modules:
+  other-modules:  WBPS.Specs.Core.Keys.Ed25519
   build-depends:
     , aeson
     , bytestring
@@ -96,6 +113,7 @@ test-suite wbps-unit-tests
     , mtl
     , path
     , path-io
+    , QuickCheck        ^>=2.15.0.1
     , tasty
     , tasty-hunit
     , tasty-quickcheck
@@ -115,6 +133,7 @@ test-suite wbps-integration-tests
   build-depends:
     , bytestring
     , cardano-crypto-class
+    , containers            ^>=0.6.7
     , path                  ^>=0.9.6
     , path-io               ^>=1.8.2
     , QuickCheck
