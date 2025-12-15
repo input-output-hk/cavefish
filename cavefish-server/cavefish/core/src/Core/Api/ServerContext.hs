@@ -16,7 +16,7 @@ import Servant.Server (Handler)
 import Servant.Server.Internal.ServerError (ServerError)
 import Toml.Schema (FromValue (fromValue), parseTableFromValue, reqKey)
 import WBPS.Commitment (Session)
-import WBPS.Core.Keys.Ed25519 (PaymentAddess (..), UserWalletPublicKey)
+import WBPS.Core.Keys.Ed25519 (PaymentAddess (PaymentAddess), UserWalletPublicKey)
 import WBPS.Registration (AccountCreated)
 
 data ServerContext = ServerContext

@@ -157,7 +157,7 @@ transactionH txIdText = do
   -- ServerContext {complete, pending} <- ask
   case parseTxIdHex txIdText of
     Nothing -> throwError err400 {errBody = "malformed tx id"}
-    Just txId -> do
+    Just _txId -> do
       -- completes <- Map.lookup txId <$> liftIO (readTVarIO complete)
       -- pendings <- lookupPendingEntry pending txId
       let toSubmitted Completed {tx, submittedAt, creator = creatorId} =

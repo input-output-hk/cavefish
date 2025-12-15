@@ -11,7 +11,7 @@ module Sp.Emulator (
   mkServerContext,
 ) where
 
-import Cardano.Api (MonadIO (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Cooked (InitialDistribution)
 import Cooked.MockChain
 import Core.Api.ServerConfiguration

@@ -22,12 +22,18 @@ import Core.SP.AskCommitmentProof qualified as AskCommitmentProof
 import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.FetchAccount qualified as FetchAccount
 import Core.SP.Register qualified as Register
-import Data.Default
-import Data.Text (pack)
+import Data.Default (def)
 import Network.Wai.Handler.Warp qualified as Warp
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import WBPS.Core.FileScheme (mkFileSchemeFromRoot)
-import WBPS.Core.Keys.Ed25519 as Ed25519
+import WBPS.Core.Keys.Ed25519 (
+  PaymentAddess (PaymentAddess),
+  Wallet (Wallet, paymentAddress, publicKey),
+  generateKeyPair,
+  generateKeyTuple,
+  generateWallet,
+  userWalletPK,
+ )
 
 spec :: Spec
 spec = do
@@ -41,7 +47,7 @@ spec = do
             \port -> do
               ServiceProviderAPI {register, fetchAccount} <- getServiceProviderAPI port
 
-              userWalletPublicKey <- userWalletPK <$> Ed25519.generateKeyPair
+              userWalletPublicKey <- userWalletPK <$> generateKeyPair
 
               Register.Outputs {publicVerificationContext, ek} <-
                 register . Register.Inputs $ userWalletPublicKey
@@ -59,20 +65,20 @@ spec = do
               ServiceProviderAPI {register, demonstrateCommitment, askCommitmentProof, fetchAccount} <-
                 getServiceProviderAPI port
 
-              Wallet {publicKey = userWalletPublicKey, paymentAddress = PaymentAddess paymentAddress, ..} <-
+              Wallet {publicKey = userWalletPublicKey, paymentAddress = PaymentAddess paymentAddress} <-
                 generateWallet
 
               Register.Outputs {publicVerificationContext, ek} <- register . Register.Inputs $ userWalletPublicKey
 
-              DemonstrateCommitment.Outputs {commitment, txAbs} <-
+              _ <-
                 demonstrateCommitment
                   . DemonstrateCommitment.Inputs
                     userWalletPublicKey
                   $ PayToW (lovelaceToValue 10_000_000) (AddressW paymentAddress)
 
-              (r, bigR) <- Ed25519.generateKeyTuple
+              (_, bigR) <- generateKeyTuple
 
-              AskCommitmentProof.Outputs {challenge, proof} <-
+              _ <-
                 askCommitmentProof
                   . AskCommitmentProof.Inputs userWalletPublicKey
                   $ bigR

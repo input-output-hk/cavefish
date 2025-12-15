@@ -85,10 +85,6 @@ library
     , async
     , bytestring
     , cardano-api
-    , cardano-binary
-    , cardano-crypto-class
-    , cardano-ledger-alonzo
-    , cardano-ledger-core
     , cborg
     , containers
     , contra-tracer
@@ -99,12 +95,7 @@ library
     , memory
     , monad-time
     , mtl
-    , plutus-core
     , plutus-ledger
-    , plutus-ledger-api
-    , plutus-script-utils
-    , plutus-tx
-    , plutus-tx-plugin
     , say
     , servant-server
     , stm

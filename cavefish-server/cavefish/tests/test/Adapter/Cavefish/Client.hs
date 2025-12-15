@@ -4,7 +4,6 @@ module Adapter.Cavefish.Client (
   ServiceProviderAPI (..),
 ) where
 
-import Control.Concurrent.STM (newTVarIO)
 import Cooked (InitialDistribution)
 import Core.Api.ServerConfiguration (ServerConfiguration)
 import Core.SP.AskCommitmentProof qualified as AskCommitmentProof
@@ -13,7 +12,6 @@ import Core.SP.FetchAccount qualified as FetchAccount
 import Core.SP.FetchAccounts qualified as FetchAccounts
 import Core.SP.Register qualified as Register
 import Data.Default (def)
-import Data.Map.Strict qualified as Map
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Servant (Application, Proxy (Proxy), type (:<|>) ((:<|>)))
 import Servant.Client (BaseUrl (BaseUrl))

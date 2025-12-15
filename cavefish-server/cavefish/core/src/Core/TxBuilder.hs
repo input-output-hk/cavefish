@@ -116,8 +116,8 @@ resolveWalletFromList ::
 resolveWalletFromList wallets =
   let walletIndex =
         Map.fromList
-          [ (Ledger.unPaymentPubKeyHash (CW.paymentPubKeyHash wallet), wallet)
-          | wallet <- wallets
+          [ (Ledger.unPaymentPubKeyHash (CW.paymentPubKeyHash w), w)
+          | w <- wallets
           ]
    in \addr -> do
         pkh <- Ledger.cardanoPubKeyHash addr
