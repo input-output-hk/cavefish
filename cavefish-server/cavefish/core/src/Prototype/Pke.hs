@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Core.Pke (
+module Prototype.Pke (
   PkeSecretKey (..),
   PkePublicKey (..),
   PkeCiphertext (..),

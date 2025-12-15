@@ -17,13 +17,13 @@ import Adapter.Cavefish.Client (
   mkApplication,
  )
 import Cardano.Api (lovelaceToValue)
-import Core.Intent (AddressW (AddressW), IntentDSL (PayToW))
-import Core.SP.AskCommitmentProof qualified as AskCommitmentProof
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.FetchAccount qualified as FetchAccount
-import Core.SP.Register qualified as Register
+import Core.Endpoints.Read.FetchAccount qualified as FetchAccount
+import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Core.Endpoints.Write.Register qualified as Register
 import Data.Default (def)
+import Intent.Example.DSL (AddressW (AddressW), IntentDSL (PayToW))
 import Network.Wai.Handler.Warp qualified as Warp
+import Prototype.AskCommitmentProof qualified as AskCommitmentProof
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import WBPS.Core.FileScheme (mkFileSchemeFromRoot)
 import WBPS.Core.Keys.Ed25519 (

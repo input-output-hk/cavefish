@@ -8,13 +8,13 @@ module Core.CborSpec () where
 -- import Cooked (Wallet, wallet)
 -- import Core.Api.ServerConfiguration (ServerConfiguration)
 -- import Core.Cbor (maskTxBody, serialiseTxBody)
--- import Core.Intent (
+-- import Intent.Example.DSL (
 --   AddressW (AddressW),
 --   BuildTxResult (BuildTxResult, tx),
 --   IntentDSL (AndExpsW, PayToW, SpendFromW),
 --   toInternalIntent,
 --  )
--- import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
+-- import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
 -- import Data.Default (def)
 -- import Data.List.NonEmpty (NonEmpty ((:|)))
 -- import Data.Map.Strict qualified as Map

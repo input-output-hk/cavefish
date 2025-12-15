@@ -11,7 +11,7 @@ import Core.Api.ServerConfiguration (
   Wbps (Wbps),
   loadConfig,
  )
-import Core.CavefishLogEvent (CavefishLogEvent (LogSPConfigLoaded))
+import Core.Performance.LogEvent (CavefishLogEvent (LogSPConfigLoaded))
 import Data.Default (Default (def))
 import Network.Wai.Handler.Warp qualified as Warp
 import Paths_cavefish_server (getDataFileName)

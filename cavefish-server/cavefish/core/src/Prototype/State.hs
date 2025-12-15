@@ -1,13 +1,13 @@
-module Core.Api.State (Pending (..), PendingStore, Completed (..), CompleteStore) where
+module Prototype.State (Pending (..), PendingStore, Completed (..), CompleteStore) where
 
 import Cardano.Api (ConwayEra, Tx, TxId)
 import Cooked.MockChain.MockChainState (MockChainState)
-import Core.Pke (PkeCiphertext)
 import Data.ByteString (ByteString)
 import Data.Map (Map)
 import Data.Time (UTCTime)
 import GHC.Conc (TVar)
 import GHC.Generics (Generic)
+import Prototype.Pke (PkeCiphertext)
 import WBPS.Core.BuildCommitment (ComId)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519

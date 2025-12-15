@@ -1,78 +1,33 @@
-module Core.Api.ServerContext where
+module Core.Api.ServerContext (
+  runCavefishMonad,
+  CavefishServerM (..),
+  CavefishServices (..),
+) where
 
 import Cardano.Api (
-  ConwayEra,
-  FromJSON,
   MonadError,
   MonadIO,
-  ToJSON,
-  Tx,
  )
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
-import Core.Intent (IntentDSL, TxUnsigned)
-import Data.Default (Default (def))
-import GHC.Generics (Generic)
+import Core.Services.TxBuilding (TxBuilding)
+import Core.Services.WBPS (WBPS)
 import Servant.Server (Handler)
 import Servant.Server.Internal.ServerError (ServerError)
-import Toml.Schema (FromValue (fromValue), parseTableFromValue, reqKey)
-import WBPS.Commitment (Session)
-import WBPS.Core.Keys.Ed25519 (PaymentAddess (PaymentAddess), UserWalletPublicKey)
-import WBPS.Registration (AccountCreated)
 
-data ServerContext = ServerContext
-  { wbpsServices :: WBPSServices
-  , txBuildingService :: TxBuildingService
+data CavefishServices = CavefishServices
+  { wbpsService :: WBPS
+  , txBuildingService :: TxBuilding
   }
 
-data WBPSServices = WBPSServices
-  { register ::
-      forall m.
-      (MonadIO m, MonadError ServerError m) =>
-      UserWalletPublicKey ->
-      m AccountCreated
-  , createSession ::
-      forall m.
-      (MonadIO m, MonadError ServerError m) =>
-      UserWalletPublicKey -> Tx ConwayEra -> m Session
-  , loadAccount ::
-      forall m.
-      (MonadIO m, MonadError ServerError m) =>
-      UserWalletPublicKey -> m (Maybe AccountCreated)
-  , loadAccounts ::
-      forall m.
-      (MonadIO m, MonadError ServerError m) =>
-      m [AccountCreated]
-  }
-
-data TxBuildingService = TxBuildingService
-  { fees :: ServiceFee
-  , build :: forall m. (MonadIO m, MonadError ServerError m) => IntentDSL -> m TxUnsigned
-  , submit :: forall m. (MonadIO m, MonadError ServerError m) => Tx ConwayEra -> m ()
-  }
-
-data ServiceFee = ServiceFee
-  { amount :: Integer
-  , paymentAddress :: PaymentAddess
-  }
-  deriving (Show, Eq, Generic, ToJSON, FromJSON)
-
-instance FromValue ServiceFee where
-  fromValue =
-    parseTableFromValue
-      (ServiceFee <$> reqKey "amount" <*> fmap PaymentAddess (reqKey "paymentAddress"))
-
-instance Default ServiceFee where
-  def = ServiceFee {amount = 0, paymentAddress = PaymentAddess ""}
-
-newtype ServerM a = ServerM {unServerM :: ReaderT ServerContext Handler a}
+newtype CavefishServerM a = CavefishServerM {unServerM :: ReaderT CavefishServices Handler a}
   deriving newtype
     ( Functor
     , Applicative
     , Monad
     , MonadIO
-    , MonadReader ServerContext
+    , MonadReader CavefishServices
     , MonadError ServerError
     )
 
-runApp :: ServerContext -> ServerM a -> Handler a
-runApp serverContext (ServerM m) = runReaderT m serverContext
+runCavefishMonad :: CavefishServices -> CavefishServerM a -> Handler a
+runCavefishMonad cavefishServices (CavefishServerM m) = runReaderT m cavefishServices

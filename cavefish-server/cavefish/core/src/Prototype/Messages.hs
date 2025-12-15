@@ -7,32 +7,14 @@
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module Core.Api.Messages where
+module Prototype.Messages where
 
 import Cardano.Api qualified as Api
 import Control.Concurrent.STM (TVar, atomically, modifyTVar', readTVar)
 import Control.Monad.IO.Class (liftIO)
 import Core.Api.ServerContext (
-  ServerM,
+  CavefishServerM,
  )
-import Core.Api.State (
-  Completed (Completed, creator, submittedAt, tx),
-  Pending (
-    Pending,
-    auxNonce,
-    ciphertext,
-    creator,
-    expiry,
-    tx,
-    txAbsHash
-  ),
- )
-import Core.Pke (
-  PkeSecretKey,
-  decrypt,
-  renderError,
- )
-import Core.Proof (renderHex)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
@@ -52,6 +34,24 @@ import Data.Text.Encoding qualified as TE
 import Data.Time.Clock (UTCTime)
 import GHC.Generics (Generic)
 import Ledger.Tx.CardanoAPI (CardanoTx, pattern CardanoEmulatorEraTx)
+import Prototype.Pke (
+  PkeSecretKey,
+  decrypt,
+  renderError,
+ )
+import Prototype.Proof (renderHex)
+import Prototype.State (
+  Completed (Completed, creator, submittedAt, tx),
+  Pending (
+    Pending,
+    auxNonce,
+    ciphertext,
+    creator,
+    expiry,
+    tx,
+    txAbsHash
+  ),
+ )
 import Servant (
   ServerError,
   err400,
@@ -137,9 +137,9 @@ instance ToJSON PendingItem
 
 instance FromJSON PendingItem
 
-pendingH :: ServerM PendingResp
+pendingH :: CavefishServerM PendingResp
 pendingH = do
-  -- ServerContext {pending} <- ask
+  -- CavefishServices {pending} <- ask
   -- pendings <- liftIO . atomically $ Map.toAscList <$> readTVar pending
   pure . PendingResp $ fmap (uncurry mkPendingItem) mempty
   where
@@ -152,9 +152,9 @@ pendingH = do
         , clientId = creator
         }
 
-transactionH :: Text -> ServerM TransactionResp
+transactionH :: Text -> CavefishServerM TransactionResp
 transactionH txIdText = do
-  -- ServerContext {complete, pending} <- ask
+  -- CavefishServices {complete, pending} <- ask
   case parseTxIdHex txIdText of
     Nothing -> throwError err400 {errBody = "malformed tx id"}
     Just _txId -> do
@@ -208,12 +208,12 @@ parseTxIdHex =
     . Api.deserialiseFromRawBytesHex @Api.TxId
     . TE.encodeUtf8
 
-lookupPendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> ServerM (Maybe Pending)
+lookupPendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> CavefishServerM (Maybe Pending)
 lookupPendingEntry store txId =
   liftIO . atomically $ do
     entries <- readTVar store
     pure (Map.lookup txId entries)
 
-removePendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> ServerM ()
+removePendingEntry :: TVar (Map Api.TxId Pending) -> Api.TxId -> CavefishServerM ()
 removePendingEntry store txId =
   liftIO . atomically $ modifyTVar' store (Map.delete txId)

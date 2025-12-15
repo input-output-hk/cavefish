@@ -34,17 +34,10 @@ module Client.Mock (
 ) where
 
 import Control.Monad.Error.Class (throwError)
-import Core.Api.Messages (
-  PendingResp,
-  clientSignatureMessage,
-  pendingH,
- )
-import Core.Api.ServerContext (ServerM)
-import Core.Intent (IntentDSL)
-import Core.SP.AskSubmission qualified as AskSubmission
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.FetchAccounts qualified as FetchAccounts
-import Core.SP.Register qualified as Register
+import Core.Api.ServerContext (CavefishServerM)
+import Core.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Core.Endpoints.Write.Register qualified as Register
 import Data.Aeson (Value)
 import Data.ByteArray qualified as BA
 import Data.ByteArray.Encoding qualified as BAE
@@ -53,6 +46,13 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as TE
+import Intent.Example.DSL (IntentDSL)
+import Prototype.AskSubmission qualified as AskSubmission
+import Prototype.Messages (
+  PendingResp,
+  clientSignatureMessage,
+  pendingH,
+ )
 import Servant (Handler, ServerError, err422, errBody)
 import WBPS.Core.Keys.Ed25519 as Ed25519 (
   KeyPair,
@@ -61,7 +61,7 @@ import WBPS.Core.Keys.Ed25519 as Ed25519 (
  )
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 
-type RunServer = forall a. ServerM a -> Handler a
+type RunServer = forall a. CavefishServerM a -> Handler a
 
 data Provisionned = Provisionned
   { server :: RunServer

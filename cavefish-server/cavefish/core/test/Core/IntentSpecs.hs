@@ -4,14 +4,14 @@ module Core.IntentSpecs (spec) where
 
 import Cardano.Api (lovelaceToValue)
 import Cardano.Api qualified as Api
-import Core.Intent (
+import Data.Text qualified as Text
+import Intent.Example.DSL (
   AddressW (AddressW),
   CanonicalIntent (payTo),
   IntentDSL (PayToW),
   source,
   toCanonicalIntent,
  )
-import Data.Text qualified as Text
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (..), Wallet (..))
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519

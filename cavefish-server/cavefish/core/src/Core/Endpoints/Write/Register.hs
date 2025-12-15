@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 
-module Core.SP.Register (
+module Core.Endpoints.Write.Register (
   handle,
   Inputs (..),
   Outputs (..),
@@ -11,10 +11,10 @@ module Core.SP.Register (
 
 import Control.Monad.Reader (MonadReader (ask))
 import Core.Api.ServerContext (
-  ServerContext (ServerContext, wbpsServices),
-  ServerM,
-  WBPSServices (..),
+  CavefishServerM,
+  CavefishServices (CavefishServices, wbpsService),
  )
+import Core.Services.WBPS qualified as Service
 import Data.Aeson (FromJSON, ToJSON, Value)
 import GHC.Generics (Generic)
 import WBPS.Core.Keys.Ed25519 (
@@ -38,9 +38,9 @@ data Outputs = Outputs
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
-handle :: Inputs -> ServerM Outputs
+handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey} = do
-  ServerContext {wbpsServices = WBPSServices {register}} <- ask
+  CavefishServices {wbpsService = Service.WBPS {register}} <- ask
   AccountCreated
     { publicVerificationContext = PublicVerificationContext {asJson = publicVerificationContext}
     , encryptionKeys = ElGamal.KeyPair {..}

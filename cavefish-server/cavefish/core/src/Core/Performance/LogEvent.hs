@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | This module defines traceable events for the Cavefish application.
-module Core.CavefishLogEvent (
+module Core.Performance.LogEvent (
   -- * Traceable Events
   HttpRoundTrip (..),
   ConfigurationLoaded (..),

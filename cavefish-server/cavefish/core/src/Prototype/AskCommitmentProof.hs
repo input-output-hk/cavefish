@@ -5,10 +5,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module Core.SP.AskCommitmentProof (handle, Inputs (..), Outputs (..)) where
+module Prototype.AskCommitmentProof (handle, Inputs (..), Outputs (..)) where
 
 import Core.Api.ServerContext (
-  ServerM,
+  CavefishServerM,
  )
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
@@ -28,11 +28,11 @@ data Outputs = Outputs
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-handle :: Inputs -> ServerM Outputs
+handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey = _, bigR = _} =
   pure Outputs {proof = "proof", challenge = 0}
 
--- ServerContext {..} <- ask
+-- CavefishServices {..} <- ask
 -- now <- liftIO getCurrentTime
 -- keypair <- Ed25519.generateKeyPair -- N.H to fix
 -- (_, dk) <- liftIO PKE.generateKeyPair
