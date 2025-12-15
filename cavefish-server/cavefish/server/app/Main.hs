@@ -4,7 +4,6 @@
 module Main where
 
 import Adapter.Logging (Verbosity (Verbose), traceWith, withTracer)
-import Control.Concurrent.STM (newTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Core.Api.ServerConfiguration (
   HttpServer (HttpServer, port),

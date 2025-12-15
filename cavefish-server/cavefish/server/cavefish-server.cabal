@@ -12,6 +12,7 @@ license-file:    LICENSE
 -- copyright:
 build-type:      Simple
 extra-doc-files: CHANGELOG.md
+data-files:      config/config.toml
 
 -- extra-source-files:
 
@@ -68,20 +69,13 @@ library
 
   build-depends:
     , bytestring
-    , cardano-api
     , cavefish-core
     , clock
     , cooked-validators
-    , data-default
     , http-types
-    , mtl
-    , plutus-ledger
-    , plutus-script-utils
     , servant
     , servant-server
-    , stm
     , text
-    , transformers
     , wai
     , wai-cors
     , wbps
@@ -90,17 +84,15 @@ library
     cpp-options: -DIDE_STUB
 
 executable cavefish-server
-  import:         base, project-config
-  hs-source-dirs: app
-  data-files:     config/config.toml
-  main-is:        Main.hs
+  import:          base, project-config
+  hs-source-dirs:  app
+  main-is:         Main.hs
+  other-modules:   Paths_cavefish_server
+  autogen-modules: Paths_cavefish_server
   build-depends:
-    , bytestring
     , cavefish-core
     , cavefish-server
-    , cooked-validators
     , data-default
-    , stm
     , warp
     , wbps
 

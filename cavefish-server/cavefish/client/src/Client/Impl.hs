@@ -24,8 +24,7 @@ module Client.Impl (
 ) where
 
 import Client.Mock (
-  Provisionned (Provisionned, cardanoWalletKeyPair, server),
-  Registered (Registered, provisionned),
+  Registered,
   RunServer,
   as422,
   demonstrateCommitmentWithClient,
@@ -45,7 +44,6 @@ import Control.Monad.State (MonadState, StateT)
 import Control.Monad.Trans.State (evalStateT)
 import Core.Api.Messages (PendingResp)
 import Core.Intent (IntentDSL)
-import Core.SP.AskSubmission qualified as AskSubmission
 import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
 import Core.SP.FetchAccounts qualified as FetchAccounts
 import Crypto.PubKey.Ed25519 (SecretKey)
@@ -123,9 +121,6 @@ demonstrateCommitment ClientSession {client} intent = liftHandler (demonstrateCo
 --       >> verifyCommitProofWithClient (client session) resp commitResp
 --   pure resp
 
-getServer :: ClientSession -> RunServer
-getServer ClientSession {client = Registered {provisionned = Provisionned {..}}} = server
-
 -- askSubmission :: ClientSession -> DemonstrateCommitment.Outputs -> ClientM AskSubmission.Outputs
 -- askSubmission ClientSession {client} resp = liftHandler (askSubmissionWithClient client resp)
 
@@ -143,9 +138,6 @@ fetchAccounts :: ClientM FetchAccounts.Outputs
 fetchAccounts = do
   ClientEnv {server} <- ask
   liftHandler (ClientMock.fetchAccounts server)
-
-ensure :: Text -> Bool -> Either Text ()
-ensure msg ok = if ok then Right () else Left msg
 
 liftHandler :: Handler a -> ClientM a
 liftHandler = ClientM . lift . lift

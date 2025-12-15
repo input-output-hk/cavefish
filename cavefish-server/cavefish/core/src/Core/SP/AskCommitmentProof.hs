@@ -10,11 +10,7 @@ module Core.SP.AskCommitmentProof (handle, Inputs (..), Outputs (..)) where
 import Core.Api.ServerContext (
   ServerM,
  )
-import Data.Aeson (
-  FromJSON (parseJSON),
-  ToJSON (toJSON),
- )
-import Data.ByteString (ByteString)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
@@ -26,8 +22,6 @@ data Inputs = Inputs
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-data Commitment = Commitment {id :: ByteString, payload :: [Integer]}
-
 data Outputs = Outputs
   { challenge :: Int
   , proof :: Text
@@ -35,8 +29,8 @@ data Outputs = Outputs
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 handle :: Inputs -> ServerM Outputs
-handle Inputs {..} = do
-  return Outputs {proof = "proof", challenge = 0}
+handle Inputs {userWalletPublicKey = _, bigR = _} =
+  pure Outputs {proof = "proof", challenge = 0}
 
 -- ServerContext {..} <- ask
 -- now <- liftIO getCurrentTime
