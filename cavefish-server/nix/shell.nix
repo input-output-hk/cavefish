@@ -44,10 +44,10 @@ let
 
   tools = allTools.${ghc};
 
-  hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
-    #!/usr/bin/env bash
-    exec haskell-language-server
-  '';
+  # hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
+  #   #!/usr/bin/env bash
+  #   exec haskell-language-server
+  # '';
 
   cardanoPackages =
     if pkgs.hostPlatform.isAarch64 then
@@ -112,7 +112,7 @@ let
 
   commonPkgs = [
     tools.haskell-language-server
-    hlswrapper
+    # hlswrapper
     tools.stylish-haskell
     tools.fourmolu
     tools.cabal
@@ -173,7 +173,20 @@ let
       fi
       echo "cavefish" | figlet -f cybermedium
 
-      export PATH=$(pwd)/node_modules/.bin:$PATH
+      # Make repo-local tooling available in the shell (including babyjubjub-keygen).
+      repo_root=$PWD
+      if [ -d "$repo_root/cavefish-server" ]; then
+        repo_root="$repo_root/cavefish-server"
+      fi
+
+      if [ -d "$repo_root/wbps/inputs" ]; then
+        export PATH="$repo_root/wbps/inputs:$PATH"
+        export BABYJUBJUB_KEYGEN="$repo_root/wbps/inputs/babyjubjub-keygen"
+      fi
+
+      if [ -d "$repo_root/node_modules/.bin" ]; then
+        export PATH="$repo_root/node_modules/.bin:$PATH"
+      fi
     '';
   };
 

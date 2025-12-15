@@ -2,29 +2,31 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Sp.Server where
+module Sp.Server (
+  Cavefish,
+  Register,
+  mkServer,
+) where
 
-import Core.Api.AppContext (AppM, Env, runApp)
-import Core.Api.Messages (
-  ClientsResp,
-  CommitReq,
-  CommitResp,
-  PendingResp,
-  TransactionResp,
-  clientsH,
-  commitH,
-  pendingH,
-  transactionH,
- )
-import Core.SP.AskSubmission qualified as AskSubmission
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.Register qualified as Register
+import Cavefish (CavefishServerM, CavefishServices, runCavefishMonad)
+import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
+import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Cavefish.Endpoints.Write.Register qualified as Register
 import Data.Text (Text)
-import Network.Wai (Application)
+import Network.Wai (Application, Middleware)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
   cors,
   simpleCorsResourcePolicy,
+ )
+import Prototype.AskCommitmentProof qualified as AskCommitmentProof
+import Prototype.AskSubmission qualified as AskSubmission
+import Prototype.Messages (
+  PendingResp,
+  TransactionResp,
+  pendingH,
+  transactionH,
  )
 import Servant (
   Capture,
@@ -38,24 +40,39 @@ import Servant (
   serve,
  )
 import Servant.API ((:<|>) ((:<|>)), (:>))
-import Sp.Middleware (cavefishMiddleware)
 
-type CavefishApi =
-  "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
-    :<|> "demonstrateCommitment"
-      :> ReqBody '[JSON] DemonstrateCommitment.Inputs
-      :> Post '[JSON] DemonstrateCommitment.Outputs
+type Cavefish =
+  Register
+    :<|> DemonstrateCommitment
+    :<|> AskCommitmentProof
     :<|> "askSubmission" :> ReqBody '[JSON] AskSubmission.Inputs :> Post '[JSON] AskSubmission.Outputs
-    :<|> "commit" :> ReqBody '[JSON] CommitReq :> Post '[JSON] CommitResp
-    :<|> "clients" :> Get '[JSON] ClientsResp
+    :<|> FetchAccount
+    :<|> FetchAccounts
     :<|> "pending" :> Get '[JSON] PendingResp
     :<|> "transaction" :> Capture "id" Text :> Get '[JSON] TransactionResp
 
-cavefishApi :: Proxy CavefishApi
+type Register = "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
+
+type DemonstrateCommitment =
+  "demonstrateCommitment"
+    :> ReqBody '[JSON] DemonstrateCommitment.Inputs
+    :> Post '[JSON] DemonstrateCommitment.Outputs
+
+type AskCommitmentProof =
+  "askCommitmentProof"
+    :> ReqBody '[JSON] AskCommitmentProof.Inputs
+    :> Post '[JSON] AskCommitmentProof.Outputs
+
+type FetchAccount =
+  "fetchAccount" :> ReqBody '[JSON] FetchAccount.Inputs :> Post '[JSON] FetchAccount.Outputs
+
+type FetchAccounts = "fetchAccounts" :> Get '[JSON] FetchAccounts.Outputs
+
+cavefishApi :: Proxy Cavefish
 cavefishApi = Proxy
 
-mkApp :: Env -> Application
-mkApp env =
+mkServer :: Middleware -> CavefishServices -> Application
+mkServer cavefishMiddleware env =
   let
     policy =
       simpleCorsResourcePolicy
@@ -66,14 +83,15 @@ mkApp env =
     cors (const $ Just policy) $
       cavefishMiddleware $
         serve cavefishApi $
-          hoistServer cavefishApi (runApp env) server
+          hoistServer cavefishApi (runCavefishMonad env) server
 
-server :: ServerT CavefishApi AppM
+server :: ServerT Cavefish CavefishServerM
 server =
   Register.handle
     :<|> DemonstrateCommitment.handle
+    :<|> AskCommitmentProof.handle
     :<|> AskSubmission.handle
-    :<|> commitH
-    :<|> clientsH
+    :<|> FetchAccount.handle
+    :<|> FetchAccounts.handle
     :<|> pendingH
     :<|> transactionH

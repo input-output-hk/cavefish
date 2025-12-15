@@ -2,15 +2,18 @@
 
 module Sp.Middleware (
   cavefishMiddleware,
+  timingTraceMiddleware,
+  errStatusTraceMiddleware,
 ) where
 
-import Core.CavefishLogEvent (
+import Adapter.Logging (Verbosity (Verbose), traceWith, withTracer)
+import Cavefish.Performance.LogEvent (
   CavefishLogEvent (LogHttpRoundTrip, LogHttpServerError),
   HttpRoundTrip (HttpRoundTrip, duration, method, path),
   HttpServerError (HttpServerError, duration, errorMessage, method, path, status),
   RequestDuration (RequestDuration),
  )
-import Core.Logging (Verbosity (Verbose), traceWith, withTracer)
+import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8With)
@@ -28,7 +31,7 @@ import System.Clock qualified as Clock
 
 timingTraceMiddleware :: Middleware
 timingTraceMiddleware app req respond =
-  (withTracer $ Verbose "SP.Http.Roundtrip") $ \tr -> do
+  withTracer (Verbose "SP.Http.Roundtrip") $ \tr -> do
     begin <- getTime
     -- Call the next application in the stack
     app req $ \resp -> do
@@ -46,25 +49,23 @@ timingTraceMiddleware app req respond =
 
 errStatusTraceMiddleware :: Middleware
 errStatusTraceMiddleware app req respond = do
-  (withTracer $ Verbose "SP.Http.Erro-Status") $ \tr -> do
+  withTracer (Verbose "SP.Http.Erro-Status") $ \tr -> do
     begin <- getTime
     app req $ \resp -> do
       duration <- RequestDuration . toMilliseconds . subtract begin <$> getTime
-      if (getStatusCode resp >= 400)
-        then
-          let (method, path) = requestDetails req
-              statusCode :: Int = getStatusCode resp
-              message = decodeUtf8 . statusMessage . responseStatus $ resp
-           in traceWith tr $
-                LogHttpServerError $
-                  HttpServerError
-                    { path
-                    , method
-                    , status = statusCode
-                    , errorMessage = message
-                    , duration
-                    }
-        else pure ()
+      when (getStatusCode resp >= 400) $
+        let (method, path) = requestDetails req
+            statusCode :: Int = getStatusCode resp
+            message = decodeUtf8 . statusMessage . responseStatus $ resp
+         in traceWith tr $
+              LogHttpServerError $
+                HttpServerError
+                  { path
+                  , method
+                  , status = statusCode
+                  , errorMessage = message
+                  , duration
+                  }
       respond resp
 
 getStatusCode :: Response -> Int

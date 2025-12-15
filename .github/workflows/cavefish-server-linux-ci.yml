@@ -90,6 +90,13 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
+      - name: Build babyjubjub-keygen (native) and add to PATH
+        run: |
+          DEST="$GITHUB_WORKSPACE/cavefish-server/wbps/inputs/babyjubjub-keygen"
+          echo "Building babyjubjub-keygen for $(uname -m) -> $DEST"
+          DEST="$DEST" bash "$GITHUB_WORKSPACE/wbps/tooling/gen_babyjubjub_keys.sh"
+          echo "$GITHUB_WORKSPACE/cavefish-server/wbps/inputs" >> "$GITHUB_PATH"
+
       - name: Install circom & snarkjs
         run: |
           cargo install --git https://github.com/iden3/circom --locked --force

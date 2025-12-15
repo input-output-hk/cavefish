@@ -62,58 +62,48 @@ library
   import:          base, project-config
   hs-source-dirs:  src
   exposed-modules:
-    Core.Api.AppContext
-    Core.Api.Config
-    Core.Api.Messages
-    Core.Api.State
-    Core.CavefishLogEvent
-    Core.Cbor
-    Core.Intent
-    Core.Logging
-    Core.Observers.Observer
-    Core.PaymentProof
-    Core.Pke
-    Core.Proof
-    Core.SP.AskSubmission
-    Core.SP.DemonstrateCommitment
-    Core.SP.Register
-    Core.TxAbs
-    Core.TxBuilder
+    Adapter.Logging
+    Cavefish
+    Cavefish.Api.ServerConfiguration
+    Cavefish.Endpoints.Read.FetchAccount
+    Cavefish.Endpoints.Read.FetchAccounts
+    Cavefish.Endpoints.Write.DemonstrateCommitment
+    Cavefish.Endpoints.Write.Register
+    Cavefish.Performance.LogEvent
+    Cavefish.Services.TxBuilding
+    Cavefish.Services.WBPS
+    Intent.Example.DSL
+    Intent.Example.TxBuilder
+    Prototype.AskCommitmentProof
+    Prototype.AskSubmission
+    Prototype.Messages
+    Prototype.PaymentProof
+    Prototype.Pke
+    Prototype.Proof
+    Prototype.State
 
   build-depends:
     , aeson
     , async
     , bytestring
     , cardano-api
-    , cardano-binary
-    , cardano-crypto-class
-    , cardano-ledger-alonzo
-    , cardano-ledger-core
     , cborg
-    , clock
     , containers
     , contra-tracer
     , cooked-validators
     , crypton
     , data-default
     , exceptions
-    , lens
     , memory
     , monad-time
     , mtl
-    , plutus-core
     , plutus-ledger
-    , plutus-ledger-api
-    , plutus-script-utils
-    , plutus-tx
-    , plutus-tx-plugin
     , say
     , servant-server
     , stm
     , text
     , time
     , toml-parser
-    , uuid
     , wbps
 
   if flag(ide-stub)
@@ -124,5 +114,13 @@ test-suite test
   type:           exitcode-stdio-1.0
   main-is:        Main.hs
   hs-source-dirs: test
-  other-modules:  Spec
-  build-depends:  hspec
+  other-modules:
+    Core.IntentSpecs
+    Spec
+
+  build-depends:
+    , cardano-api
+    , cavefish-core
+    , hspec
+    , text
+    , wbps

@@ -68,7 +68,6 @@ library
   build-depends:
     , aeson
     , bytestring
-    , cardano-api
     , cavefish-core
     , containers
     , crypton

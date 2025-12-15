@@ -83,35 +83,19 @@ test-suite test
   main-is:        Main.hs
   hs-source-dirs: test
   other-modules:
+    Adapter.Cavefish.Client
     Core.CborSpec
     Spec
-    Test.Common
 
   build-depends:
-    , aeson
-    , bytestring
     , cardano-api
-    , cavefish-client
     , cavefish-core
     , cavefish-server
-    , containers
     , cooked-validators
-    , crypton
     , data-default
-    , directory
-    , filepath
     , hspec
     , http-client
-    , memory
-    , path
-    , plutus-ledger
-    , plutus-script-utils
     , servant-client
     , servant-server
-    , stm
-    , temporary
-    , text
-    , transformers
-    , uuid
     , warp
     , wbps
