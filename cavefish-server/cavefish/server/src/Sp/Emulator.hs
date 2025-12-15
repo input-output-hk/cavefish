@@ -16,9 +16,11 @@ import Cooked (InitialDistribution)
 import Cooked.MockChain
 import Core.Api.ServerConfiguration
 import Core.Api.ServerContext
-import Core.Intent
-import Core.TxBuilder (buildTx)
+import Core.Services.TxBuilding (ServiceFee, TxBuilding (..))
+import Core.Services.WBPS (WBPS (..))
 import Data.ByteString.Lazy.Char8 qualified as BL8
+import Intent.Example.DSL
+import Intent.Example.TxBuilder (buildTx)
 import Servant (
   err422,
   err500,
@@ -34,20 +36,20 @@ mkServerContext ::
   InitialDistribution ->
   FileScheme ->
   ServerConfiguration ->
-  ServerContext
+  CavefishServices
 mkServerContext
   initialDistribution
   wbpsScheme
   ServerConfiguration {..} =
-    ServerContext
+    CavefishServices
       { txBuildingService =
-          TxBuildingService
+          TxBuilding
             { fees = serviceProviderFee
             , build = buildWithCooked initialDistribution serviceProviderFee
             , submit = \_ -> pure ()
             }
-      , wbpsServices =
-          WBPSServices
+      , wbpsService =
+          WBPS
             { register = \userWalletPublicKey ->
                 liftIO (withFileSchemeIO wbpsScheme (WBPS.register userWalletPublicKey))
                   >>= \case

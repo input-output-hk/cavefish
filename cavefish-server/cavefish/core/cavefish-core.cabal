@@ -63,22 +63,24 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Adapter.Logging
-    Core.Api.Messages
     Core.Api.ServerConfiguration
     Core.Api.ServerContext
-    Core.Api.State
-    Core.CavefishLogEvent
-    Core.Intent
-    Core.PaymentProof
-    Core.Pke
-    Core.Proof
-    Core.SP.AskCommitmentProof
-    Core.SP.AskSubmission
-    Core.SP.DemonstrateCommitment
-    Core.SP.FetchAccount
-    Core.SP.FetchAccounts
-    Core.SP.Register
-    Core.TxBuilder
+    Core.Endpoints.Read.FetchAccount
+    Core.Endpoints.Read.FetchAccounts
+    Core.Endpoints.Write.DemonstrateCommitment
+    Core.Endpoints.Write.Register
+    Core.Performance.LogEvent
+    Core.Services.TxBuilding
+    Core.Services.WBPS
+    Intent.Example.DSL
+    Intent.Example.TxBuilder
+    Prototype.AskCommitmentProof
+    Prototype.AskSubmission
+    Prototype.Messages
+    Prototype.PaymentProof
+    Prototype.Pke
+    Prototype.Proof
+    Prototype.State
 
   build-depends:
     , aeson

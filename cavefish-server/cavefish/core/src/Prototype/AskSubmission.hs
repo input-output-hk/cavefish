@@ -7,13 +7,12 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 
-module Core.SP.AskSubmission (handle, Inputs (..), Outputs (..), FinaliseResult (..)) where
+module Prototype.AskSubmission (handle, Inputs (..), Outputs (..), FinaliseResult (..)) where
 
 import Control.Monad.IO.Class (liftIO)
 import Core.Api.ServerContext (
-  ServerM,
+  CavefishServerM,
  )
-import Core.Proof (parseHex, renderHex)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
@@ -26,13 +25,14 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import GHC.Generics (Generic)
+import Prototype.Proof (parseHex, renderHex)
 
-handle :: Inputs -> ServerM Outputs
+handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {} = do
   now <- liftIO getCurrentTime
   return $ Outputs "" now (Rejected "invalid client signature")
 
--- env@ServerContext {..} <- ask
+-- env@CavefishServices {..} <- ask
 -- (ek, dk) <- liftIO ElGamal.generateKeyPair -- N.H to fix
 -- case parseTxIdHex txId of
 --   Nothing ->

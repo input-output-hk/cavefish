@@ -4,7 +4,7 @@
 --     This module provides functionality to construct transactions using the Cooked
 --     library, interpreting intents that specify spending sources, payment outputs,
 --     validity intervals, and change addresses.
-module Core.TxBuilder (
+module Intent.Example.TxBuilder (
   buildTx,
 ) where
 
@@ -13,14 +13,14 @@ import Cardano.Api qualified as C
 import Control.Monad (join, unless, when)
 import Cooked
 import Cooked.MockChain.GenerateTx.Body (txSkelToTxBody)
-import Core.Api.ServerContext (ServiceFee (..))
-import Core.Intent
+import Core.Services.TxBuilding (ServiceFee (..))
 import Data.List (nub)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text qualified as Text
+import Intent.Example.DSL
 import Ledger (Interval, PubKeyHash, Slot, cardanoPubKeyHash, interval)
-import Ledger qualified as Ledger
+import Ledger qualified
 import Ledger.CardanoWallet qualified as CW
 import Ledger.Tx.CardanoAPI (fromCardanoValue)
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (unPaymentAddess))

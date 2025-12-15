@@ -1,22 +1,22 @@
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 
-module Core.SP.FetchAccount (handle, Inputs (..), Outputs (..), Account (..)) where
+module Core.Endpoints.Read.FetchAccount (handle, Inputs (..), Outputs (..), Account (..)) where
 
 import Control.Monad.Reader (MonadReader (ask))
 import Core.Api.ServerContext (
-  ServerContext (..),
-  ServerM,
-  WBPSServices (..),
+  CavefishServerM,
+  CavefishServices (..),
  )
+import Core.Services.WBPS qualified as Service
 import Data.Aeson
 import GHC.Generics (Generic)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Registration (AccountCreated (..), asJson)
 
-handle :: Inputs -> ServerM Outputs
+handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey} = do
-  ServerContext {wbpsServices = WBPSServices {loadAccount}} <- ask
+  CavefishServices {wbpsService = Service.WBPS {loadAccount}} <- ask
   loadAccount userWalletPublicKey
     >>= \case
       Nothing -> pure . Outputs $ Nothing

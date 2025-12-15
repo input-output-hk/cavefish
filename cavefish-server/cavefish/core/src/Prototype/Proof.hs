@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Core.Proof where
+module Prototype.Proof where
 
 import Cardano.Api (TxId, serialiseToRawBytes)
 import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))

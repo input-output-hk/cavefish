@@ -42,14 +42,14 @@ import Control.Monad.Reader (
  )
 import Control.Monad.State (MonadState, StateT)
 import Control.Monad.Trans.State (evalStateT)
-import Core.Api.Messages (PendingResp)
-import Core.Intent (IntentDSL)
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.FetchAccounts qualified as FetchAccounts
+import Core.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
 import Crypto.PubKey.Ed25519 (SecretKey)
 import Data.Bifunctor (first)
 import Data.Map (Map)
 import Data.Text (Text)
+import Intent.Example.DSL (IntentDSL)
+import Prototype.Messages (PendingResp)
 import Servant (Handler, ServerError)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519
 

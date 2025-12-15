@@ -6,13 +6,13 @@ module Adapter.Cavefish.Client (
 
 import Cooked (InitialDistribution)
 import Core.Api.ServerConfiguration (ServerConfiguration)
-import Core.SP.AskCommitmentProof qualified as AskCommitmentProof
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.FetchAccount qualified as FetchAccount
-import Core.SP.FetchAccounts qualified as FetchAccounts
-import Core.SP.Register qualified as Register
+import Core.Endpoints.Read.FetchAccount qualified as FetchAccount
+import Core.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Core.Endpoints.Write.Register qualified as Register
 import Data.Default (def)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Prototype.AskCommitmentProof qualified as AskCommitmentProof
 import Servant (Application, Proxy (Proxy), type (:<|>) ((:<|>)))
 import Servant.Client (BaseUrl (BaseUrl))
 import Servant.Client qualified as SC

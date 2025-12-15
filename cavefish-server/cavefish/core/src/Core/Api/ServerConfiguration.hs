@@ -5,7 +5,7 @@
 module Core.Api.ServerConfiguration where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Core.Api.ServerContext (ServiceFee)
+import Core.Services.TxBuilding (ServiceFee)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.Text.IO qualified

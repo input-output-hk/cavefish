@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 
-module Core.SP.DemonstrateCommitment (
+module Core.Endpoints.Write.DemonstrateCommitment (
   handle,
   Inputs (..),
   Outputs (..),
@@ -11,17 +11,17 @@ import Cardano.Api (ConwayEra, Tx)
 import Cardano.Api qualified as Api
 import Control.Monad.Reader (MonadReader (ask))
 import Core.Api.ServerContext (
-  ServerContext (ServerContext, txBuildingService, wbpsServices),
-  ServerM,
-  TxBuildingService (TxBuildingService, build),
-  WBPSServices (WBPSServices, createSession),
+  CavefishServerM,
+  CavefishServices (CavefishServices, txBuildingService, wbpsService),
  )
-import Core.Intent (
+import Core.Services.TxBuilding qualified as Service
+import Core.Services.WBPS qualified as Service
+import Data.Aeson (FromJSON, ToJSON)
+import GHC.Generics (Generic)
+import Intent.Example.DSL (
   IntentDSL,
   TxUnsigned (TxUnsigned),
  )
-import Data.Aeson (FromJSON, ToJSON)
-import GHC.Generics (Generic)
 import WBPS.Commitment (
   Commitment (..),
   PublicMessage (PublicMessage),
@@ -41,11 +41,11 @@ data Outputs = Outputs
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-handle :: Inputs -> ServerM Outputs
+handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey, intent} = do
-  ServerContext
-    { txBuildingService = TxBuildingService {build}
-    , wbpsServices = WBPSServices {createSession}
+  CavefishServices
+    { txBuildingService = Service.TxBuilding {build}
+    , wbpsService = Service.WBPS {createSession}
     } <-
     ask
 

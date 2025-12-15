@@ -1,9 +1,9 @@
--- | Module      : Core.Intent
+-- | Module      : Intent.Example.DSL
 --   Description : Core definitions for transaction intents.
 --     This module defines the data structures and functions related to transaction
 --     intents, including their representation, normalization, and satisfaction checks
 --     against built transactions.
-module Core.Intent (
+module Intent.Example.DSL (
   TxUnsigned (..),
   CanonicalIntent (..),
   IntentDSL (..),

@@ -2,7 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Core.PaymentProof (
+module Prototype.PaymentProof (
   ProofResult (..),
   mkPaymentProof,
   verifyPaymentProof,
@@ -10,9 +10,6 @@ module Core.PaymentProof (
 ) where
 
 import Cardano.Api (ConwayEra, Tx, TxId, getTxBody, getTxId)
-import Core.Intent (CanonicalIntent)
-import Core.Pke (PkeCiphertext, ciphertextDigest)
-import Core.Proof (Proof, mkProof)
 import Crypto.Hash (SHA256, hash)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -28,6 +25,9 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Intent.Example.DSL (CanonicalIntent)
+import Prototype.Pke (PkeCiphertext, ciphertextDigest)
+import Prototype.Proof (Proof, mkProof)
 import WBPS.Core.Cardano.Cbor (serialiseTxAbs)
 import WBPS.Core.Cardano.TxAbs (TxAbs)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519

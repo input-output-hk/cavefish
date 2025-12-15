@@ -8,25 +8,25 @@ module Sp.Server (
   mkServer,
 ) where
 
-import Core.Api.Messages (
-  PendingResp,
-  TransactionResp,
-  pendingH,
-  transactionH,
- )
-import Core.Api.ServerContext (ServerContext, ServerM, runApp)
-import Core.SP.AskCommitmentProof qualified as AskCommitmentProof
-import Core.SP.AskSubmission qualified as AskSubmission
-import Core.SP.DemonstrateCommitment qualified as DemonstrateCommitment
-import Core.SP.FetchAccount qualified as FetchAccount
-import Core.SP.FetchAccounts qualified as FetchAccounts
-import Core.SP.Register qualified as Register
+import Core.Api.ServerContext (CavefishServerM, CavefishServices, runCavefishMonad)
+import Core.Endpoints.Read.FetchAccount qualified as FetchAccount
+import Core.Endpoints.Read.FetchAccounts qualified as FetchAccounts
+import Core.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Core.Endpoints.Write.Register qualified as Register
 import Data.Text (Text)
 import Network.Wai (Application, Middleware)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
   cors,
   simpleCorsResourcePolicy,
+ )
+import Prototype.AskCommitmentProof qualified as AskCommitmentProof
+import Prototype.AskSubmission qualified as AskSubmission
+import Prototype.Messages (
+  PendingResp,
+  TransactionResp,
+  pendingH,
+  transactionH,
  )
 import Servant (
   Capture,
@@ -71,7 +71,7 @@ type FetchAccounts = "fetchAccounts" :> Get '[JSON] FetchAccounts.Outputs
 cavefishApi :: Proxy Cavefish
 cavefishApi = Proxy
 
-mkServer :: Middleware -> ServerContext -> Application
+mkServer :: Middleware -> CavefishServices -> Application
 mkServer cavefishMiddleware env =
   let
     policy =
@@ -83,9 +83,9 @@ mkServer cavefishMiddleware env =
     cors (const $ Just policy) $
       cavefishMiddleware $
         serve cavefishApi $
-          hoistServer cavefishApi (runApp env) server
+          hoistServer cavefishApi (runCavefishMonad env) server
 
-server :: ServerT Cavefish ServerM
+server :: ServerT Cavefish CavefishServerM
 server =
   Register.handle
     :<|> DemonstrateCommitment.handle
