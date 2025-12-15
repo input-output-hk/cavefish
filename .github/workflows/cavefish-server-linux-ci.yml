@@ -48,11 +48,6 @@ jobs:
           # Quick sanity: show a few tracked files if present
           git lfs ls-files || true
 
-      - name: Add babyjubjub-keygen to PATH
-        run: |
-          chmod +x "$GITHUB_WORKSPACE/cavefish-server/wbps/inputs/babyjubjub-keygen"
-          echo "$GITHUB_WORKSPACE/cavefish-server/wbps/inputs" >> "$GITHUB_PATH"
-
       - name: Free up disk space
         run: |
           sudo rm -rf \
@@ -94,6 +89,13 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-
+
+      - name: Build babyjubjub-keygen (native) and add to PATH
+        run: |
+          DEST="$GITHUB_WORKSPACE/cavefish-server/wbps/inputs/babyjubjub-keygen"
+          echo "Building babyjubjub-keygen for $(uname -m) -> $DEST"
+          DEST="$DEST" bash "$GITHUB_WORKSPACE/wbps/tooling/gen_babyjubjub_keys.sh"
+          echo "$GITHUB_WORKSPACE/cavefish-server/wbps/inputs" >> "$GITHUB_PATH"
 
       - name: Install circom & snarkjs
         run: |
