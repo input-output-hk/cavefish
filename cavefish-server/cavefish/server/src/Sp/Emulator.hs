@@ -28,6 +28,7 @@ import Servant (
   throwError,
  )
 import WBPS.Commitment qualified as WBPS
+import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Registration (RegistrationFailed (AccountAlreadyRegistered), withFileSchemeIO)
 import WBPS.Registration qualified as WBPS
@@ -80,7 +81,7 @@ buildWithCooked ::
   InitialDistribution ->
   ServiceFee ->
   IntentDSL ->
-  m TxUnsigned
+  m UnsignedTx
 buildWithCooked initialDistribution serviceProviderFee intentDSL = do
   case toCanonicalIntent intentDSL of
     Left err -> liftIO $ fail ("buildTx failed: " <> show err)

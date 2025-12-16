@@ -3,13 +3,12 @@ module Cavefish.Services.WBPS (
 ) where
 
 import Cardano.Api (
-  ConwayEra,
   MonadError,
   MonadIO,
-  Tx,
  )
 import Servant.Server.Internal.ServerError (ServerError)
 import WBPS.Commitment (Session)
+import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Registration (AccountCreated)
 
@@ -22,7 +21,7 @@ data WBPS = WBPS
   , createSession ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
-      UserWalletPublicKey -> Tx ConwayEra -> m Session
+      UserWalletPublicKey -> UnsignedTx -> m Session
   , loadAccount ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>

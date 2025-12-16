@@ -62,6 +62,7 @@ library
     WBPS.Core.BuildCommitment
     WBPS.Core.Cardano.Cbor
     WBPS.Core.Cardano.TxAbs
+    WBPS.Core.Cardano.UnsignedTx
     WBPS.Core.FileScheme
     WBPS.Core.Keys.Ed25519
     WBPS.Core.Keys.ElGamal
@@ -82,6 +83,7 @@ library
     , cardano-ledger-core    ^>=1.17.0.0
     , cborg                  ^>=0.2.10.0
     , containers             ^>=0.6.7
+    , cooked-validators      ^>=7.0.0
     , cryptonite
     , filepath
     , hex-text
