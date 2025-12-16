@@ -7,8 +7,6 @@ module Cavefish.Endpoints.Write.DemonstrateCommitment (
   Commitment (..),
 ) where
 
-import Cardano.Api (ConwayEra, Tx)
-import Cardano.Api qualified as Api
 import Cavefish (
   CavefishServerM,
   CavefishServices (CavefishServices, txBuildingService, wbpsService),
@@ -20,13 +18,13 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Intent.Example.DSL (
   IntentDSL,
-  TxUnsigned (TxUnsigned),
  )
 import WBPS.Commitment (
   Commitment (..),
   PublicMessage (PublicMessage),
   Session (SessionCreated, commitment, publicMessage),
  )
+import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (..))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 
 data Inputs = Inputs
@@ -37,7 +35,7 @@ data Inputs = Inputs
 
 data Outputs = Outputs
   { commitment :: Commitment
-  , txAbs :: Tx ConwayEra
+  , txAbs :: AbstractUnsignedTx
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -49,9 +47,7 @@ handle Inputs {userWalletPublicKey, intent} = do
     } <-
     ask
 
-  TxUnsigned tx <- build intent
-
-  let unsignedTx = Api.makeSignedTransaction [] tx
+  unsignedTx <- build intent
   SessionCreated {publicMessage = PublicMessage txAbs, commitment} <-
     createSession userWalletPublicKey unsignedTx
   return Outputs {txAbs, commitment}

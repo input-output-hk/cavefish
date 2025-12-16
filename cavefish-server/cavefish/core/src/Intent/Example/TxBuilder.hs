@@ -8,47 +8,51 @@ module Intent.Example.TxBuilder (
   buildTx,
 ) where
 
-import Cardano.Api (AddressInEra, ConwayEra)
 import Cardano.Api qualified as C
 import Cavefish.Services.TxBuilding (ServiceFee (..))
-import Control.Monad (join, unless, when)
+import Control.Monad (join, unless)
 import Cooked
 import Cooked.MockChain.GenerateTx.Body (txSkelToTxBody)
 import Data.List (nub)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (maybeToList)
 import Data.Text qualified as Text
 import Intent.Example.DSL
 import Ledger (Interval, PubKeyHash, Slot, cardanoPubKeyHash, interval)
 import Ledger qualified
-import Ledger.CardanoWallet qualified as CW
 import Ledger.Tx.CardanoAPI (fromCardanoValue)
+import Optics.Core (preview)
+import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (..))
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (unPaymentAddess))
 
 -- | Build a Cardano transaction based on the provided intent.
 --
 -- Currently minting is not supported; callers should pass empty 'mustMint'.
-buildTx :: MonadBlockChain m => CanonicalIntent -> ServiceFee -> m TxUnsigned
+buildTx :: MonadBlockChain m => CanonicalIntent -> ServiceFee -> m UnsignedTx
 buildTx CanonicalIntent {..} serviceFee = do
   unless (null mustMint) $ fail "buildTx: minting not supported yet"
-  spendWallets <- traverse resolveWallet spendFrom
-  changeWallet <- traverse resolveWallet changeTo
-  let signers = nub (spendWallets <> maybeToList changeWallet)
-  when (null signers) $
-    fail "buildTx: no signer wallets resolved from spendFrom/changeTo"
+  utxos <- join <$> mapM (runUtxoSearch . onlyValueOutputsAtSearch) spendFrom
+  let inputs = Map.fromList [(oref, emptyTxSkelRedeemer) | (oref, _) <- utxos]
+  signers <-
+    nub
+      <$> mapM
+        ( \(oref, out) ->
+            case preview txSkelOutPKHashAT out >>= walletPKHashToWallet of
+              Just w -> pure w
+              Nothing -> fail ("buildTx: no mock wallet for input " <> show oref)
+        )
+        utxos
 
-  inputs <- join <$> mapM (runUtxoSearch . onlyValueOutputsAtSearch) spendWallets
   payOuts <- traverse buildPayTo payTo
   feeOuts <- buildServiceFee serviceFee
   validityRange <- buildValidity maxInterval
 
   let opts =
         (txSkelOpts txSkelTemplate)
-          { txSkelOptBalancingPolicy = maybe BalanceWithFirstSigner BalanceWith changeWallet
+          { txSkelOptBalancingPolicy = DoNotBalance -- maybe BalanceWithFirstSigner BalanceWith changeTo
           }
       skelUnbalanced =
         txSkelTemplate
-          { txSkelIns = Map.fromList ((,emptyTxSkelRedeemer) . fst <$> inputs)
+          { txSkelIns = inputs
           , txSkelOuts = payOuts <> feeOuts
           , txSkelMints = mempty -- N.H todo
           , txSkelSigners = signers
@@ -66,14 +70,7 @@ buildTx CanonicalIntent {..} serviceFee = do
               <> " exceeds maxFee "
               <> show lim
     _ -> pure ()
-  TxUnsigned <$> txSkelToTxBody skel fee collateral
-
-resolveWallet :: MonadFail m => AdressConwayEra -> m Wallet
-resolveWallet (AdressConwayEra addr) =
-  maybe
-    (fail $ "buildTx: address not in known wallets: " <> Text.unpack (C.serialiseAddress addr))
-    pure
-    (defaultWalletResolver addr)
+  UnsignedTx <$> txSkelToTxBody skel fee collateral
 
 toPubKeyHash :: MonadFail m => AdressConwayEra -> m PubKeyHash
 toPubKeyHash (AdressConwayEra addr) =
@@ -94,9 +91,9 @@ buildServiceFee ServiceFee {..}
   | otherwise = do
       addr <-
         maybe
-          (fail $ "buildTx: invalid service fee address: " <> Text.unpack (unPaymentAddess paymentAddress))
+          (fail $ "buildTx: invalid service fee address: " <> Text.unpack (unPaymentAddess paidTo))
           (pure . AdressConwayEra)
-          (C.deserialiseAddress (C.AsAddressInEra C.AsConwayEra) (unPaymentAddess paymentAddress))
+          (C.deserialiseAddress (C.AsAddressInEra C.AsConwayEra) (unPaymentAddess paidTo))
       pkh <- toPubKeyHash addr
       let value =
             fromCardanoValue
@@ -108,20 +105,3 @@ buildValidity Nothing = pure Ledger.always
 buildValidity (Just slop) = do
   now <- currentSlot
   pure $ interval now (now + slop)
-
-resolveWalletFromList ::
-  [Wallet] ->
-  AddressInEra ConwayEra ->
-  Maybe Wallet
-resolveWalletFromList wallets =
-  let walletIndex =
-        Map.fromList
-          [ (Ledger.unPaymentPubKeyHash (CW.paymentPubKeyHash w), w)
-          | w <- wallets
-          ]
-   in \addr -> do
-        pkh <- Ledger.cardanoPubKeyHash addr
-        Map.lookup pkh walletIndex
-
-defaultWalletResolver :: AddressInEra ConwayEra -> Maybe Wallet
-defaultWalletResolver = resolveWalletFromList knownWallets

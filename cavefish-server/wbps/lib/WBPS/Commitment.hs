@@ -9,10 +9,7 @@ module WBPS.Commitment (
   Commitment (..),
 ) where
 
-import Cardano.Api (ConwayEra, Tx)
 import Cardano.Api qualified as Api
-import Cardano.Api.Shelley (Tx (..))
-import Cardano.Ledger.Alonzo.Tx (AlonzoTx (..))
 import Cardano.Ledger.Api qualified as Ledger
 import Control.Monad.Except
 import Control.Monad.IO.Class
@@ -23,9 +20,8 @@ import Data.Bits (testBit)
 import Data.ByteString hiding (concatMap, take)
 import Data.ByteString qualified as BS
 import GHC.Generics
-import Ledger (CardanoTx (CardanoEmulatorEraTx))
 import WBPS.Core.BuildCommitment
-import WBPS.Core.Cardano.Cbor (serialiseTx)
+import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (..), UnsignedTx (..))
 import WBPS.Core.FileScheme
 import WBPS.Core.Keys.Ed25519
 import WBPS.Core.Keys.ElGamal
@@ -33,10 +29,10 @@ import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.Circom (BuildCommitmentParams (..), defCommitmentParams)
 import WBPS.Registration
 
-newtype Message = Message (Tx ConwayEra)
+newtype Message = Message UnsignedTx
   deriving newtype (Eq, Show, FromJSON, ToJSON)
 
-newtype PublicMessage = PublicMessage (Tx ConwayEra)
+newtype PublicMessage = PublicMessage AbstractUnsignedTx
   deriving newtype (Eq, Show, FromJSON, ToJSON)
 
 data Session
@@ -52,31 +48,31 @@ data Session
 
 createSession ::
   (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
-  UserWalletPublicKey -> Tx ConwayEra -> m Session
-createSession userWalletPublicKey tx =
+  UserWalletPublicKey -> UnsignedTx -> m Session
+createSession userWalletPublicKey unsignedTx =
   loadAccount userWalletPublicKey
     >>= \case
       Nothing -> throwError [AccountNotFound userWalletPublicKey]
       Just AccountCreated {encryptionKeys = ElGamal.KeyPair {ek}, ..} -> do
         rho <- ElGamal.generateElGamalExponent
         commitmentScalars@CommitmentScalars {ekPowRho} <- computeCommitmentScalars ek rho
-        message <- randomizeTx tx
+        message <- randomizeTx unsignedTx
         commitment <- builCommitment ekPowRho message
         return
           SessionCreated
-            { publicMessage = PublicMessage . txToTxAbs $ tx
+            { publicMessage = PublicMessage . txToTxAbs $ unsignedTx
             , ..
             }
 
-txToTxAbs :: Api.Tx Api.ConwayEra -> Tx Api.ConwayEra
-txToTxAbs (ShelleyTx era tx@AlonzoTx {body}) =
-  let strippedBody = setInputs mempty body
-   in ShelleyTx era tx {body = strippedBody}
+txToTxAbs :: UnsignedTx -> AbstractUnsignedTx
+txToTxAbs (UnsignedTx (Api.ShelleyTxBody era body scripts scriptData metadata validity)) =
+  AbstractUnsignedTx . UnsignedTx $
+    Api.ShelleyTxBody era (setInputs mempty body) scripts scriptData metadata validity
   where
     setInputs ins = runIdentity . Ledger.inputsTxBodyL (\_ -> Identity ins)
 
 -- should add aux in metadata
-randomizeTx :: MonadIO m => Tx ConwayEra -> m Message
+randomizeTx :: MonadIO m => UnsignedTx -> m Message
 randomizeTx = pure . Message
 
 builCommitment ::
@@ -86,7 +82,7 @@ builCommitment ::
   m Commitment
 builCommitment ekPowRho (Message message) = do
   let commitmentParams@(BuildCommitmentParams msgSize _ _) = defCommitmentParams
-      messageBits = take msgSize (payloadBits (serialiseTx message) ++ repeat 0)
+      messageBits = take msgSize (payloadBits (Api.serialiseToCBOR (txUnsigned message)) ++ repeat 0)
 
   BuildCommitmentOutput {maskedChunks} <-
     toWBPSFailure =<< runBuildCommitment commitmentParams BuildCommitmentInput {ekPowRho, messageBits}

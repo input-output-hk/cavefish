@@ -9,8 +9,8 @@ import Intent.Example.DSL (
   AddressW (AddressW),
   CanonicalIntent (payTo),
   IntentDSL (PayToW),
-  source,
   toCanonicalIntent,
+  unAdressConwayEra,
  )
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (..), Wallet (..))
@@ -28,5 +28,5 @@ spec =
           case payTo canonicalIntent of
             [(outValue, outAddr)] -> do
               outValue `shouldBe` lovelaceToValue 10_000_000
-              Api.serialiseAddress (source outAddr) `shouldBe` expectedPaymentVerificationKey
+              Api.serialiseAddress (unAdressConwayEra outAddr) `shouldBe` expectedPaymentVerificationKey
             other -> expectationFailure ("unexpected payTo entries: " <> show other)

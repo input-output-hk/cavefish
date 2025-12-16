@@ -22,6 +22,7 @@ import Data.Aeson.Types qualified as AesonTypes
 import Data.ByteArray qualified as BA
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Coerce (coerce)
 import Data.List (sort, unfoldr)
 import Data.Maybe (mapMaybe)
@@ -32,7 +33,7 @@ import Data.Word (Word8)
 import GHC.Generics
 import Path
 import Path.IO
-import Shh (Stream (StdOut), (&!>))
+import Shh (Stream (..), (&!>), (&>))
 import System.FilePath qualified as FP
 import Text.Read (readMaybe)
 import WBPS.Adapter.CardanoCryptoClass.Crypto (FromByteString (fromByteString), Hexadecimal)
@@ -115,16 +116,18 @@ runBuildCommitment params BuildCommitmentInput {ekPowRho = AffinePoint {x, y}, .
           , "in_message" Aeson..= messageBits
           ]
   let accountsDir = accounts scheme
+
   liftIO $ do
     ensureDir accountsDir
     withTempDir accountsDir "build-commitment" $ \accountDir -> do
       let inputPath = accountDir </> witnessInput scheme
           witnessPath = accountDir </> witnessOutput scheme
           statementPath = accountDir </> statementOutput scheme
+          shellLogsFilepath = BL8.pack $ Path.toFilePath (accountDir </> shellLogs scheme)
       ensureDir accountDir
       BL.writeFile (toFilePath inputPath) (Aeson.encode inputJson)
       let witnessProc = runReader (getGenerateBuildCommitmentWitnessProcess accountDir) scheme
-      witnessProc &!> StdOut
+      witnessProc &!> StdOut &> Append shellLogsFilepath
       exportStatementAsJSON (toFilePath witnessPath) (toFilePath statementPath)
         &!> StdOut
       parseOutputs scheme statementPath params
