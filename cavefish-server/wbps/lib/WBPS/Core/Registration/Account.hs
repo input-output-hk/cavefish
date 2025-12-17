@@ -1,7 +1,11 @@
+-- | Module defining the AccountId type and AccountCreated event for user account registration.
 module WBPS.Core.Registration.Account (
   AccountId (..),
+  -- | Unique identifier for a user account
   AccountCreated (..),
+  -- | Event representing the creation of a new account
   accountId,
+  -- | Function to derive AccountId from UserWalletPublicKey
 ) where
 
 import Path (Abs, File, Path)
