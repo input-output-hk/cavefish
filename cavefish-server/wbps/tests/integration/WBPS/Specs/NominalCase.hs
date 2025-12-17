@@ -12,8 +12,10 @@ import WBPS.Core.FileScheme (
   defaultFileScheme,
  )
 import WBPS.Core.Keys.Ed25519 (KeyPair, userWalletPK)
-import WBPS.Registration (loadAccounts, register, withFileSchemeIO)
+import WBPS.Core.Registration.FetchAccounts (loadAccounts)
+import WBPS.Core.Registration.Register (register)
 import WBPS.Specs.Adapter.GenCardanoKeys (genEd25519KeyPairs)
+import WBPS.WBPS (runWBPS)
 
 data FixtureNominalCase = FixtureNominalCase
   { userWalletKeyPairs :: NL.NonEmpty KeyPair
@@ -42,7 +44,7 @@ registerSpecs rootFolders =
     $ \FixtureNominalCase {fileScheme = scheme, ..} ->
       ioProperty $
         do
-          withFileSchemeIO
+          runWBPS
             scheme
             ( do
                 accountsCreated <- NL.toList <$> mapM (register . userWalletPK) userWalletKeyPairs

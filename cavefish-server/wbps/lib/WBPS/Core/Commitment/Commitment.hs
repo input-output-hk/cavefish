@@ -1,7 +1,7 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE RankNTypes #-}
 
-module WBPS.Commitment (
+module WBPS.Core.Commitment.Commitment (
   createSession,
   Session (..),
   Message (..),
@@ -20,7 +20,8 @@ import Data.Bits (testBit)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import GHC.Generics (Generic)
-import WBPS.Core.BuildCommitment (
+import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (AbstractUnsignedTx), UnsignedTx (UnsignedTx), txUnsigned)
+import WBPS.Core.Commitment.BuildCommitment (
   BuildCommitmentInput (BuildCommitmentInput, ekPowRho, messageBits),
   BuildCommitmentOutput (BuildCommitmentOutput, maskedChunks),
   Commitment (Commitment, id, payload),
@@ -28,23 +29,24 @@ import WBPS.Core.BuildCommitment (
   mkCommitment,
   runBuildCommitment,
  )
-import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (AbstractUnsignedTx), UnsignedTx (UnsignedTx), txUnsigned)
+import WBPS.Core.Commitment.Scalars as CommitmentScalars (
+  CommitmentScalars (CommitmentScalars, ekPowRho),
+  compute,
+ )
+import WBPS.Core.Failure (
+  RegistrationFailed (AccountNotFound),
+  toWBPSFailure,
+ )
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal (
   AffinePoint,
-  EncryptionKey,
   Rho,
-  encryptionKeyPowRho,
-  generatorPowRho,
  )
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.Circom (BuildCommitmentParams (BuildCommitmentParams), defCommitmentParams)
-import WBPS.Registration (
-  AccountCreated (AccountCreated, encryptionKeys),
-  RegistrationFailed (AccountNotFound, BuildCommitmentFailed),
-  loadAccount,
- )
+import WBPS.Core.Registration.Account (AccountCreated (..))
+import WBPS.Core.Registration.FetchAccounts (loadAccount)
 
 newtype Message = Message UnsignedTx
   deriving newtype (Eq, Show, FromJSON, ToJSON)
@@ -72,7 +74,7 @@ createSession userWalletPublicKey unsignedTx =
       Nothing -> throwError [AccountNotFound userWalletPublicKey]
       Just AccountCreated {encryptionKeys = ElGamal.KeyPair {ek}} -> do
         rho <- ElGamal.generateElGamalExponent
-        commitmentScalars@CommitmentScalars {ekPowRho} <- computeCommitmentScalars ek rho
+        commitmentScalars@CommitmentScalars {ekPowRho} <- CommitmentScalars.compute ek rho
         message <- randomizeTx unsignedTx
         commitment <- builCommitment ekPowRho message
         return
@@ -104,23 +106,6 @@ builCommitment ekPowRho (Message message) = do
   BuildCommitmentOutput {maskedChunks} <-
     toWBPSFailure =<< runBuildCommitment commitmentParams BuildCommitmentInput {ekPowRho, messageBits}
   return $ mkCommitment (CommitmentPayload maskedChunks)
-
-computeCommitmentScalars ::
-  MonadError [RegistrationFailed] m => EncryptionKey -> Rho -> m CommitmentScalars
-computeCommitmentScalars ek rho =
-  CommitmentScalars
-    <$> toWBPSFailure (encryptionKeyPowRho ek rho)
-    <*> toWBPSFailure (generatorPowRho rho)
-
-toWBPSFailure :: MonadError [RegistrationFailed] m => Either String a -> m a
-toWBPSFailure = either (throwError . pure . BuildCommitmentFailed) pure
-
-data CommitmentScalars
-  = CommitmentScalars
-  { ekPowRho :: AffinePoint
-  , gPowRho :: AffinePoint
-  }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- Convert a bytestring to a little-endian bit vector.
 payloadBits :: ByteString -> [Int]

@@ -19,8 +19,10 @@ import GHC.Generics (Generic)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal (EncryptionKey)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal (KeyPair (..))
-import WBPS.Registration (
+import WBPS.Core.Registration.Account (
   AccountCreated (AccountCreated, encryptionKeys, publicVerificationContext),
+ )
+import WBPS.Core.Registration.PublicVerificationContext (
   PublicVerificationContext (PublicVerificationContext, asJson),
  )
 

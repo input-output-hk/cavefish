@@ -27,11 +27,13 @@ import Servant (
   errBody,
   throwError,
  )
-import WBPS.Commitment qualified as Commitment (createSession)
 import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
+import WBPS.Core.Commitment.Commitment qualified as Commitment
+import WBPS.Core.Failure (RegistrationFailed (AccountAlreadyRegistered))
 import WBPS.Core.FileScheme (FileScheme)
-import WBPS.Registration (RegistrationFailed (AccountAlreadyRegistered), withFileSchemeIO)
-import WBPS.Registration qualified as Registration (loadAccount, loadAccounts, register)
+import WBPS.Core.Registration.FetchAccounts qualified as Registration
+import WBPS.Core.Registration.Register qualified as Registration
+import WBPS.WBPS (runWBPS)
 
 mkServerContext ::
   InitialDistribution ->
@@ -52,23 +54,23 @@ mkServerContext
       , wbpsService =
           WBPS
             { register = \userWalletPublicKey ->
-                liftIO (withFileSchemeIO wbpsScheme (Registration.register userWalletPublicKey))
+                liftIO (runWBPS wbpsScheme (Registration.register userWalletPublicKey))
                   >>= \case
                     Left [AccountAlreadyRegistered _] -> throwError err422 {errBody = BL8.pack "Account Already Registered"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
             , createSession = \userWalletPublicKey tx ->
-                liftIO (withFileSchemeIO wbpsScheme (Commitment.createSession userWalletPublicKey tx))
+                liftIO (runWBPS wbpsScheme (Commitment.createSession userWalletPublicKey tx))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     (Right x) -> pure x
             , loadAccount = \userWalletPublicKey ->
-                liftIO (withFileSchemeIO wbpsScheme (Registration.loadAccount userWalletPublicKey))
+                liftIO (runWBPS wbpsScheme (Registration.loadAccount userWalletPublicKey))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
             , loadAccounts =
-                liftIO (withFileSchemeIO wbpsScheme Registration.loadAccounts)
+                liftIO (runWBPS wbpsScheme Registration.loadAccounts)
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x

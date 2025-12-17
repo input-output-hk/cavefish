@@ -6,9 +6,6 @@ module WBPS.Core.FileScheme (
   mkFileSchemeFromRoot,
   FileScheme (..),
   RootFolders (..),
-  Accounts,
-  Account,
-  AccountName,
 ) where
 
 import Control.Monad.RWS (MonadReader (ask))
@@ -25,12 +22,7 @@ import Path (
   (</>),
  )
 import Path.IO (resolveDir')
-
-type Accounts = Path Abs Dir
-
-type Account = Path Abs Dir
-
-type AccountName = Path Rel Dir
+import WBPS.Core.Registration.FileScheme.Directories qualified as Directory
 
 data RootFolders = RootFolders {input :: Path Abs Dir, output :: Path Abs Dir}
 
@@ -66,14 +58,14 @@ defaultFileScheme RootFolders {..} =
     , encryptionKeys = [relfile|encryption_keys.json|]
     }
 
-getShellLogsFilepath :: MonadReader FileScheme m => Account -> m BL8.ByteString
+getShellLogsFilepath :: MonadReader FileScheme m => Directory.Account -> m BL8.ByteString
 getShellLogsFilepath account =
   ask
     >>= \FileScheme {..} ->
       pure . BL8.pack $ Path.toFilePath (account </> shellLogs)
 
 data FileScheme = FileScheme
-  { accounts :: Accounts
+  { accounts :: Directory.Accounts
   , relationCircom :: Path Abs File
   , relationR1CS :: Path Abs File
   , buildCommitmentR1CS :: Path Abs File
