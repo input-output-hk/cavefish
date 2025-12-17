@@ -1,7 +1,16 @@
+{-# LANGUAGE RecordWildCards #-}
+
+-- | Module for fetching and loading user accounts from the file system.
+-- This module provides functions to load existing accounts, load a specific account,
+-- and retrieve all recorded user wallet public keys. It handles errors related to
+-- missing encryption keys and uses a file scheme for directory structure.
 module WBPS.Core.Registration.FetchAccounts (
   loadAccount,
+  -- | Load a specific account
   loadExistingAccount,
+  -- | Load an existing accountj
   loadAccounts,
+  -- | Load all existing accounts
 ) where
 
 import Control.Monad.Error.Class (MonadError)
@@ -12,12 +21,12 @@ import Path (Dir, Path, toFilePath, (</>))
 import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (RegistrationFailed (..))
+import WBPS.Core.Failure (RegistrationFailed (EncryptionKeysNotFound))
 import WBPS.Core.FileScheme
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
 import WBPS.Core.Registration.Account
 import WBPS.Core.Registration.FileScheme
-import WBPS.Core.Registration.PublicVerificationContext (PublicVerificationContext (..))
+import WBPS.Core.Registration.PublicVerificationContext (PublicVerificationContext (PublicVerificationContext))
 
 getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [UserWalletPublicKey]
 getRecordedUserWalletPublicKeys p = do
