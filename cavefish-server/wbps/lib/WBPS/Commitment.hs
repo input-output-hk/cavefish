@@ -11,23 +11,40 @@ module WBPS.Commitment (
 
 import Cardano.Api qualified as Api
 import Cardano.Ledger.Api qualified as Ledger
-import Control.Monad.Except
-import Control.Monad.IO.Class
-import Control.Monad.Identity
+import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Identity (Identity (Identity), runIdentity)
 import Control.Monad.Reader (MonadReader)
-import Data.Aeson
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Bits (testBit)
-import Data.ByteString hiding (concatMap, take)
+import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import GHC.Generics
-import WBPS.Core.BuildCommitment
-import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (..), UnsignedTx (..))
-import WBPS.Core.FileScheme
-import WBPS.Core.Keys.Ed25519
-import WBPS.Core.Keys.ElGamal
+import GHC.Generics (Generic)
+import WBPS.Core.BuildCommitment (
+  BuildCommitmentInput (BuildCommitmentInput, ekPowRho, messageBits),
+  BuildCommitmentOutput (BuildCommitmentOutput, maskedChunks),
+  Commitment (Commitment, id, payload),
+  CommitmentPayload (CommitmentPayload),
+  mkCommitment,
+  runBuildCommitment,
+ )
+import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx (AbstractUnsignedTx), UnsignedTx (UnsignedTx), txUnsigned)
+import WBPS.Core.FileScheme (FileScheme)
+import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Keys.ElGamal (
+  AffinePoint,
+  EncryptionKey,
+  Rho,
+  encryptionKeyPowRho,
+  generatorPowRho,
+ )
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Primitives.Circom (BuildCommitmentParams (..), defCommitmentParams)
-import WBPS.Registration
+import WBPS.Core.Primitives.Circom (BuildCommitmentParams (BuildCommitmentParams), defCommitmentParams)
+import WBPS.Registration (
+  AccountCreated (AccountCreated, encryptionKeys),
+  RegistrationFailed (AccountNotFound, BuildCommitmentFailed),
+  loadAccount,
+ )
 
 newtype Message = Message UnsignedTx
   deriving newtype (Eq, Show, FromJSON, ToJSON)
@@ -53,7 +70,7 @@ createSession userWalletPublicKey unsignedTx =
   loadAccount userWalletPublicKey
     >>= \case
       Nothing -> throwError [AccountNotFound userWalletPublicKey]
-      Just AccountCreated {encryptionKeys = ElGamal.KeyPair {ek}, ..} -> do
+      Just AccountCreated {encryptionKeys = ElGamal.KeyPair {ek}} -> do
         rho <- ElGamal.generateElGamalExponent
         commitmentScalars@CommitmentScalars {ekPowRho} <- computeCommitmentScalars ek rho
         message <- randomizeTx unsignedTx

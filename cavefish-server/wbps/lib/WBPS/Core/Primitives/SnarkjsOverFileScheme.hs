@@ -6,9 +6,21 @@ module WBPS.Core.Primitives.SnarkjsOverFileScheme (
 ) where
 
 import Control.Monad.RWS (MonadReader, asks)
-import Path
+import Path (toFilePath, (</>))
 import Shh (Proc)
-import WBPS.Core.FileScheme
+import WBPS.Core.FileScheme (
+  Account,
+  FileScheme (
+    FileScheme,
+    buildCommitmentWASM,
+    powerOfTauPrepared,
+    provingKey,
+    relationR1CS,
+    verificationContext,
+    witnessInput,
+    witnessOutput
+  ),
+ )
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
 
 getGenerateProvingKeyProcess :: MonadReader FileScheme m => Account -> m (Proc ())
