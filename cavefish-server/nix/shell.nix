@@ -44,10 +44,13 @@ let
 
   tools = allTools.${ghc};
 
-  # hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
-  #   #!/usr/bin/env bash
-  #   exec haskell-language-server
-  # '';
+  ## Wrapper script to call haskell-language-server
+  ## This is needed because HLS expects to be called as `haskell-language-server-wrapper`
+  ## by some tools including emacs haskell-lsp-mode
+  hlswrapper = pkgs.writeShellScriptBin "haskell-language-server-wrapper" ''
+    #!/usr/bin/env bash
+    exec haskell-language-server "$@"
+  '';
 
   cardanoPackages =
     if pkgs.hostPlatform.isAarch64 then
@@ -112,7 +115,7 @@ let
 
   commonPkgs = [
     tools.haskell-language-server
-    # hlswrapper
+    hlswrapper
     tools.stylish-haskell
     tools.fourmolu
     tools.cabal
@@ -187,6 +190,9 @@ let
       if [ -d "$repo_root/node_modules/.bin" ]; then
         export PATH="$repo_root/node_modules/.bin:$PATH"
       fi
+
+      # Use a local cabal store and config
+      export CABAL_DIR=$PWD/.cabal
     '';
   };
 
