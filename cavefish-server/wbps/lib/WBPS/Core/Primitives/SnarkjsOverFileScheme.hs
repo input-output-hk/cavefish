@@ -9,7 +9,6 @@ import Control.Monad.RWS (MonadReader, asks)
 import Path (toFilePath, (</>))
 import Shh (Proc)
 import WBPS.Core.FileScheme (
-  Account,
   FileScheme (
     FileScheme,
     buildCommitmentWASM,
@@ -22,17 +21,18 @@ import WBPS.Core.FileScheme (
   ),
  )
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
+import WBPS.Core.Registration.FileScheme.Directories qualified as Directory
 
-getGenerateProvingKeyProcess :: MonadReader FileScheme m => Account -> m (Proc ())
+getGenerateProvingKeyProcess :: MonadReader FileScheme m => Directory.Account -> m (Proc ())
 getGenerateProvingKeyProcess account = asks (Snarkjs.generateProvingKey . toProvingKeyScheme account)
 
-getGenerateVerificationKeyProcess :: MonadReader FileScheme m => Account -> m (Proc ())
+getGenerateVerificationKeyProcess :: MonadReader FileScheme m => Directory.Account -> m (Proc ())
 getGenerateVerificationKeyProcess account = asks (Snarkjs.generateVerificationKey . toVerificationKeyScheme account)
 
-getGenerateBuildCommitmentWitnessProcess :: MonadReader FileScheme m => Account -> m (Proc ())
+getGenerateBuildCommitmentWitnessProcess :: MonadReader FileScheme m => Directory.Account -> m (Proc ())
 getGenerateBuildCommitmentWitnessProcess account = asks (Snarkjs.generateWitness . toBuildCommitmentWitnessScheme account)
 
-toProvingKeyScheme :: Account -> FileScheme -> Snarkjs.ProvingKeyScheme
+toProvingKeyScheme :: Directory.Account -> FileScheme -> Snarkjs.ProvingKeyScheme
 toProvingKeyScheme account FileScheme {..} =
   Snarkjs.ProvingKeyScheme
     { powerOfTauPrepared = Path.toFilePath powerOfTauPrepared
@@ -40,14 +40,14 @@ toProvingKeyScheme account FileScheme {..} =
     , provingKeyOutput = Path.toFilePath (account </> provingKey)
     }
 
-toVerificationKeyScheme :: Account -> FileScheme -> Snarkjs.VerificationKeyScheme
+toVerificationKeyScheme :: Directory.Account -> FileScheme -> Snarkjs.VerificationKeyScheme
 toVerificationKeyScheme account FileScheme {..} =
   Snarkjs.VerificationKeyScheme
     { provingKey = Path.toFilePath (account </> provingKey)
     , verificationKeyOutput = Path.toFilePath (account </> verificationContext)
     }
 
-toBuildCommitmentWitnessScheme :: Account -> FileScheme -> Snarkjs.WitnessScheme
+toBuildCommitmentWitnessScheme :: Directory.Account -> FileScheme -> Snarkjs.WitnessScheme
 toBuildCommitmentWitnessScheme account FileScheme {..} =
   Snarkjs.WitnessScheme
     { wasm = Path.toFilePath buildCommitmentWASM

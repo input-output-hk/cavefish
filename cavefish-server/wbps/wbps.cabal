@@ -64,18 +64,26 @@ library
     WBPS.Adapter.Data
     WBPS.Adapter.Monad.Control
     WBPS.Adapter.Path
-    WBPS.Commitment
-    WBPS.Core.BuildCommitment
     WBPS.Core.Cardano.Cbor
     WBPS.Core.Cardano.TxAbs
     WBPS.Core.Cardano.UnsignedTx
+    WBPS.Core.Commitment.BuildCommitment
+    WBPS.Core.Commitment.Commitment
+    WBPS.Core.Commitment.Scalars
+    WBPS.Core.Failure
     WBPS.Core.FileScheme
     WBPS.Core.Keys.Ed25519
     WBPS.Core.Keys.ElGamal
     WBPS.Core.Primitives.Circom
     WBPS.Core.Primitives.Snarkjs
     WBPS.Core.Primitives.SnarkjsOverFileScheme
-    WBPS.Registration
+    WBPS.Core.Registration.Account
+    WBPS.Core.Registration.FetchAccounts
+    WBPS.Core.Registration.FileScheme
+    WBPS.Core.Registration.FileScheme.Directories
+    WBPS.Core.Registration.PublicVerificationContext
+    WBPS.Core.Registration.Register
+    WBPS.WBPS
 
   build-depends:
     , aeson

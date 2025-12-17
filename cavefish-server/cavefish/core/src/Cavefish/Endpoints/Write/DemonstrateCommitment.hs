@@ -2,7 +2,6 @@ module Cavefish.Endpoints.Write.DemonstrateCommitment (
   handle,
   Inputs (..),
   Outputs (..),
-  Commitment (..),
 ) where
 
 import Cavefish (
@@ -15,12 +14,12 @@ import Control.Monad.Reader (MonadReader (ask))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Intent.Example.DSL (IntentDSL)
-import WBPS.Commitment (
-  Commitment (Commitment),
+import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx)
+import WBPS.Core.Commitment.BuildCommitment (Commitment)
+import WBPS.Core.Commitment.Commitment (
   PublicMessage (PublicMessage),
   Session (SessionCreated, commitment, publicMessage),
  )
-import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 
 data Inputs = Inputs

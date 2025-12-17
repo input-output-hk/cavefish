@@ -10,7 +10,7 @@ import Data.Aeson (FromJSON, ToJSON, Value)
 import GHC.Generics (Generic)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal (EncryptionKey, KeyPair (KeyPair, ek))
-import WBPS.Registration (
+import WBPS.Core.Registration.Account (
   AccountCreated (
     AccountCreated,
     encryptionKeys,
@@ -18,8 +18,8 @@ import WBPS.Registration (
     publicVerificationContext,
     userWalletPublicKey
   ),
-  PublicVerificationContext (asJson),
  )
+import WBPS.Core.Registration.PublicVerificationContext (PublicVerificationContext (asJson))
 
 handle :: CavefishServerM Outputs
 handle = do
