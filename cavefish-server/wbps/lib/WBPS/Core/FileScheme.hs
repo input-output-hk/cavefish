@@ -13,8 +13,18 @@ module WBPS.Core.FileScheme (
 
 import Control.Monad.RWS (MonadReader (ask))
 import Data.ByteString.Lazy.Char8 qualified as BL8
-import Path
-import Path.IO
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  reldir,
+  relfile,
+  toFilePath,
+  (</>),
+ )
+import Path.IO (resolveDir')
 
 type Accounts = Path Abs Dir
 

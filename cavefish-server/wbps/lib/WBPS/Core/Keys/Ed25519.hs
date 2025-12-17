@@ -19,18 +19,12 @@ import Cardano.Api qualified as Api
 import Cardano.Api qualified as C
 import Cardano.Crypto.DSIGN.Ed25519 (Ed25519DSIGN)
 import Control.Monad.IO.Class (MonadIO)
-import Cooked (IsTxSkelOutAllowedOwner)
+-- import Cooked (IsTxSkelOutAllowedOwner)
 import Cooked.Skeleton.Output (IsTxSkelOutAllowedOwner (toPKHOrValidator))
-import Crypto.Random (MonadRandom)
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
-import Data.Aeson.Types (Parser)
-import Data.ByteString (ByteString)
-import Data.ByteString.Base16 qualified as B16
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.String (IsString)
 import Data.Text (Text)
-import Data.Text.Encoding qualified as TE
-import GHC.Generics (Generic)
 import Ledger.Address qualified as Ledger
 import PlutusLedgerApi.V3 qualified as Api
 import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
