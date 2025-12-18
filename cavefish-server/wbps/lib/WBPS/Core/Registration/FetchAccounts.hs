@@ -23,10 +23,10 @@ import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (RegistrationFailed (EncryptionKeysNotFound))
 import WBPS.Core.FileScheme (FileScheme (FileScheme, accounts, encryptionKeys, provingKey, verificationContext))
+import WBPS.Core.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Account (AccountCreated (AccountCreated))
 import WBPS.Core.Registration.FileScheme (deriveDirectoryAccountFrom)
-import WBPS.Core.Registration.PublicVerificationContext (PublicVerificationContext (PublicVerificationContext))
 
 getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [UserWalletPublicKey]
 getRecordedUserWalletPublicKeys p = do
@@ -57,10 +57,10 @@ loadExistingAccount ::
 loadExistingAccount userWalletPublicKey = do
   account <- deriveDirectoryAccountFrom userWalletPublicKey
   FileScheme {..} <- ask
-  AccountCreated
-    userWalletPublicKey
-    (account </> provingKey)
-    <$> (readFrom (account </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
-    <*> ( PublicVerificationContext (account </> verificationContext)
-            <$> (readFrom (account </> verificationContext) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+  AccountCreated userWalletPublicKey
+    <$> ( Setup (account </> provingKey)
+            <$> (readFrom (account </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+            <*> ( PublicVerificationContext (account </> verificationContext)
+                    <$> (readFrom (account </> verificationContext) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+                )
         )

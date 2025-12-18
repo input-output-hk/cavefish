@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module WBPS.Core.Commitment.BuildCommitment (
+module WBPS.Core.Session.Commitment.BuildCommitment (
   BuildCommitmentInput (..),
   BuildCommitmentOutput (..),
   Commitment (..),
