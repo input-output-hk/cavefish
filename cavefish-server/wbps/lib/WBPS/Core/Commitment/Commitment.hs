@@ -45,7 +45,7 @@ import WBPS.Core.Keys.ElGamal (
  )
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.Circom (BuildCommitmentParams (BuildCommitmentParams), defCommitmentParams)
-import WBPS.Core.Registration.Account (AccountCreated (..))
+import WBPS.Core.Registration.Account (AccountCreated (AccountCreated, encryptionKeys))
 import WBPS.Core.Registration.FetchAccounts (loadAccount)
 
 newtype Message = Message UnsignedTx
