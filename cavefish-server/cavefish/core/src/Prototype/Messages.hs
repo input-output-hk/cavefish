@@ -58,7 +58,7 @@ import Servant (
   errBody,
   throwError,
  )
-import WBPS.Core.Cardano.Cbor (serialiseTx)
+-- import WBPS.Core.Cardano.Cbor (serialiseTx)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519 (UserWalletPublicKey)
 
 -- | Cavefish API a
@@ -175,31 +175,31 @@ clientSignatureMessage txAbsHash = finaliseSigTag <> txAbsHash
 verifyClientSignature :: Ed25519.UserWalletPublicKey -> ByteString -> ByteString -> Bool
 verifyClientSignature _ _ _ = False -- to be implemented
 
-decryptPendingPayload :: PkeSecretKey -> Pending -> Either ServerError ByteString
-decryptPendingPayload pkeSecret Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
-  case decrypt pkeSecret pendingCiphertext of
-    Left err ->
-      let msg = "pke decrypt failed: " <> renderError err
-       in Left err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
-    Right payload ->
-      let txBytes = serialiseTx tx
-          (payloadTxBytes, payloadNonce) = BS.splitAt (BS.length txBytes) payload
-       in if payloadTxBytes /= txBytes
-            then
-              Left
-                err500
-                  { errBody =
-                      "ciphertext payload mismatch: transaction bytes differ"
-                  }
-            else
-              if payloadNonce /= pendingAuxNonce
-                then
-                  Left
-                    err500
-                      { errBody =
-                          "ciphertext payload mismatch: aux nonce differ"
-                      }
-                else Right payload
+-- decryptPendingPayload :: PkeSecretKey -> Pending -> Either ServerError ByteString
+-- decryptPendingPayload pkeSecret Pending {ciphertext = pendingCiphertext, auxNonce = pendingAuxNonce, tx} =
+--   case decrypt pkeSecret pendingCiphertext of
+--     Left err ->
+--       let msg = "pke decrypt failed: " <> renderError err
+--        in Left err500 {errBody = BL.fromStrict (TE.encodeUtf8 msg)}
+--     Right payload ->
+--       let txBytes = serialiseTx tx
+--           (payloadTxBytes, payloadNonce) = BS.splitAt (BS.length txBytes) payload
+--        in if payloadTxBytes /= txBytes
+--             then
+--               Left
+--                 err500
+--                   { errBody =
+--                       "ciphertext payload mismatch: transaction bytes differ"
+--                   }
+--             else
+--               if payloadNonce /= pendingAuxNonce
+--                 then
+--                   Left
+--                     err500
+--                       { errBody =
+--                           "ciphertext payload mismatch: aux nonce differ"
+--                       }
+--                 else Right payload
 
 parseTxIdHex :: Text -> Maybe Api.TxId
 parseTxIdHex =

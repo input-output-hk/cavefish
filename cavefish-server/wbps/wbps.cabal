@@ -89,13 +89,8 @@ library
     , aeson
     , bytestring
     , cardano-api
-    , cardano-binary
     , cardano-crypto-class
-    , cardano-ledger-alonzo
     , cardano-ledger-api
-    , cardano-ledger-core
-    , cborg
-    , containers
     , cooked-validators
     , cryptonite
     , filepath
