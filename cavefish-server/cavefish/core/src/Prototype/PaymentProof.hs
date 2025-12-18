@@ -9,8 +9,6 @@ module Prototype.PaymentProof (
   -- hashTxAbs,
 ) where
 
-import Cardano.Api (ConwayEra, Tx, TxId, getTxBody, getTxId)
-import Crypto.Hash (SHA256, hash)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
@@ -20,17 +18,13 @@ import Data.Aeson (
   (.:),
   (.=),
  )
-import Data.ByteArray qualified as BA
-import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Intent.Example.DSL (CanonicalIntent)
-import Prototype.Pke (PkeCiphertext, ciphertextDigest)
-import Prototype.Proof (Proof, mkProof)
+import Prototype.Proof (Proof)
+
 -- import WBPS.Core.Cardano.Cbor (serialiseTxAbs)
 -- import WBPS.Core.Cardano.TxAbs (TxAbs)
-import WBPS.Core.Keys.Ed25519 qualified as Ed25519
 
 -- | Minimal proof wrapper so we can swap in a real zk proof later.
 data ProofResult

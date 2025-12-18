@@ -24,8 +24,6 @@ import Data.Aeson (
   (.=),
  )
 import Data.ByteString (ByteString)
-import Data.ByteString qualified as BS (length, splitAt)
-import Data.ByteString.Lazy qualified as BL (fromStrict)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map (delete, lookup)
 import Data.Text (Text)
@@ -33,31 +31,17 @@ import Data.Text.Encoding qualified as TE (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import GHC.Generics (Generic)
 import Ledger.Tx.CardanoAPI (CardanoTx, pattern CardanoEmulatorEraTx)
-import Prototype.Pke (
-  PkeSecretKey,
-  decrypt,
-  renderError,
- )
 import Prototype.Proof (renderHex)
 import Prototype.State (
   Completed (Completed, creator, submittedAt, tx),
   Pending (
     Pending,
-    auxNonce,
-    ciphertext,
     creator,
     expiry,
-    tx,
     txAbsHash
   ),
  )
-import Servant (
-  ServerError,
-  err400,
-  err500,
-  errBody,
-  throwError,
- )
+import Servant (err400, errBody, throwError)
 -- import WBPS.Core.Cardano.Cbor (serialiseTx)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519 (UserWalletPublicKey)
 

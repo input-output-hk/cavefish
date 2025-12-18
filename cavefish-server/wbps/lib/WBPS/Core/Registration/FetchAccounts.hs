@@ -22,10 +22,10 @@ import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (RegistrationFailed (EncryptionKeysNotFound))
-import WBPS.Core.FileScheme
-import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
-import WBPS.Core.Registration.Account
-import WBPS.Core.Registration.FileScheme
+import WBPS.Core.FileScheme (FileScheme (FileScheme, accounts, encryptionKeys, provingKey, verificationContext))
+import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Registration.Account (AccountCreated (AccountCreated))
+import WBPS.Core.Registration.FileScheme (deriveDirectoryAccountFrom)
 import WBPS.Core.Registration.PublicVerificationContext (PublicVerificationContext (PublicVerificationContext))
 
 getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [UserWalletPublicKey]

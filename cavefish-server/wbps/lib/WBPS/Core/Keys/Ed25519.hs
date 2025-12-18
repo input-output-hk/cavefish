@@ -20,7 +20,6 @@ import Cardano.Api qualified as C
 import Cardano.Crypto.DSIGN.Ed25519 (Ed25519DSIGN)
 import Control.Monad.IO.Class (MonadIO)
 import Cooked (IsTxSkelOutAllowedOwner (toPKHOrVScript), User (UserPubKey))
-import Cooked.Skeleton (IsTxSkelOutAllowedOwner)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.String (IsString)
