@@ -4,9 +4,9 @@
 
 module Prototype.PaymentProof (
   ProofResult (..),
-  mkPaymentProof,
-  verifyPaymentProof,
-  hashTxAbs,
+  -- mkPaymentProof,
+  -- verifyPaymentProof,
+  -- hashTxAbs,
 ) where
 
 import Cardano.Api (ConwayEra, Tx, TxId, getTxBody, getTxId)
@@ -28,8 +28,8 @@ import GHC.Generics (Generic)
 import Intent.Example.DSL (CanonicalIntent)
 import Prototype.Pke (PkeCiphertext, ciphertextDigest)
 import Prototype.Proof (Proof, mkProof)
-import WBPS.Core.Cardano.Cbor (serialiseTxAbs)
-import WBPS.Core.Cardano.TxAbs (TxAbs)
+-- import WBPS.Core.Cardano.Cbor (serialiseTxAbs)
+-- import WBPS.Core.Cardano.TxAbs (TxAbs)
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519
 
 -- | Minimal proof wrapper so we can swap in a real zk proof later.
@@ -83,40 +83,40 @@ instance FromJSON ProofResult where
                                       s
           Produce `s = r + cx`  -----------> Produce signature `σ = (R, s)`
   -}
-mkPaymentProof ::
-  Ed25519.PrivateKey ->
-  CanonicalIntent ->
-  Tx ConwayEra ->
-  TxAbs ConwayEra ->
-  PkeCiphertext ->
-  ByteString ->
-  ByteString ->
-  IO ProofResult
-mkPaymentProof secretKey _intent tx txAbs ciphertext _auxNonce _rho = do
-  let txId = getTxId (getTxBody tx)
-      txAbsHash = hashTxAbs txAbs
-      commitmentBytes = ciphertextDigest ciphertext
-      proof = mkProof secretKey txId txAbsHash commitmentBytes
-  pure (ProofEd25519 proof)
+-- mkPaymentProof ::
+--   Ed25519.PrivateKey ->
+--   CanonicalIntent ->
+--   Tx ConwayEra ->
+--   -- TxAbs ConwayEra ->
+--   PkeCiphertext ->
+--   ByteString ->
+--   ByteString ->
+--   IO ProofResult
+-- mkPaymentProof secretKey _intent tx ciphertext _auxNonce _rho = do
+--   let txId = getTxId (getTxBody tx)
+--       txAbsHash = hashTxAbs txAbs
+--       commitmentBytes = ciphertextDigest ciphertext
+--       proof = mkProof secretKey txId txAbsHash commitmentBytes
+--   pure (ProofEd25519 proof)
 
--- TODO WG: Placeholder
-verifyPaymentProof ::
-  Ed25519.PublicKey ->
-  ProofResult ->
-  TxAbs ConwayEra ->
-  TxId ->
-  PkeCiphertext ->
-  ByteString ->
-  Either Text ()
-verifyPaymentProof _ ProofStub _ _ _ _ = Right ()
-verifyPaymentProof _ (ProofGroth16 _) _ _ _ _ = Right ()
-verifyPaymentProof _ (ProofEd25519 _) _ _ _ _auxNonce = Right ()
+-- -- TODO WG: Placeholder
+-- verifyPaymentProof ::
+--   Ed25519.PublicKey ->
+--   ProofResult ->
+--   -- TxAbs ConwayEra ->
+--   TxId ->
+--   PkeCiphertext ->
+--   ByteString ->
+--   Either Text ()
+-- verifyPaymentProof _ ProofStub _ _ _  = Right ()
+-- verifyPaymentProof _ (ProofGroth16 _) _ _  _ = Right ()
+-- verifyPaymentProof _ (ProofEd25519 _) _ _ _ _auxNonce = Right ()
 
--- verifyPaymentProof publicKey (ProofEd25519 proof) txAbs txId ciphertext _auxNonce = Right ()
--- let commitmentBytes = ciphertextDigest ciphertext
---  in if verifyProof publicKey txId (hashTxAbs txAbs) commitmentBytes proof
---       then Right ()
---       else Left "ed25519 proof verification failed"
+-- -- verifyPaymentProof publicKey (ProofEd25519 proof) txAbs txId ciphertext _auxNonce = Right ()
+-- -- let commitmentBytes = ciphertextDigest ciphertext
+-- --  in if verifyProof publicKey txId (hashTxAbs txAbs) commitmentBytes proof
+-- --       then Right ()
+-- --       else Left "ed25519 proof verification failed"
 
-hashTxAbs :: TxAbs ConwayEra -> ByteString
-hashTxAbs = BA.convert . (hash @_ @SHA256) . serialiseTxAbs
+-- hashTxAbs :: TxAbs ConwayEra -> ByteString
+-- hashTxAbs = BA.convert . (hash @_ @SHA256) . serialiseTxAbs
