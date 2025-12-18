@@ -1,6 +1,8 @@
 module WBPS.Core.Failure (
   RegistrationFailed (..),
+  -- | Different failures that can occur during the registration process
   toWBPSFailure,
+  -- | Convert an Either String a to a MonadError with RegistrationFailed
 ) where
 
 import Control.Monad.Except (MonadError (throwError))
