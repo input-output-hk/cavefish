@@ -1,8 +1,10 @@
-{-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 
+-- | Module      : WBPS.Core.Registration.Register
+--     Description : Functionality to register a new user account within the WBPS system.
 module WBPS.Core.Registration.Register (
   register,
+  -- | Register a new user account
 ) where
 
 import Control.Monad.Error.Class (MonadError, throwError)
@@ -12,17 +14,19 @@ import Path ((</>))
 import Path.IO (ensureDir)
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.Path (writeTo)
-import WBPS.Core.Failure
-import WBPS.Core.FileScheme
-import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
+import WBPS.Core.Failure (RegistrationFailed (AccountAlreadyRegistered))
+import WBPS.Core.FileScheme (FileScheme (FileScheme, encryptionKeys), getShellLogsFilepath)
+import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.SnarkjsOverFileScheme (
   getGenerateProvingKeyProcess,
   getGenerateVerificationKeyProcess,
  )
-import WBPS.Core.Registration.Account (AccountCreated (..))
-import WBPS.Core.Registration.FetchAccounts
-import WBPS.Core.Registration.FileScheme
+import WBPS.Core.Registration.Account (
+  AccountCreated (AccountCreated, userWalletPublicKey),
+ )
+import WBPS.Core.Registration.FetchAccounts (loadAccount, loadExistingAccount)
+import WBPS.Core.Registration.FileScheme (deriveDirectoryAccountFrom)
 import WBPS.Core.Registration.FileScheme.Directories qualified as Directory
 
 register ::
