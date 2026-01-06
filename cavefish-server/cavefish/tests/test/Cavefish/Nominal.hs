@@ -38,6 +38,7 @@ import WBPS.Core.Keys.Ed25519 (
   userWalletPK,
  )
 import WBPS.Core.Session.Commitment (Commitment (Commitment, id, payload))
+import WBPS.Core.Session.R (R (R))
 import Prelude hiding (id)
 
 spec :: Spec
@@ -102,7 +103,7 @@ spec = do
                     AskCommitmentProof.Inputs
                       { userWalletPublicKey = publicKey alice
                       , commitmentId = id
-                      , bigR
+                      , bigR = R bigR
                       }
 
                 FetchAccount.Outputs {accountMaybe} <- fetchAccount . FetchAccount.Inputs . publicKey $ alice
