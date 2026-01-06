@@ -5,6 +5,7 @@
 module WBPS.Core.Session.Session (
   SessionId (..),
   Session (..),
+  CommitmentDemonstrated (..),
   deriveId,
 ) where
 
@@ -27,7 +28,13 @@ deriveId (CommitmentId x) = SessionId . Text.unpack . encode $ x
 data Session
   = SessionCreated
   { account :: AccountCreated
-  , message :: Message
+  , commitmentDemonstrated :: CommitmentDemonstrated
+  }
+  deriving (Eq, Show, Generic)
+
+data CommitmentDemonstrated
+  = CommitmentDemonstrated
+  { message :: Message
   , publicMessage :: PublicMessage
   , rho :: Rho
   , commitmentScalars :: CommitmentScalars
@@ -36,4 +43,7 @@ data Session
   deriving (Eq, Show, Generic)
 
 instance Ord Session where
-  compare SessionCreated {commitment = Commitment {id = a}} SessionCreated {commitment = Commitment {id = b}} = a `compare` b
+  compare
+    SessionCreated {commitmentDemonstrated = CommitmentDemonstrated {commitment = Commitment {id = a}}}
+    SessionCreated {commitmentDemonstrated = CommitmentDemonstrated {commitment = Commitment {id = b}}} =
+      a `compare` b
