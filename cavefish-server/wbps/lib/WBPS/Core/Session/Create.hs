@@ -36,7 +36,17 @@ import WBPS.Core.Session.Commitment.Scalars as CommitmentScalars (
  )
 import WBPS.Core.Session.Commitment.Scalars.Compute qualified as CommitmentScalars
 import WBPS.Core.Session.FileScheme (deriveSessionDirectoryFrom)
-import WBPS.Core.Session.Session (Session (..))
+import WBPS.Core.Session.Session (
+  CommitmentDemonstrated (
+    CommitmentDemonstrated,
+    commitment,
+    commitmentScalars,
+    message,
+    publicMessage,
+    rho
+  ),
+  Session (SessionCreated, account, commitmentDemonstrated),
+ )
 import WBPS.Core.ZK.Message (Message (Message), PublicMessage (PublicMessage), messageToBits, unMessage)
 
 data CommitmentProoved = CommitmentProoved
@@ -57,11 +67,17 @@ create userWalletPublicKey unsignedTx =
         rho <- ElGamal.generateElGamalExponent
         commitmentScalars@CommitmentScalars {ekPowRho} <- CommitmentScalars.compute ek rho
         commitment <- build Input {ekPowRho, messageBits}
-
         saveAndReturn
           SessionCreated
-            { publicMessage = PublicMessage . toAbstractUnsignedTx . unMessage $ message
-            , ..
+            { account
+            , commitmentDemonstrated =
+                CommitmentDemonstrated
+                  { message
+                  , publicMessage = PublicMessage . toAbstractUnsignedTx . unMessage $ message
+                  , rho
+                  , commitmentScalars
+                  , commitment
+                  }
             }
 
 saveAndReturn ::
@@ -72,18 +88,28 @@ saveAndReturn session = save session >> return session
 save ::
   (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
   Session -> m ()
-save SessionCreated {account = AccountCreated {userWalletPublicKey}, rho, message, commitmentScalars, commitment = commitment@Commitment {id = sessionId}} = do
-  sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey sessionId
-  ensureDir sessionDirectory
+save
+  SessionCreated
+    { account = AccountCreated {userWalletPublicKey}
+    , commitmentDemonstrated =
+      CommitmentDemonstrated
+        { message
+        , rho
+        , commitmentScalars
+        , commitment = commitment@Commitment {id = sessionId}
+        }
+    } = do
+    sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey sessionId
+    ensureDir sessionDirectory
 
-  FileScheme.Session
-    { message = messageDir
-    , rho = rhoDir
-    , commitment = FileScheme.BuildCommitment {scalars = scalarsDir, commitment = commitmentDir}
-    } <-
-    asks (FileScheme.session . FileScheme.account)
+    FileScheme.Session
+      { message = messageDir
+      , rho = rhoDir
+      , commitment = FileScheme.BuildCommitment {scalars = scalarsDir, commitment = commitmentDir}
+      } <-
+      asks (FileScheme.session . FileScheme.account)
 
-  writeTo (sessionDirectory </> messageDir) message
-  writeTo (sessionDirectory </> rhoDir) rho
-  writeTo (sessionDirectory </> [reldir|commitment|] </> scalarsDir) commitmentScalars
-  writeTo (sessionDirectory </> [reldir|commitment|] </> commitmentDir) commitment
+    writeTo (sessionDirectory </> messageDir) message
+    writeTo (sessionDirectory </> rhoDir) rho
+    writeTo (sessionDirectory </> [reldir|commitment|] </> scalarsDir) commitmentScalars
+    writeTo (sessionDirectory </> [reldir|commitment|] </> commitmentDir) commitment

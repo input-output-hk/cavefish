@@ -32,7 +32,12 @@ import WBPS.Core.Registration.FetchAccounts (loadAccount, loadAccounts)
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Session.Commitment (CommitmentId)
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
-import WBPS.Core.Session.Session (Session (SessionCreated))
+import WBPS.Core.Session.Session (
+  CommitmentDemonstrated (
+    CommitmentDemonstrated
+  ),
+  Session (SessionCreated),
+ )
 import WBPS.Core.ZK.Message (PublicMessage (PublicMessage), unMessage)
 
 getRecordedCommitmentIds :: MonadIO m => Path b Dir -> m [CommitmentId]
@@ -80,10 +85,11 @@ loadExistingSession userWalletPublicKey commitmentId =
           } <-
           asks (FileScheme.session . FileScheme.account)
         message <- readFrom (sessionDirectory </> messageDir) >>= whenNothingThrow [SessionMessageNotFound userWalletPublicKey commitmentId]
-        SessionCreated
-          account
-          message
-          (PublicMessage . toAbstractUnsignedTx . unMessage $ message)
-          <$> (readFrom (sessionDirectory </> rhoDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
-          <*> (readFrom (sessionDirectory </> [reldir|commitment|] </> scalarsDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
-          <*> (readFrom (sessionDirectory </> [reldir|commitment|] </> commitmentDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+        SessionCreated account
+          <$> ( CommitmentDemonstrated
+                  message
+                  (PublicMessage . toAbstractUnsignedTx . unMessage $ message)
+                  <$> (readFrom (sessionDirectory </> rhoDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+                  <*> (readFrom (sessionDirectory </> [reldir|commitment|] </> scalarsDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+                  <*> (readFrom (sessionDirectory </> [reldir|commitment|] </> commitmentDir) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+              )

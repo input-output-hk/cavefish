@@ -13,7 +13,7 @@ import Cavefish.Api.ServerConfiguration (
   ServerConfiguration (ServerConfiguration, httpServer, serviceProviderFee, transactionExpiry, wbps),
  )
 import Cavefish.Services.TxBuilding (ServiceFee, TxBuilding (TxBuilding, build, fees, submit))
-import Cavefish.Services.WBPS (WBPS (WBPS, create, loadAccount, loadAccounts, loadSession, register))
+import Cavefish.Services.WBPS (WBPS (WBPS, createSession, loadAccount, loadAccounts, loadSession, register))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Cooked (
   InitialDistribution,
@@ -65,7 +65,7 @@ mkServerContext
                     Left [AccountAlreadyRegistered _] -> throwError err422 {errBody = BL8.pack "Account Already Registered"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , create = \userWalletPublicKey tx ->
+            , createSession = \userWalletPublicKey tx ->
                 liftIO (runWBPS wbpsScheme (Session.create userWalletPublicKey tx))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}

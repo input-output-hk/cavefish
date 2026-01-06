@@ -19,7 +19,7 @@ data WBPS = WBPS
       (MonadIO m, MonadError ServerError m) =>
       UserWalletPublicKey ->
       m AccountCreated
-  , create ::
+  , createSession ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
       UserWalletPublicKey -> UnsignedTx -> m Session
