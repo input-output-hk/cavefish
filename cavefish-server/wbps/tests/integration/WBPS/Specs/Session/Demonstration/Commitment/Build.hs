@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module WBPS.Specs.Session.Commitment.Build (specs) where
+module WBPS.Specs.Session.Demonstration.Commitment.Build (specs) where
 
 import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -12,17 +12,17 @@ import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
 import WBPS.Core.Failure (RegistrationFailed)
 import WBPS.Core.FileScheme (FileScheme, defaultFileScheme)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Session.Commitment (CommitmentPayload (unPayload), payload)
-import WBPS.Core.Session.Commitment.Build (
+import WBPS.Core.Session.Demonstration.Commitment (CommitmentPayload (unPayload), payload)
+import WBPS.Core.Session.Demonstration.Commitment.Build (
   Context (nbCommitmentLimbs),
   Input (Input, ekPowRho, messageBits),
   build,
  )
-import WBPS.Core.Session.Scalars (
+import WBPS.Core.Session.Demonstration.Message (MessageBits (unMessageBits), messageToBits)
+import WBPS.Core.Session.Demonstration.Scalars (
   Scalars (Scalars, ekPowRho),
  )
-import WBPS.Core.Session.Scalars.Compute (compute)
-import WBPS.Core.ZK.Message (MessageBits (unMessageBits), messageToBits)
+import WBPS.Core.Session.Demonstration.Scalars.Compute (compute)
 import WBPS.Specs.Adapter.Fixture (
   CommitmentFixtures (CommitmentFixtures, commitmentFixture, messageBitsFixture, unsignedTxFixture),
   commitmentFixtures,
@@ -45,7 +45,7 @@ specs =
 
 commitmentMatchesCircuit :: Assertion
 commitmentMatchesCircuit = do
-  commitmentRootFolders <- getRootFolder [reldir|WBPS-integration-specs-commitmentMatchesCircuit|]
+  commitmentRootFolders <- getRootFolder [reldir|integration-wpbs-demonstration-build-commitment|]
   let scheme = defaultFileScheme commitmentRootFolders
       fixtures = commitmentFixtures commitmentRootFolders
   runWBPS scheme (runCommitmentFlow fixtures) >>= \case
