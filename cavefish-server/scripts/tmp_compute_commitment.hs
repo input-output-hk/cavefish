@@ -12,7 +12,7 @@ import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
 import WBPS.Core.FileScheme (RootFolders (..), defaultFileScheme)
 import WBPS.Core.Keys.ElGamal (AffinePoint (..), EncryptionKey (..), mkRho)
 import WBPS.Core.Session.Demonstration.Commitment.Commitment (builCommitment)
-import WBPS.Core.Session.Demonstration.Message (Message (Message), messageToBits)
+import WBPS.Core.Session.Demonstration.PreparedMessage (Message (Message), toBitsPaddedToMaxSize)
 import WBPS.Core.Session.Demonstration.Scalars (Scalars (ekPowRho), compute)
 import WBPS.WBPS (runWBPS)
 
@@ -24,7 +24,7 @@ main = do
     Right body -> do
       let unsignedTx = UnsignedTx body
           msg = Message unsignedTx
-          mBits = messageToBits def msg
+          mBits = toBitsPaddedToMaxSize def msg
       BL8.putStrLn "unsignedTx"
       BL8.putStrLn (encode unsignedTx)
       BL8.putStrLn "messageBits"

@@ -28,7 +28,7 @@ import Shh (Stream (Append, StdOut), (&!>), (&>))
 import System.FilePath qualified as FP
 import Text.Read (readMaybe)
 import WBPS.Core.Failure (
-  RegistrationFailed,
+  WBPSFailure,
   toWBPSFailure,
  )
 import WBPS.Core.FileScheme (
@@ -50,14 +50,13 @@ import WBPS.Core.Primitives.SnarkjsOverFileScheme (getGenerateBuildCommitmentWit
 import WBPS.Core.Session.Demonstration.Commitment (
   Commitment,
   CommitmentPayload (CommitmentPayload),
+  MessageLimbs (MessageLimbs),
   mkCommitment,
  )
-import WBPS.Core.Session.Demonstration.Message (
-  MessageBits (MessageBits, unMessageBits),
- )
+import WBPS.Core.Session.Demonstration.PreparedMessage (MessageBits)
 
 build ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Input ->
   m Commitment
 build input = do
@@ -70,8 +69,8 @@ data Input = Input
   }
 
 data Output = Output
-  { messageChunks :: MessageBits
-  , maskedChunks :: MessageBits
+  { messageChunks :: MessageLimbs
+  , maskedChunks :: MessageLimbs
   }
 
 data Context = Context
@@ -109,7 +108,7 @@ runBuildCommitment params Input {ekPowRho = AffinePoint {x, y}, ..} = do
         Aeson.object
           [ "in_seed_x" Aeson..= x
           , "in_seed_y" Aeson..= y
-          , "in_message" Aeson..= unMessageBits messageBits
+          , "in_message" Aeson..= messageBits
           ]
   let accountsDir = accounts scheme
 
@@ -160,8 +159,8 @@ parseOutputs params buildCommitmentSetup statementPath = do
           if maxIdx >= length ints
             then pure (Left "witness shorter than expected when extracting commitment outputs")
             else
-              let messageChunks = MessageBits [ints !! i | i <- msgIdxs]
-                  maskedChunks = MessageBits [ints !! i | i <- maskedIdxs]
+              let messageChunks = MessageLimbs [ints !! i | i <- msgIdxs]
+                  maskedChunks = MessageLimbs [ints !! i | i <- maskedIdxs]
                in pure (Right Output {messageChunks, maskedChunks})
 
 getOutputIndices ::

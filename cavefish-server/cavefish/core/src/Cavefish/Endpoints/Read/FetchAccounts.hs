@@ -4,7 +4,7 @@ import Cavefish (
   CavefishServerM,
   CavefishServices (CavefishServices, wbpsService),
  )
-import Cavefish.Services.WBPS qualified as Service (WBPS (..))
+import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, loadAccounts))
 import Control.Monad.Reader (MonadReader (ask))
 import Data.Aeson (FromJSON, ToJSON, Value)
 import GHC.Generics (Generic)

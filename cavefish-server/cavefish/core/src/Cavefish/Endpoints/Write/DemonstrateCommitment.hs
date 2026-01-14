@@ -25,7 +25,11 @@ import WBPS.Core.Session.Demonstration.Commitment (Commitment)
 import WBPS.Core.Session.Demonstration.Demonstrated (
   CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage),
  )
-import WBPS.Core.Session.Demonstration.Message (PreparedMessage (PreparedMessage, publicMessage), PublicMessage (PublicMessage))
+import WBPS.Core.Session.Demonstration.PreparedMessage (
+  MessageParts (MessageParts, public),
+  PreparedMessage (PreparedMessage, parts),
+  PublicMessage (PublicMessage),
+ )
 import WBPS.Core.Session.Session (Session (demonstrated))
 
 -- | Inputs for demonstrating a commitment.
@@ -59,6 +63,6 @@ handle Inputs {userWalletPublicKey, intent} = do
     ask
 
   unsignedTx <- build intent
-  CommitmentDemonstrated {preparedMessage = PreparedMessage {publicMessage = PublicMessage txAbs}, commitment} <-
+  CommitmentDemonstrated {preparedMessage = PreparedMessage {parts = MessageParts {public = PublicMessage txAbs}}, commitment} <-
     demonstrated <$> demonstrate userWalletPublicKey unsignedTx
   return Outputs {txAbs, commitment}

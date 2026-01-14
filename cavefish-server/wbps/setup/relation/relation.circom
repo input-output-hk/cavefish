@@ -398,4 +398,4 @@ component main { public [
     commitment_payload, // Com_tx
     challenge, // c
     message_public_part // TxAbs
-] } = CardanoWBPS(27*254, 333, 32);
+] } = CardanoWBPS(27*254, 320, 24);

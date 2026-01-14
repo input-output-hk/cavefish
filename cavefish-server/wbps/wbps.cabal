@@ -71,6 +71,7 @@ library
     WBPS.Core.Cardano.Cbor
     WBPS.Core.Cardano.TxAbs
     WBPS.Core.Cardano.UnsignedTx
+    WBPS.Core.Circuit.Parameters
     WBPS.Core.Failure
     WBPS.Core.FileScheme
     WBPS.Core.Groth16.Setup
@@ -90,7 +91,8 @@ library
     WBPS.Core.Session.Demonstration.Commitment.Build
     WBPS.Core.Session.Demonstration.Demonstrate
     WBPS.Core.Session.Demonstration.Demonstrated
-    WBPS.Core.Session.Demonstration.Message
+    WBPS.Core.Session.Demonstration.PreparedMessage
+    WBPS.Core.Session.Demonstration.PreparedMessage.Prepare
     WBPS.Core.Session.Demonstration.R
     WBPS.Core.Session.Demonstration.Scalars
     WBPS.Core.Session.Demonstration.Scalars.Compute
@@ -112,6 +114,7 @@ library
     , cardano-api
     , cardano-crypto-class
     , cardano-ledger-api
+    , cardano-ledger-core   ^>=1.17.0.0
     , containers
     , cooked-validators
     , cryptonite
@@ -139,13 +142,16 @@ test-suite wbps-unit-tests
   ghc-options:    -Wno-unused-packages
   other-modules:
     WBPS.Specs.Core.Keys.Ed25519
+    WBPS.Specs.Session.Demonstration.PreparedMessage.Prepare
     WBPS.Specs.Session.Demonstration.Scalars
 
   build-depends:
     , aeson
     , bytestring
+    , mtl
     , QuickCheck
     , tasty
+    , tasty-hunit
     , tasty-quickcheck
     , wbps
 

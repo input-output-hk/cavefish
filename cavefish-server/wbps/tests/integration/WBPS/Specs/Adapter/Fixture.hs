@@ -15,7 +15,7 @@ import Control.Monad.Except (MonadError, throwError)
 import Data.Aeson (FromJSON, eitherDecode)
 import Data.ByteString.Lazy qualified as BL
 import Path (Abs, File, Path, parent, reldir, relfile, toFilePath, (</>))
-import WBPS.Core.Failure (RegistrationFailed (BuildCommitmentFailed))
+import WBPS.Core.Failure (WBPSFailure (BuildCommitmentFailed))
 import WBPS.Core.FileScheme (RootFolders (RootFolders, input))
 import WBPS.Core.Keys.ElGamal (AffinePoint (AffinePoint), EncryptionKey (EncryptionKey), Rho, mkRho)
 
@@ -42,7 +42,7 @@ readFixture path = do
     Left e -> fail ("Failed to decode fixture " <> toFilePath path <> ": " <> e)
 
 whenMismatch ::
-  MonadError [RegistrationFailed] m =>
+  MonadError [WBPSFailure] m =>
   String ->
   Bool ->
   m ()
