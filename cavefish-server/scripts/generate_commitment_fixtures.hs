@@ -17,7 +17,7 @@ import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
 import WBPS.Core.FileScheme (RootFolders (..), defaultFileScheme)
 import WBPS.Core.Keys.ElGamal (AffinePoint (..), EncryptionKey (..), mkRho)
 import WBPS.Core.Session.Demonstration.Commitment.Build (Commitment (..), CommitmentPayload (..), Input (..), build)
-import WBPS.Core.Session.Demonstration.Message (Message (Message), messageToBits)
+import WBPS.Core.Session.Demonstration.PreparedMessage (Message (Message), toBitsPaddedToMaxSize)
 import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, ekPowRho), compute)
 import WBPS.WBPS (runWBPS)
 
@@ -26,7 +26,7 @@ main = do
   txBody <- either (error . show) pure createBody
   let unsignedTx = UnsignedTx txBody
       message = Message unsignedTx
-      messageBits = messageToBits def message
+      messageBits = toBitsPaddedToMaxSize def message
 
   fixturesDir <- P.makeAbsolute =<< pure ([reldir|wbps/tests/integration/fixtures/commitment|])
   P.ensureDir fixturesDir

@@ -37,5 +37,6 @@ data Outputs = Outputs
 handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey, commitmentId, bigR} = do
   CavefishServices {wbpsService = WbpsService.WBPS {prove}} <- ask
-  CommitmentProved {..} <- prove userWalletPublicKey commitmentId bigR
-  pure Outputs {challenge, proof = proof}
+  CommitmentProved {challenge = provedChallenge, proof = provedProof} <-
+    prove userWalletPublicKey commitmentId bigR
+  pure Outputs {challenge = provedChallenge, proof = provedProof}

@@ -15,11 +15,9 @@ import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Path (File, Path, reldir, toFilePath, (</>))
 import Shh (Stream (Append, StdOut), (&!>), (&>))
-import WBPS.Adapter.Data.Aeson (jsonNumberToText)
 import WBPS.Adapter.Math.AffinePoint qualified as AffinePoint
-import WBPS.Adapter.Math.Integer qualified as Integer
 import WBPS.Adapter.Path (writeTo)
-import WBPS.Core.Failure (RegistrationFailed)
+import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.FileScheme (
   Account (Account, session),
   FileScheme (FileScheme, account, setup),
@@ -32,39 +30,41 @@ import WBPS.Core.FileScheme (
  )
 import WBPS.Core.Groth16.Setup qualified as Groth16
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519
+import WBPS.Core.Keys.ElGamal (Rho)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered, setup, userWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Commitment (Commitment (Commitment, id, payload), CommitmentPayload (CommitmentPayload))
-import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage, scalars))
-import WBPS.Core.Session.Demonstration.Message (
-  MessageBits (MessageBits),
-  PreparedMessage (PreparedMessage, messageBits, publicMessage),
-  messageBitsToWord8s,
-  publicMessageToMessageBits,
+import WBPS.Core.Session.Demonstration.Commitment (
+  Commitment (Commitment, id, payload),
+  CommitmentPayload,
  )
-import WBPS.Core.Session.Demonstration.R (R)
-import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, ekPowRho, rho))
+import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage, scalars))
+import WBPS.Core.Session.Demonstration.PreparedMessage (
+  CircuitMessage (CircuitMessage, private, public),
+  MessageBits,
+  PreparedMessage (PreparedMessage, circuit),
+ )
+import WBPS.Core.Session.Demonstration.R (R (R))
+import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, gPowRho, rho))
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Proving.Challenge (Challenge)
-import WBPS.Core.Session.Proving.Challenge qualified as Challenge
 
 data CircuitInputs = CircuitInputs
   { signer_key :: [Word8]
   , solver_encryption_key :: [Text]
   , commitment_point_bits :: [Word8]
   , commitment_point_affine :: [Text]
-  , commitment_randomizer_rho :: Text
-  , commitment_payload :: [Text]
-  , challenge :: [Word8]
-  , message_public_part :: [Word8]
-  , message_private_part :: [Word8]
+  , commitment_randomizer_rho :: Rho
+  , commitment_payload :: CommitmentPayload
+  , challenge :: Challenge
+  , message_public_part :: MessageBits
+  , message_private_part :: MessageBits
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 generate ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Registered ->
   CommitmentDemonstrated ->
   R ->
@@ -120,23 +120,26 @@ prepareInputs
     , setup = Groth16.Setup {encryptionKeys = ElGamal.KeyPair {ek = ElGamal.EncryptionKey solverKeyPoint}}
     }
   CommitmentDemonstrated
-    { preparedMessage = PreparedMessage {publicMessage, messageBits}
-    , scalars = Scalars {ekPowRho = commitmentPoint, rho}
-    , commitment = Commitment {payload = CommitmentPayload (MessageBits payloadBits)}
+    { preparedMessage = PreparedMessage {circuit = CircuitMessage {public, private}}
+    , scalars = Scalars {gPowRho, rho}
+    , commitment = Commitment {payload}
     }
-  _bigR
+  bigR
   challengeValue =
     CircuitInputs
       { signer_key = Ed25519.userWalletPublicKeyToWord8s userWalletPublicKey
       , solver_encryption_key = AffinePoint.toText solverKeyPoint
-      , commitment_point_bits = AffinePoint.toBits commitmentPoint
-      , commitment_point_affine = AffinePoint.toText commitmentPoint
-      , commitment_randomizer_rho = jsonNumberToText rho
-      , commitment_payload = map Integer.toText payloadBits
-      , challenge = Challenge.toWord8s challengeValue
-      , message_public_part = messageBitsToWord8s (publicMessageToMessageBits publicMessage)
-      , message_private_part = messageBitsToWord8s messageBits
+      , commitment_point_bits = rToBits bigR
+      , commitment_point_affine = AffinePoint.toText gPowRho
+      , commitment_randomizer_rho = rho
+      , commitment_payload = payload
+      , challenge = challengeValue
+      , message_public_part = public
+      , message_private_part = private
       }
+    where
+      rToBits (R rPk) =
+        Ed25519.userWalletPublicKeyToWord8s (Ed25519.UserWalletPublicKey rPk)
 
 saveCircuitInputs :: MonadIO m => Path b File -> CircuitInputs -> m ()
 saveCircuitInputs = writeTo

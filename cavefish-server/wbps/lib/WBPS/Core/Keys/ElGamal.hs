@@ -32,7 +32,13 @@ import WBPS.Adapter.Math.AffinePoint (AffinePoint (AffinePoint, x, y), parseInte
 import WBPS.Adapter.Math.Integer qualified as Integer
 
 newtype Rho = Rho Integer
-  deriving newtype (Eq, Show, FromJSON, ToJSON)
+  deriving newtype (Eq, Show)
+
+instance ToJSON Rho where
+  toJSON (Rho n) = Integer.toValue n
+
+instance FromJSON Rho where
+  parseJSON v = Rho <$> parseIntegerValue v
 
 generateElGamalExponent :: MonadIO m => m Rho
 generateElGamalExponent = liftIO (Rho . bsToInteger <$> getRandomBytes 16)

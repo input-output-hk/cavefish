@@ -4,29 +4,42 @@ module WBPS.Core.Session.Demonstration.Commitment (
   mkCommitment,
   Commitment (..),
   CommitmentPayload (..),
+  MessageLimbs (..),
   CommitmentId (..),
 ) where
 
 import Cardano.Crypto.Hash (ByteString)
 import Crypto.Hash (SHA256, hash)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withArray)
+import Data.Aeson.Types (Parser)
 import Data.ByteArray qualified as BA
 import Data.ByteString qualified as BS
-import Data.Coerce (coerce)
 import Data.String (IsString)
+import Data.Vector qualified as V
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import WBPS.Adapter.CardanoCryptoClass.Crypto (FromByteString (fromByteString), Hexadecimal)
+import WBPS.Adapter.Math.AffinePoint (parseIntegerValue)
 import WBPS.Adapter.Math.Integer qualified as AdapterInteger
-import WBPS.Core.Session.Demonstration.Message (
-  MessageBits (MessageBits),
- )
 
 newtype CommitmentId = CommitmentId {unComId :: Hexadecimal}
   deriving newtype (Eq, Ord, Show, IsString, FromJSON, ToJSON)
 
+newtype MessageLimbs = MessageLimbs
+  { unMessageLimbs :: [Integer]
+  }
+  deriving newtype (Eq, Show)
+
+instance ToJSON MessageLimbs where
+  toJSON (MessageLimbs limbs) = toJSON (map AdapterInteger.toValue limbs)
+
+instance FromJSON MessageLimbs where
+  parseJSON = withArray "MessageLimbs" $ \arr -> do
+    limbs <- traverse parseIntegerValue (V.toList arr) :: Parser [Integer]
+    pure (MessageLimbs limbs)
+
 newtype CommitmentPayload = CommitmentPayload
-  { unPayload :: MessageBits
+  { unPayload :: MessageLimbs
   }
   deriving newtype (Eq, Show, FromJSON, ToJSON)
 
@@ -46,7 +59,8 @@ mkCommitment payload =
     encodeLimb n =
       let bytes = integerToWords n
        in BS.cons (fromIntegral (length bytes)) (BS.pack bytes)
-    flat = BS.concat (map encodeLimb (coerce payload))
+    MessageLimbs limbs = unPayload payload
+    flat = BS.concat (map encodeLimb limbs)
     digest = hash @_ @SHA256 flat
     commitmentId = CommitmentId . fromByteString @Hexadecimal $ (BA.convert digest :: ByteString)
    in

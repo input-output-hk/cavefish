@@ -4,23 +4,32 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Eta reduce" #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module WBPS.Core.Registration.SnarkJs.OverShh (
+  ensureSnarkjsAvailable,
   ProvingKeyScheme (..),
   generateProvingKey,
   VerificationKeyScheme (..),
   generateVerificationKey,
 ) where
 
+import Control.Monad (unless)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Shh (ExecReference (SearchPath), Proc, load)
+
+{-# ANN module ("HLint: ignore Eta reduce" :: String) #-}
 
 load
   SearchPath
   [ "snarkjs" :: String
   ]
+
+ensureSnarkjsAvailable :: MonadIO m => m ()
+ensureSnarkjsAvailable = do
+  missing <- liftIO missingExecutables
+  unless (null missing) $
+    liftIO . ioError . userError $
+      "Missing required executables: " <> unwords missing
 
 data ProvingKeyScheme = ProvingKeyScheme
   {powerOfTauPrepared :: FilePath, relationR1CS :: FilePath, provingKeyOutput :: FilePath}

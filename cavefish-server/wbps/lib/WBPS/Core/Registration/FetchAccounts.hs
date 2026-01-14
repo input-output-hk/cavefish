@@ -22,7 +22,7 @@ import Path (Dir, Path, reldir, toFilePath, (</>))
 import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (RegistrationFailed (EncryptionKeysNotFound))
+import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound))
 import WBPS.Core.FileScheme (
   FileScheme (FileScheme, account),
   Registration (
@@ -45,7 +45,7 @@ getRecordedUserWalletPublicKeys p = do
   return $ fromString . takeWhile (/= '/') . toFilePath <$> a
 
 loadAccounts ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   m [Registered]
 loadAccounts = do
   FileScheme {..} <- ask
@@ -53,7 +53,7 @@ loadAccounts = do
   traverse loadExistingAccount recordedKeys
 
 loadAccount ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> m (Maybe Registered)
 loadAccount userWalletPublicKey = do
   account <- deriveAccountDirectoryFrom userWalletPublicKey
@@ -63,15 +63,17 @@ loadAccount userWalletPublicKey = do
     (Just <$> loadExistingAccount userWalletPublicKey)
 
 loadExistingAccount ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> m Registered
 loadExistingAccount userWalletPublicKey = do
   accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
   FileScheme.Account {registration = Registration {..}} <- asks account
   Registered userWalletPublicKey
     <$> ( Setup (accountDirectory </> [reldir|registered|] </> provingKey)
-            <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+            <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey])
             <*> ( PublicVerificationContext (accountDirectory </> [reldir|registered|] </> verificationContext)
-                    <$> (readFrom (accountDirectory </> [reldir|registered|] </> verificationContext) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+                    <$> ( readFrom (accountDirectory </> [reldir|registered|] </> verificationContext)
+                            >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey]
+                        )
                 )
         )

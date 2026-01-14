@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-partial-fields #-}
-
 -- | Module for fetching and loading user accounts from the file system.
 -- This module provides functions to load existing accounts, load a specific account,
 -- and retrieve all recorded user wallet public keys. It handles errors related to

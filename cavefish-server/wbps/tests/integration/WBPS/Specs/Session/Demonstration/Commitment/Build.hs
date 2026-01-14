@@ -9,16 +9,21 @@ import Data.Default (def)
 import Path (reldir)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
-import WBPS.Core.Failure (RegistrationFailed)
+import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.FileScheme (FileScheme, defaultFileScheme)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Session.Demonstration.Commitment (CommitmentPayload (unPayload), payload)
+import WBPS.Core.Session.Demonstration.Commitment (
+  CommitmentPayload (unPayload),
+  MessageLimbs (unMessageLimbs),
+  payload,
+ )
 import WBPS.Core.Session.Demonstration.Commitment.Build (
   Context (nbCommitmentLimbs),
   Input (Input, ekPowRho, messageBits),
   build,
  )
-import WBPS.Core.Session.Demonstration.Message (MessageBits (unMessageBits), messageToBits)
+import WBPS.Core.Session.Demonstration.PreparedMessage (MessageBits)
+import WBPS.Core.Session.Demonstration.PreparedMessage.Prepare (toBitsPaddedToMaxSize)
 import WBPS.Core.Session.Demonstration.Scalars (
   Scalars (Scalars, ekPowRho),
  )
@@ -56,7 +61,7 @@ commitmentMatchesCircuit = do
       length commitmentPayload @?= nbCommitmentLimbs (def :: Context)
   where
     runCommitmentFlow ::
-      (MonadIO m, MonadError [RegistrationFailed] m, MonadReader FileScheme m) =>
+      (MonadIO m, MonadError [WBPSFailure] m, MonadReader FileScheme m) =>
       CommitmentFixtures ->
       m ([Integer], ElGamal.AffinePoint)
     runCommitmentFlow CommitmentFixtures {unsignedTxFixture, messageBitsFixture, commitmentFixture} = do
@@ -65,10 +70,10 @@ commitmentMatchesCircuit = do
       messageBitsFromFixture <- liftIO (readFixture messageBitsFixture)
       expectedCommitmentBits <- liftIO (readFixture commitmentFixture)
 
-      whenMismatch "UnsignedTx fixture -> message bits" (messageToBits def message == messageBitsFromFixture)
+      whenMismatch "UnsignedTx fixture -> message bits" (toBitsPaddedToMaxSize def message == messageBitsFromFixture)
 
       commitmentPayload <- unPayload . payload <$> build Input {ekPowRho, messageBits = messageBitsFromFixture}
 
       whenMismatch "Commitment payload fixture" (commitmentPayload == expectedCommitmentBits)
 
-      pure (unMessageBits commitmentPayload, ekPowRho)
+      pure (unMessageLimbs commitmentPayload, ekPowRho)

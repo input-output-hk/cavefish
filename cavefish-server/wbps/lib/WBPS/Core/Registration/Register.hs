@@ -15,7 +15,7 @@ import Path (reldir, (</>))
 import Path.IO (ensureDir)
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.Path (writeTo)
-import WBPS.Core.Failure (RegistrationFailed (AccountAlreadyRegistered))
+import WBPS.Core.Failure (WBPSFailure (AccountAlreadyRegistered))
 import WBPS.Core.FileScheme (
   Account (Account, registration),
   FileScheme (FileScheme, account),
@@ -33,13 +33,13 @@ import WBPS.Core.Registration.Registered (
 import WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh (getGenerateProvingKeyProcess, getGenerateVerificationKeyProcess)
 
 register ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey ->
   m Registered
 register userWalletPublicKey =
   loadAccount userWalletPublicKey
     >>= \case
-      Just Registered {userWalletPublicKey = existingUserWalletKey} -> throwError [AccountAlreadyRegistered existingUserWalletKey]
+      Just Registered {userWalletPublicKey = existingUserWalletKey} -> throwError [AccountAlreadyRegistered . show $ existingUserWalletKey]
       Nothing -> do
         register' =<< deriveAccountDirectoryFrom userWalletPublicKey
         loadExistingAccount userWalletPublicKey

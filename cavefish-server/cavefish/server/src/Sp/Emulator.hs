@@ -34,7 +34,7 @@ import Servant (
  )
 import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Failure (
-  RegistrationFailed (AccountAlreadyRegistered, SessionNotFound),
+  WBPSFailure (AccountAlreadyRegistered, SessionNotFound),
  )
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Core.Registration.FetchAccounts qualified as Registration

@@ -12,18 +12,21 @@ module WBPS.Core.Session.Proving.Challenge (
 
 import Cardano.Api qualified as Api
 import Crypto.Hash (Digest, SHA512, digestFromByteString, hash)
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withText)
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), withArray)
+import Data.Aeson.Types (Parser)
 import Data.Bits (shiftL, shiftR, (.&.), (.|.))
 import Data.ByteArray qualified as BA
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.Default (def)
-import Data.List (foldl')
+import Data.Vector qualified as V
 import Data.Word (Word8)
 import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Crypto
 import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (txUnsigned))
 import WBPS.Core.Keys.Ed25519 (PublicKey (PublicKey), UserWalletPublicKey (UserWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Message (Message (Message), messageToBits, unMessageBits)
+import WBPS.Core.Session.Demonstration.PreparedMessage (
+  Message (Message),
+  MessageBits (MessageBits),
+ )
 import WBPS.Core.Session.Demonstration.R (R (R))
 
 -- | Challenge digest used by the transcript.
@@ -32,28 +35,21 @@ newtype Challenge = Challenge (Digest SHA512)
 
 instance ToJSON Challenge where
   toJSON (Challenge digest) =
-    toJSON (Crypto.encode (Crypto.fromByteString (BA.convert digest :: ByteString) :: Crypto.Hexadecimal))
+    toJSON (BS.unpack (BA.convert digest :: ByteString))
 
 instance FromJSON Challenge where
-  parseJSON = withText "Challenge" $ \t ->
-    case Crypto.decode t :: Maybe Crypto.Hexadecimal of
-      Nothing -> fail "Challenge: invalid hex encoding"
-      Just hex ->
-        case digestFromByteString (Crypto.toByteString hex) of
-          Nothing -> fail "Challenge: invalid digest length"
-          Just digest -> pure (Challenge digest)
+  parseJSON = withArray "Challenge" $ \arr -> do
+    bytes <- traverse parseJSON (V.toList arr) :: Parser [Word8]
+    case digestFromByteString (BS.pack bytes) of
+      Nothing -> fail "Challenge: invalid digest length"
+      Just digest -> pure (Challenge digest)
 
 -- | Recompute the transcript challenge as done in the circuit.
---   The message is first expanded to the fixed circuit length via 'messageToBits',
+--   The message is first expanded to the fixed circuit length via 'toBitsPaddedToMaxSize',
 --   then its bytes are bit-reversed to match the circuit's LSB-first bit ordering.
-compute :: UserWalletPublicKey -> Message -> R -> Challenge
-compute (UserWalletPublicKey userPk) message (R rPk) =
-  Challenge (hash (rBytes <> xBytes <> msgBytesReversed))
-  where
-    rBytes = publicKeyBytes rPk
-    xBytes = publicKeyBytes userPk
-    msgBytes = bitsToBytesLE (unMessageBits (messageToBits def message))
-    msgBytesReversed = BS.map reverseBits8 msgBytes
+compute :: UserWalletPublicKey -> MessageBits -> R -> Challenge
+compute (UserWalletPublicKey userPk) (MessageBits messageBits) (R rPk) =
+  Challenge (hash (publicKeyBytes rPk <> publicKeyBytes userPk <> messageBits))
 
 -- | Recompute the transcript challenge using the transaction id instead of the
 --   full message bits. The tx id bytes are bit-reversed per byte to match the
@@ -78,25 +74,6 @@ publicKeyBytes (PublicKey pk) =
 txIdFromMessage :: Message -> ByteString
 txIdFromMessage (Message unsignedTx) =
   Api.serialiseToRawBytes (Api.getTxId (txUnsigned unsignedTx))
-
--- | Pack a little-endian bit vector into bytes (LSB-first per byte).
-bitsToBytesLE :: [Integer] -> ByteString
-bitsToBytesLE bits =
-  BS.pack (go bits)
-  where
-    go [] = []
-    go xs =
-      let (byteBits, rest) = splitAt 8 xs
-       in byteFromBitsLE byteBits : go rest
-
-byteFromBitsLE :: [Integer] -> Word8
-byteFromBitsLE bits =
-  foldl' setBitIf 0 (zip [0 .. 7] (bits ++ repeat 0))
-  where
-    setBitIf acc (i, b) =
-      if b == 0
-        then acc
-        else acc .|. ((1 :: Word8) `shiftL` i)
 
 reverseBits8 :: Word8 -> Word8
 reverseBits8 b =

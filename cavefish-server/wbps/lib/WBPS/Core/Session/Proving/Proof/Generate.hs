@@ -10,7 +10,7 @@ import Data.Aeson (Value (Null))
 import Path (toFilePath, (</>))
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (RegistrationFailed)
+import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.FileScheme (
   Account (Account, registration, session),
   FileScheme,
@@ -30,7 +30,7 @@ import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Proving.Proof (Proof (Proof))
 
 generateProof ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey ->
   CommitmentId ->
   m Proof
