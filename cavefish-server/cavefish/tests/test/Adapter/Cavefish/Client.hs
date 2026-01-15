@@ -34,7 +34,7 @@ import WBPS.Core.Keys.Ed25519 (Wallet (Wallet, paymentAddress), generateWallet)
 
 getServiceProviderAPI :: ServiceFee -> Int -> IO ServiceProviderAPI
 getServiceProviderAPI fee port = do
-  manager <- newManager defaultManagerSettings {managerResponseTimeout = responseTimeoutMicro 60000000}
+  manager <- newManager defaultManagerSettings {managerResponseTimeout = responseTimeoutMicro 300_000_000}
   let baseUrl = BaseUrl SC.Http "127.0.0.1" port ""
       ( register
           :<|> demonstrateCommitment
