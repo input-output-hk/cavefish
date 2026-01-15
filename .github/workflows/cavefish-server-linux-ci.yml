@@ -155,13 +155,13 @@ jobs:
         with:
           path: |
             ${{ steps.install-haskell.outputs.cabal-store }}
-        # A new cache is created upon a change to the cabal build plan,
-        # cabal.project (and/or cabal.project.local), or a bump to
-        # CABAL_CACHE_VERSION.
+          # A new cache is created upon a change to the cabal build plan,
+          # cabal.project (and/or cabal.project.local), or a bump to
+          # CABAL_CACHE_VERSION.
           key: ${{ env.cache-name }}-${{ runner.os }}-${{ matrix.ghc }}-${{ env.CABAL_CACHE_VERSION }}-${{ hashFiles('dependencies.txt') }}-${{ hashFiles('cabal.project*') }}
+          # Restoring attempts are from current branch then master. The key above
+          # is by default already a restore-key.
           restore-keys: |
-        # Restoring attempts are from current branch then master. The key above
-        # is by default already a restore-key.
             ${{ env.cache-name }}-${{ runner.os }}-${{ matrix.ghc }}-${{ env.CABAL_CACHE_VERSION }}-${{ hashFiles('dependencies.txt') }}
             ${{ env.cache-name }}-${{ runner.os }}-${{ matrix.ghc }}-${{ env.CABAL_CACHE_VERSION }}-
 
