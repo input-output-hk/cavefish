@@ -18,6 +18,7 @@
 // --------------------------------------|------------------------------------------
 //  signer_key                           |  X      — Signer’s public key (EdDSA/LC)
 //  solver_encryption_key                |  ek     — ElGamal encryption key of the SP
+//  solver_encryption_key_pow_rho        |  ek^ρ   — ElGamal encryption key raised to ρ
 //  commitment_randomizer_rho            |  ρ      — Random scalar used for commitment
 //  commitment_point_bits                     |  R      — g^ρ (bit representation for transcript)
 //  f                     |  C₀=g^ρ — Commitment base (curve point)
@@ -48,6 +49,7 @@
 // --------------------------------------|------------------------------------------
 //  signer_key                           |  X      — Signer’s public key (EdDSA/LC)
 //  solver_encryption_key                |  ek     — ElGamal encryption key of the SP
+//  solver_encryption_key_pow_rho        |  ek^ρ   — ElGamal encryption key raised to ρ
 //  commitment_randomizer_rho            |  ρ      — Random scalar used for commitment
 //  commitment_point_bits                |  C₀ = g^ρ — Commitment base (BabyJub affine point (x,y))
 //  commitment_point_affine              |  C₀=g^ρ — Commitment base (curve point)
@@ -98,14 +100,14 @@
 
 pragma circom 2.1.2;
 
-// Vendor gadgets
-include "../vendor/circomlib/circuits/poseidon.circom";
-include "../vendor/circomlib/circuits/escalarmulany.circom";
-include "../vendor/circomlib/circuits/escalarmulfix.circom";
-include "../vendor/circomlib/circuits/bitify.circom";
+// Vendor gadgets (shared single copy)
+include "../../../../wbps/vendor/circomlib/circuits/poseidon.circom";
+include "../../../../wbps/vendor/circomlib/circuits/escalarmulany.circom";
+include "../../../../wbps/vendor/circomlib/circuits/escalarmulfix.circom";
+include "../../../../wbps/vendor/circomlib/circuits/bitify.circom";
 
-// Cardano EdDSA SHA-512 (bitwise)
-include "hashing/sha2/sha512/sha512_hash_bits.circom";
+// Cardano EdDSA SHA-512 (bitwise, shared single copy)
+include "../../../../wbps/circuits/hashing/sha2/sha512/sha512_hash_bits.circom";
 
 // ======================================================================
 // 1) RebuildMessage — P0
@@ -215,6 +217,9 @@ template RebuildCommitment(message_size, commitment_limb_size, nb_commitment_lim
     signal output out_masked_chunk[nb_commitment_limbs];
     signal output out_delta[nb_commitment_limbs];
 
+    log(900150); log(in_seed_x);
+    log(900151); log(in_seed_y);
+
     // PRF stream
     signal prf[nb_commitment_limbs];
 
@@ -222,6 +227,9 @@ template RebuildCommitment(message_size, commitment_limb_size, nb_commitment_lim
     pEx.initialState <== 0;
     pEx.inputs[0] <== in_seed_x;
     pEx.inputs[1] <== in_seed_y;
+    log(900152); log(pEx.initialState);
+    log(900153); log(pEx.inputs[0]);
+    log(900154); log(pEx.inputs[1]);
     prf[0] <== pEx.out[0];
 
     component nexts[nb_commitment_limbs];
@@ -326,6 +334,7 @@ template CardanoWBPS(message_size, message_private_part_size, message_private_pa
     // R = g^ρ (bits for transcript), C0 = g^ρ (affine), payload limbs, challenge
     signal input commitment_point_bits[256];
     signal input commitment_point_affine[2];
+    signal input solver_encryption_key_pow_rho[2];
     signal input commitment_randomizer_rho;
     signal input commitment_payload[nb_commitment_limbs];
     signal input challenge[64];
@@ -349,9 +358,19 @@ template CardanoWBPS(message_size, message_private_part_size, message_private_pa
 
     log(900010); log(commitmentScalars.out_commitment_g_rho[0]);
     log(900011); log(commitmentScalars.out_commitment_g_rho[1]);
+    log(900012); log(commitmentScalars.out_solver_encryption_key_pow_rho[0]);
+    log(900013); log(commitmentScalars.out_solver_encryption_key_pow_rho[1]);
 
     commitment_point_affine[0] === commitmentScalars.out_commitment_g_rho[0];
     commitment_point_affine[1] === commitmentScalars.out_commitment_g_rho[1];
+    solver_encryption_key_pow_rho[0] === commitmentScalars.out_solver_encryption_key_pow_rho[0];
+    solver_encryption_key_pow_rho[1] === commitmentScalars.out_solver_encryption_key_pow_rho[1];
+
+    component poseidonDebug = PoseidonEx(2, 1);
+    poseidonDebug.initialState <== 0;
+    poseidonDebug.inputs[0] <== commitmentScalars.out_solver_encryption_key_pow_rho[0];
+    poseidonDebug.inputs[1] <== commitmentScalars.out_solver_encryption_key_pow_rho[1];
+    log(900160); log(poseidonDebug.out[0]);
 
     // P2
     component rebuildCommitment = RebuildCommitment(message_size, commitment_limb_size, nb_commitment_limbs);
@@ -379,6 +398,8 @@ template CardanoWBPS(message_size, message_private_part_size, message_private_pa
     }
 
     for (var d = 0; d < 64; d++) {
+        log(900500 + d); log(challenge[d]);
+        log(900600 + d); log(rebuildChallenge.out_challenge[d]);
         challenge[d] === rebuildChallenge.out_challenge[d];
     }
 }

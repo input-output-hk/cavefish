@@ -122,8 +122,8 @@ runBuildCommitment params tmpRoot Input {ekPowRho = AffinePoint {x, y}, ..} = do
   Filescheme.BuildCommitmentInternals {input, output, statementOutput} <- compileAndScheme setup
   let inputJson =
         Aeson.object
-          [ "in_seed_x" Aeson..= x
-          , "in_seed_y" Aeson..= y
+          [ "in_seed_x" Aeson..= T.pack (show x)
+          , "in_seed_y" Aeson..= T.pack (show y)
           , "in_message" Aeson..= messageBits
           ]
 

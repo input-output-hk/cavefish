@@ -36,4 +36,5 @@ data WBPSFailure
   | SessionRhoNotFound UserWalletPublicKey CommitmentId
   | SessionScalarsNotFound UserWalletPublicKey CommitmentId
   | SessionCommitmentNotFound UserWalletPublicKey CommitmentId
+  | SessionProofNotFound UserWalletPublicKey CommitmentId
   deriving (Show, Eq)

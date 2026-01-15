@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-partial-fields #-}
+
 -- | Module for fetching and loading user accounts from the file system.
 -- This module provides functions to load existing accounts, load a specific account,
 -- and retrieve all recorded user wallet public keys. It handles errors related to
@@ -16,7 +18,7 @@ import WBPS.Core.Session.Demonstration.Commitment (Commitment (Commitment), Comm
 import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment))
 import WBPS.Core.Session.Proving.Proved (CommitmentProved)
 
-newtype SessionId = SessionId String deriving (Show, Eq)
+newtype SessionId = SessionId {unSessionId :: String} deriving (Show, Eq)
 
 deriveId :: CommitmentId -> SessionId
 deriveId (CommitmentId x) = SessionId . Text.unpack . encode $ x

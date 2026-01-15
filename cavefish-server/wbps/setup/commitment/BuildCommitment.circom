@@ -5,10 +5,10 @@
 
 pragma circom 2.1.2;
 
-// Circom library path: use circuits/ relative to the include search path.
-include "poseidon.circom";
+// Use the shared circomlib copy (single source of truth).
+include "../../../../wbps/vendor/circomlib/circuits/poseidon.circom";
 // Use the canonical circomlib bit packing to avoid JS shift overflow on large limbs.
-include "bitify.circom";
+include "../../../../wbps/vendor/circomlib/circuits/bitify.circom";
 
 // ======================================================================
 // 3) BuildCommitment — P2 (builder only)
@@ -32,6 +32,10 @@ template BuildCommitment(message_size, commitment_limb_size, nb_commitment_limbs
     signal output out_message_chunk[nb_commitment_limbs];
     signal output out_masked_chunk[nb_commitment_limbs];
 
+    // Seed trace
+    log(900120); log(in_seed_x);
+    log(900121); log(in_seed_y);
+
     // PRF stream
     signal prf[nb_commitment_limbs];
 
@@ -39,6 +43,9 @@ template BuildCommitment(message_size, commitment_limb_size, nb_commitment_limbs
     pEx.initialState <== 0;
     pEx.inputs[0] <== in_seed_x;
     pEx.inputs[1] <== in_seed_y;
+    log(900152); log(pEx.initialState);
+    log(900153); log(pEx.inputs[0]);
+    log(900154); log(pEx.inputs[1]);
     prf[0] <== pEx.out[0];
 
     component nexts[nb_commitment_limbs];
