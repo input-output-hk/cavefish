@@ -68,8 +68,6 @@ library
     WBPS.Adapter.Math.Integer
     WBPS.Adapter.Monad.Control
     WBPS.Adapter.Path
-    WBPS.Core.Cardano.Cbor
-    WBPS.Core.Cardano.TxAbs
     WBPS.Core.Cardano.UnsignedTx
     WBPS.Core.Circuit.Parameters
     WBPS.Core.Failure

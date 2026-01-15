@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module WBPS.Core.Session.Proving.Proof.Generate (
   generateProof,
 ) where
@@ -6,11 +8,11 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.Reader.Class (asks)
-import Data.Aeson (Value (Null))
-import Path (toFilePath, (</>))
+import Path (reldir, toFilePath, (</>))
 import Shh (Stream (Append, StdOut), (&!>), (&>))
+import WBPS.Adapter.Monad.Control (whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (WBPSFailure)
+import WBPS.Core.Failure (WBPSFailure (SessionProofNotFound))
 import WBPS.Core.FileScheme (
   Account (Account, registration, session),
   FileScheme,
@@ -28,6 +30,7 @@ import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Session.Demonstration.Commitment (CommitmentId)
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Proving.Proof (Proof (Proof))
+import WBPS.Core.Session.Session (deriveId, unSessionId)
 
 generateProof ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
@@ -50,17 +53,19 @@ generateProof userWalletPublicKey commitmentId = do
     } <-
     asks FileScheme.account
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
+  let provedDirectory = sessionDirectory </> [reldir|proved|]
+  let provedWitnessDirectory = provedDirectory </> [reldir|witness|]
   liftIO $
     Snarkjs.generateProof
       Snarkjs.ProveScheme
-        { provingKey = toFilePath (accountDirectory </> provingKey)
-        , witness = toFilePath (sessionDirectory </> witnessOutput)
-        , proofOutput = toFilePath (sessionDirectory </> proofOutput)
-        , statementOutput = toFilePath (sessionDirectory </> statementOutput)
+        { provingKey = toFilePath (accountDirectory </> [reldir|registered|] </> provingKey)
+        , witness = toFilePath (provedWitnessDirectory </> witnessOutput)
+        , proofOutput = toFilePath (provedDirectory </> proofOutput)
+        , statementOutput = toFilePath (provedDirectory </> statementOutput)
         }
       &!> StdOut
       &> Append shellLogsFilepath
-  maybeProofValue <- readFrom (sessionDirectory </> proofOutput)
-  pure $ case maybeProofValue of
-    Nothing -> Proof Null
-    Just value -> Proof value
+  Proof
+    <$> ( readFrom (provedDirectory </> proofOutput)
+            >>= whenNothingThrow [SessionProofNotFound (show userWalletPublicKey) (unSessionId . deriveId $ commitmentId)]
+        )

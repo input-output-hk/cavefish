@@ -13,7 +13,7 @@ module WBPS.Core.Session.FetchSession (
 ) where
 
 import Control.Monad (join)
-import Control.Monad.Error.Class (MonadError (throwError))
+import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.Reader.Class (asks)

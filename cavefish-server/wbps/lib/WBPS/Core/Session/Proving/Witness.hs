@@ -46,13 +46,14 @@ import WBPS.Core.Session.Demonstration.PreparedMessage (
   PreparedMessage (PreparedMessage, circuit),
  )
 import WBPS.Core.Session.Demonstration.R (R (R))
-import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, gPowRho, rho))
+import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, ekPowRho, gPowRho, rho))
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Proving.Challenge (Challenge)
 
 data CircuitInputs = CircuitInputs
   { signer_key :: [Word8]
   , solver_encryption_key :: [Text]
+  , solver_encryption_key_pow_rho :: [Text]
   , commitment_point_bits :: [Word8]
   , commitment_point_affine :: [Text]
   , commitment_randomizer_rho :: Rho
@@ -121,7 +122,7 @@ prepareInputs
     }
   CommitmentDemonstrated
     { preparedMessage = PreparedMessage {circuit = CircuitMessage {public, private}}
-    , scalars = Scalars {gPowRho, rho}
+    , scalars = Scalars {gPowRho, rho, ekPowRho}
     , commitment = Commitment {payload}
     }
   bigR
@@ -129,6 +130,7 @@ prepareInputs
     CircuitInputs
       { signer_key = Ed25519.userWalletPublicKeyToWord8s userWalletPublicKey
       , solver_encryption_key = AffinePoint.toText solverKeyPoint
+      , solver_encryption_key_pow_rho = AffinePoint.toText ekPowRho
       , commitment_point_bits = rToBits bigR
       , commitment_point_affine = AffinePoint.toText gPowRho
       , commitment_randomizer_rho = rho
