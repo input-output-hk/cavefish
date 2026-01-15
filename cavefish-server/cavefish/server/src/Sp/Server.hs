@@ -6,7 +6,6 @@ module Sp.Server (
   Cavefish,
   Register,
   mkServer,
-  mkSettings,
 ) where
 
 import Cavefish (CavefishServerM, CavefishServices, runCavefishMonad)
@@ -16,7 +15,6 @@ import Cavefish.Endpoints.Write.AskCommitmentProof qualified as AskCommitmentPro
 import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
 import Cavefish.Endpoints.Write.Register qualified as Register
 import Network.Wai (Application, Middleware)
-import Network.Wai.Handler.Warp (Port, Settings, defaultSettings, setPort, setTimeout)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
   cors,
@@ -61,10 +59,6 @@ type FetchAccounts = "fetchAccounts" :> Get '[JSON] FetchAccounts.Outputs
 
 cavefishApi :: Proxy Cavefish
 cavefishApi = Proxy
-
-mkSettings :: Port -> Settings
-mkSettings port =
-  setTimeout 240 $ setPort port defaultSettings
 
 mkServer :: Middleware -> CavefishServices -> Application
 mkServer cavefishMiddleware env =
