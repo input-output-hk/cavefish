@@ -84,6 +84,7 @@ library
     WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh
     WBPS.Core.Registration.SnarkJs.OverShh
     WBPS.Core.Session.BlindSigning.ThetaStatement
+    WBPS.Core.Session.BlindSigning.VerifyProof
     WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx
     WBPS.Core.Session.Demonstration.Artefacts.Commitment
     WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build
@@ -164,10 +165,12 @@ test-suite wbps-integration-tests
   ghc-options:    -Wno-unused-packages
   other-modules:
     WBPS.Specs.Adapter.Fixture
+    WBPS.Specs.Adapter.FixtureIO
     WBPS.Specs.Adapter.GenCardanoKeys
     WBPS.Specs.Adapter.Test
     WBPS.Specs.NominalCase
     WBPS.Specs.Session.BlindSigning.ThetaStatement
+    WBPS.Specs.Session.BlindSigning.ThetaStatementFixture
     WBPS.Specs.Session.Demonstration.Commitment.Build
 
   build-depends:
