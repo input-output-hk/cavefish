@@ -1,4 +1,4 @@
-module WBPS.Core.Session.Demonstration.PreparedMessage.Prepare (
+module WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare (
   prepare,
   recompose,
   splitMessageBits,
@@ -16,11 +16,6 @@ import Data.ByteString qualified as BS
 import Data.List (foldl')
 import Data.Word (Word8)
 import GHC.Bits (testBit)
-import WBPS.Core.Cardano.UnsignedTx (
-  UnsignedTx (UnsignedTx, txUnsigned),
-  extractPrivateElements,
-  randomizeTx,
- )
 import WBPS.Core.Circuit.Parameters (
   CircuitMessageMaxSize (CircuitMessageMaxSize),
   CircuitParameters (CircuitParameters, messageSize, txInputSize),
@@ -31,7 +26,12 @@ import WBPS.Core.Circuit.Parameters (
   messagePrivatePartSize,
  )
 import WBPS.Core.Failure (WBPSFailure (CircuitMessageDecodeFailed))
-import WBPS.Core.Session.Demonstration.PreparedMessage (
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (
+  UnsignedTx (UnsignedTx, txUnsigned),
+  extractPrivateElements,
+  randomizeTx,
+ )
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
   CircuitMessage (CircuitMessage, message, private, public),
   Message (Message),
   MessageBits (MessageBits),

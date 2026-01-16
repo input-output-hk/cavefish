@@ -5,7 +5,7 @@
 --     c = SHA-512(R || X || mu_bits)
 --   where R and X are Ed25519 public keys (per-byte bit-reversed in-circuit)
 --   and mu_bits are the fixed-length message bits (LSB-first per byte).
-module WBPS.Core.Session.Proving.Challenge (
+module WBPS.Core.Session.Proving.Artefacts.Challenge (
   Challenge (..),
   compute,
   computeByUsingTxId,
@@ -25,13 +25,13 @@ import Data.Vector qualified as V
 import Data.Word (Word64, Word8)
 import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Crypto
 import WBPS.Adapter.Data.ByteString (bytesToBitsLE)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (txUnsigned))
 import WBPS.Core.Keys.Ed25519 (PublicKey (PublicKey), UserWalletPublicKey (UserWalletPublicKey))
-import WBPS.Core.Session.Demonstration.PreparedMessage (
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (txUnsigned))
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
   Message (Message),
   MessageBits (MessageBits),
  )
-import WBPS.Core.Session.Demonstration.R (R (R))
+import WBPS.Core.Session.Demonstration.Artefacts.R (R (R))
 
 -- | Challenge digest used by the transcript.
 newtype Challenge = Challenge (Digest SHA512)

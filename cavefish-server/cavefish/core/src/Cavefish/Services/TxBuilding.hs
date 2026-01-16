@@ -16,8 +16,8 @@ import GHC.Generics (Generic)
 import Intent.Example.DSL (IntentDSL)
 import Servant.Server.Internal.ServerError (ServerError)
 import Toml.Schema (FromValue (fromValue), parseTableFromValue, reqKey)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (PaymentAddess))
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
 
 data TxBuilding = TxBuilding
   { fees :: ServiceFee

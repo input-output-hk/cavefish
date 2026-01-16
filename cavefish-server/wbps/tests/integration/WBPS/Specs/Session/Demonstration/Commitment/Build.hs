@@ -9,25 +9,25 @@ import Data.Default (def)
 import Path (reldir)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
+import WBPS.Adapter.Math.AffinePoint (AffinePoint)
 import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.FileScheme (FileScheme, defaultFileScheme)
 import WBPS.Core.Keys.Ed25519 (generateKeyPair, userWalletPK)
-import WBPS.Core.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Session.Demonstration.Commitment (
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (
   CommitmentPayload (unPayload),
   MessageLimbs (unMessageLimbs),
   payload,
  )
-import WBPS.Core.Session.Demonstration.Commitment.Build (
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build (
   Context (nbCommitmentLimbs),
   Input (Input, ekPowRho, messageBits),
   build,
  )
-import WBPS.Core.Session.Demonstration.PreparedMessage.Prepare (toBitsPaddedToMaxSize)
-import WBPS.Core.Session.Demonstration.Scalars (
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare (toBitsPaddedToMaxSize)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (
   Scalars (Scalars, ekPowRho),
  )
-import WBPS.Core.Session.Demonstration.Scalars.Compute (compute)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars.Compute (compute)
 import WBPS.Specs.Adapter.Fixture (
   CommitmentFixtures (CommitmentFixtures, commitmentFixture, messageBitsFixture, unsignedTxFixture),
   commitmentFixtures,
@@ -63,7 +63,7 @@ commitmentMatchesCircuit = do
     runCommitmentFlow ::
       (MonadIO m, MonadError [WBPSFailure] m, MonadReader FileScheme m) =>
       CommitmentFixtures ->
-      m ([Integer], ElGamal.AffinePoint)
+      m ([Integer], AffinePoint)
     runCommitmentFlow CommitmentFixtures {unsignedTxFixture, messageBitsFixture, commitmentFixture} = do
       userWalletPublicKey <- liftIO (userWalletPK <$> generateKeyPair)
       Scalars {ekPowRho} <- compute sampleEncryptionKey sampleRho

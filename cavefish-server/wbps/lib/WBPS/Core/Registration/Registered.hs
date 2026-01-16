@@ -8,8 +8,8 @@ module WBPS.Core.Registration.Registered (
   -- | Function to derive AccountId from UserWalletPublicKey
 ) where
 
-import WBPS.Core.Groth16.Setup (Setup)
 import WBPS.Core.Keys.Ed25519 (PublicKey (PublicKey), UserWalletPublicKey (UserWalletPublicKey))
+import WBPS.Core.Registration.Artefacts.Groth16.Setup (Setup)
 
 newtype AccountId = AccountId String deriving (Show, Eq)
 

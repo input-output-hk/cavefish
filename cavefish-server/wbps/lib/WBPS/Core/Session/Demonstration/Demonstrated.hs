@@ -3,9 +3,9 @@ module WBPS.Core.Session.Demonstration.Demonstrated (
 ) where
 
 import GHC.Generics (Generic)
-import WBPS.Core.Session.Demonstration.Commitment (Commitment)
-import WBPS.Core.Session.Demonstration.PreparedMessage (PreparedMessage)
-import WBPS.Core.Session.Demonstration.Scalars (Scalars)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (PreparedMessage)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars)
 
 data CommitmentDemonstrated
   = CommitmentDemonstrated

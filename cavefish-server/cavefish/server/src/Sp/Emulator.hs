@@ -32,13 +32,13 @@ import Servant (
   errBody,
   throwError,
  )
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Failure (
   WBPSFailure (AccountAlreadyRegistered, SessionNotFound),
  )
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Core.Registration.FetchAccounts qualified as Registration
 import WBPS.Core.Registration.Register qualified as Registration
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Session.Demonstration.Demonstrate qualified as Demonstration
 import WBPS.Core.Session.FetchSession qualified as SessionFetch
 import WBPS.Core.Session.Proving.Prove qualified as Proving

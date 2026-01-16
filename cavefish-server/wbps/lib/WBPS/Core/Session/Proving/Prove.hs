@@ -10,18 +10,18 @@ import WBPS.Core.FileScheme (
   FileScheme,
  )
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Session.Demonstration.Commitment (CommitmentId)
-import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, preparedMessage))
-import WBPS.Core.Session.Demonstration.PreparedMessage (
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
   CircuitMessage (CircuitMessage, message),
   PreparedMessage (PreparedMessage, circuit),
  )
-import WBPS.Core.Session.Demonstration.R (R)
+import WBPS.Core.Session.Demonstration.Artefacts.R (R)
+import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, preparedMessage))
 import WBPS.Core.Session.FetchSession (loadExistingCommitmentDemonstrationEvents)
-import WBPS.Core.Session.Proving.Challenge qualified as Challenge
-import WBPS.Core.Session.Proving.Proof.Generate (generateProof)
+import WBPS.Core.Session.Proving.Artefacts.Challenge qualified as Challenge
+import WBPS.Core.Session.Proving.Artefacts.Proof.Generate (generateProof)
+import WBPS.Core.Session.Proving.Artefacts.Witness qualified as Witness (generate)
 import WBPS.Core.Session.Proving.Proved (CommitmentProved (CommitmentProved, bigR, challenge, proof))
-import WBPS.Core.Session.Proving.Witness qualified as Witness (generate)
 
 prove ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>

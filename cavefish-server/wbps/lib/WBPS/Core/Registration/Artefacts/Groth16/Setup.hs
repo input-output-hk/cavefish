@@ -1,4 +1,4 @@
-module WBPS.Core.Groth16.Setup (
+module WBPS.Core.Registration.Artefacts.Groth16.Setup (
   Setup (..),
   PublicVerificationContext (..),
 ) where

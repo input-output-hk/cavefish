@@ -14,19 +14,26 @@ import Data.Default (Default (def))
 import Path (reldir, (</>))
 import Path.IO (ensureDir)
 import WBPS.Adapter.Path (writeTo)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Failure (
   WBPSFailure (AccountNotFound),
  )
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Core.FileScheme qualified as FileScheme
-import WBPS.Core.Groth16.Setup (Setup (Setup, encryptionKeys))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
+import WBPS.Core.Registration.Artefacts.Groth16.Setup (Setup (Setup, encryptionKeys))
 import WBPS.Core.Registration.FetchAccounts (loadAccount)
 import WBPS.Core.Registration.Registered (Registered (Registered, setup, userWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Commitment (Commitment (Commitment, id))
-import WBPS.Core.Session.Demonstration.Commitment.Build (Input (Input), build)
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment, id))
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build (Input (Input), build)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (CircuitMessage (message), circuit)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare (prepare)
+import WBPS.Core.Session.Demonstration.Artefacts.Rho qualified as Rho
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars as Scalars (
+  Scalars (Scalars, ekPowRho),
+ )
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars.Compute qualified as Scalars
 import WBPS.Core.Session.Demonstration.Demonstrated (
   CommitmentDemonstrated (
     CommitmentDemonstrated,
@@ -35,12 +42,6 @@ import WBPS.Core.Session.Demonstration.Demonstrated (
     scalars
   ),
  )
-import WBPS.Core.Session.Demonstration.PreparedMessage (CircuitMessage (message), circuit)
-import WBPS.Core.Session.Demonstration.PreparedMessage.Prepare (prepare)
-import WBPS.Core.Session.Demonstration.Scalars as Scalars (
-  Scalars (Scalars, ekPowRho),
- )
-import WBPS.Core.Session.Demonstration.Scalars.Compute qualified as Scalars
 import WBPS.Core.Session.FileScheme (deriveSessionDirectoryFrom)
 import WBPS.Core.Session.Session (Session (Demonstrated))
 
@@ -53,7 +54,7 @@ demonstrate userWalletPublicKey unsignedTx =
       Nothing -> throwError [AccountNotFound (show userWalletPublicKey)]
       Just account@Registered {setup = Setup {encryptionKeys = ElGamal.KeyPair {ek}}} -> do
         preparedMessage <- prepare def unsignedTx
-        scalars@Scalars {ekPowRho} <- Scalars.compute ek =<< ElGamal.generateElGamalExponent
+        scalars@Scalars {ekPowRho} <- Scalars.compute ek =<< Rho.generateElGamalExponent
         commitment <- build userWalletPublicKey . Input ekPowRho . message . circuit $ preparedMessage
         Demonstrated account
           <$> save

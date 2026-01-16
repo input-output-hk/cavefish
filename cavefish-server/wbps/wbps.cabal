@@ -68,16 +68,15 @@ library
     WBPS.Adapter.Math.Integer
     WBPS.Adapter.Monad.Control
     WBPS.Adapter.Path
-    WBPS.Core.Cardano.UnsignedTx
     WBPS.Core.Circuit.Parameters
     WBPS.Core.Failure
     WBPS.Core.FileScheme
-    WBPS.Core.Groth16.Setup
     WBPS.Core.Keys.Ed25519
     WBPS.Core.Keys.ElGamal
     WBPS.Core.Primitives.Circom
     WBPS.Core.Primitives.Snarkjs
     WBPS.Core.Primitives.SnarkjsOverFileScheme
+    WBPS.Core.Registration.Artefacts.Groth16.Setup
     WBPS.Core.Registration.FetchAccounts
     WBPS.Core.Registration.FileScheme
     WBPS.Core.Registration.FileScheme.Directories
@@ -85,24 +84,26 @@ library
     WBPS.Core.Registration.Registered
     WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh
     WBPS.Core.Registration.SnarkJs.OverShh
-    WBPS.Core.Session.Demonstration.Commitment
-    WBPS.Core.Session.Demonstration.Commitment.Build
+    WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx
+    WBPS.Core.Session.Demonstration.Artefacts.Commitment
+    WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build
+    WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage
+    WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare
+    WBPS.Core.Session.Demonstration.Artefacts.R
+    WBPS.Core.Session.Demonstration.Artefacts.Rho
+    WBPS.Core.Session.Demonstration.Artefacts.Scalars
+    WBPS.Core.Session.Demonstration.Artefacts.Scalars.Compute
     WBPS.Core.Session.Demonstration.Demonstrate
     WBPS.Core.Session.Demonstration.Demonstrated
-    WBPS.Core.Session.Demonstration.PreparedMessage
-    WBPS.Core.Session.Demonstration.PreparedMessage.Prepare
-    WBPS.Core.Session.Demonstration.R
-    WBPS.Core.Session.Demonstration.Scalars
-    WBPS.Core.Session.Demonstration.Scalars.Compute
     WBPS.Core.Session.FetchSession
     WBPS.Core.Session.FileScheme
     WBPS.Core.Session.FileScheme.Directories
-    WBPS.Core.Session.Proving.Challenge
-    WBPS.Core.Session.Proving.Proof
-    WBPS.Core.Session.Proving.Proof.Generate
+    WBPS.Core.Session.Proving.Artefacts.Challenge
+    WBPS.Core.Session.Proving.Artefacts.Proof
+    WBPS.Core.Session.Proving.Artefacts.Proof.Generate
+    WBPS.Core.Session.Proving.Artefacts.Witness
     WBPS.Core.Session.Proving.Prove
     WBPS.Core.Session.Proving.Proved
-    WBPS.Core.Session.Proving.Witness
     WBPS.Core.Session.Session
     WBPS.WBPS
 

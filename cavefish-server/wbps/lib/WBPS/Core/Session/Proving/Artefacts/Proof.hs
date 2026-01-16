@@ -1,6 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module WBPS.Core.Session.Proving.Proof (
+module WBPS.Core.Session.Proving.Artefacts.Proof (
   Proof (..),
 ) where
 
