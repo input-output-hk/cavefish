@@ -19,14 +19,18 @@ import Control.Monad.Reader (MonadReader (ask))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Intent.Example.DSL (IntentDSL)
-import WBPS.Core.Cardano.UnsignedTx (AbstractUnsignedTx)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Session.Commitment (Commitment)
-import WBPS.Core.Session.Session (
-  CommitmentDemonstrated (CommitmentDemonstrated, commitment, publicMessage),
-  Session (commitmentDemonstrated),
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (AbstractUnsignedTx)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
+  MessageParts (MessageParts, public),
+  PreparedMessage (PreparedMessage, parts),
+  PublicMessage (PublicMessage),
  )
-import WBPS.Core.ZK.Message (PublicMessage (PublicMessage))
+import WBPS.Core.Session.Demonstration.Demonstrated (
+  CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage),
+ )
+import WBPS.Core.Session.Session (Session (demonstrated))
 
 -- | Inputs for demonstrating a commitment.
 data Inputs = Inputs
@@ -54,10 +58,11 @@ handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey, intent} = do
   CavefishServices
     { txBuildingService = TxService.TxBuilding {build}
-    , wbpsService = WbpsService.WBPS {createSession}
+    , wbpsService = WbpsService.WBPS {demonstrate}
     } <-
     ask
 
   unsignedTx <- build intent
-  CommitmentDemonstrated {publicMessage = PublicMessage txAbs, commitment} <- commitmentDemonstrated <$> createSession userWalletPublicKey unsignedTx
+  CommitmentDemonstrated {preparedMessage = PreparedMessage {parts = MessageParts {public = PublicMessage txAbs}}, commitment} <-
+    demonstrated <$> demonstrate userWalletPublicKey unsignedTx
   return Outputs {txAbs, commitment}

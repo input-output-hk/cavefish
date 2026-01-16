@@ -8,12 +8,14 @@ import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Default (def)
 import Path (reldir, (</>))
 import Path.IO (getCurrentDir, getTempDir, withTempDir)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
+import WBPS.Adapter.Math.AffinePoint (AffinePoint (..))
 import WBPS.Core.FileScheme (RootFolders (..), defaultFileScheme)
-import WBPS.Core.Keys.ElGamal (AffinePoint (..), EncryptionKey (..), mkRho)
-import WBPS.Core.Session.Commitment.Commitment (builCommitment)
-import WBPS.Core.Session.Commitment.Scalars (CommitmentScalars (ekPowRho), compute)
-import WBPS.Core.ZK.Message (Message (Message), messageToBits)
+import WBPS.Core.Keys.ElGamal (EncryptionKey (..))
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment.Commitment (builCommitment)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (Message (Message), toBitsPaddedToMaxSize)
+import WBPS.Core.Session.Demonstration.Artefacts.Rho (mkRho)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars (ekPowRho), compute)
 import WBPS.WBPS (runWBPS)
 
 main :: IO ()
@@ -24,7 +26,7 @@ main = do
     Right body -> do
       let unsignedTx = UnsignedTx body
           msg = Message unsignedTx
-          mBits = messageToBits def msg
+          mBits = toBitsPaddedToMaxSize def msg
       BL8.putStrLn "unsignedTx"
       BL8.putStrLn (encode unsignedTx)
       BL8.putStrLn "messageBits"

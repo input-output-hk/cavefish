@@ -13,12 +13,14 @@ import Path (reldir, relfile, (</>))
 import qualified Path
 import qualified Path.IO as P
 import System.Random (mkStdGen)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
+import WBPS.Adapter.Math.AffinePoint (AffinePoint (..))
 import WBPS.Core.FileScheme (RootFolders (..), defaultFileScheme)
-import WBPS.Core.Keys.ElGamal (AffinePoint (..), EncryptionKey (..), mkRho)
-import WBPS.Core.Session.Commitment.Build (Commitment (..), CommitmentPayload (..), Input (..), build)
-import WBPS.Core.Session.Commitment.Scalars (CommitmentScalars (CommitmentScalars, ekPowRho), compute)
-import WBPS.Core.ZK.Message (Message (Message), messageToBits)
+import WBPS.Core.Keys.ElGamal (EncryptionKey (..))
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build (Commitment (..), CommitmentPayload (..), Input (..), build)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (Message (Message), toBitsPaddedToMaxSize)
+import WBPS.Core.Session.Demonstration.Artefacts.Rho (mkRho)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars (Scalars, ekPowRho), compute)
 import WBPS.WBPS (runWBPS)
 
 main :: IO ()
@@ -26,7 +28,7 @@ main = do
   txBody <- either (error . show) pure createBody
   let unsignedTx = UnsignedTx txBody
       message = Message unsignedTx
-      messageBits = messageToBits def message
+      messageBits = toBitsPaddedToMaxSize def message
 
   fixturesDir <- P.makeAbsolute =<< pure ([reldir|wbps/tests/integration/fixtures/commitment|])
   P.ensureDir fixturesDir
@@ -46,7 +48,7 @@ main = do
     cwd <- P.getCurrentDir
     let scheme = defaultFileScheme RootFolders {input = cwd </> [reldir|wbps|] </> [reldir|setup|], output = outDir}
     res <- runWBPS scheme $ do
-      cs@CommitmentScalars {ekPowRho = ekPowRho'} <- compute ek rho
+      cs@Scalars {ekPowRho = ekPowRho'} <- compute ek rho
       build Input {ekPowRho = ekPowRho', messageBits}
     case res of
       Left e -> error (show e)

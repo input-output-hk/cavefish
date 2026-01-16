@@ -47,8 +47,8 @@ import Intent.Example.DSL (
  )
 import Ledger (Interval, PubKeyHash, Slot, always, cardanoPubKeyHash, interval)
 import Ledger.Tx.CardanoAPI (fromCardanoValue)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
 import WBPS.Core.Keys.Ed25519 (PaymentAddess (unPaymentAddess))
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
 
 -- | Build a Cardano transaction based on the provided intent.
 --
