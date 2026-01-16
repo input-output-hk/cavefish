@@ -30,7 +30,7 @@ import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FetchAccounts (loadAccount, loadAccounts)
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered, userWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Session (

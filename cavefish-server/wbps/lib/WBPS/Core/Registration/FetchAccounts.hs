@@ -34,8 +34,8 @@ import WBPS.Core.FileScheme (
   ),
  )
 import WBPS.Core.FileScheme qualified as FileScheme
-import WBPS.Core.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered))
 

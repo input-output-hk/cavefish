@@ -15,9 +15,11 @@ import Control.Monad.Except (MonadError, throwError)
 import Data.Aeson (FromJSON, eitherDecode)
 import Data.ByteString.Lazy qualified as BL
 import Path (Abs, File, Path, parent, reldir, relfile, toFilePath, (</>))
+import WBPS.Adapter.Math.AffinePoint (AffinePoint (AffinePoint))
 import WBPS.Core.Failure (WBPSFailure (BuildCommitmentFailed))
 import WBPS.Core.FileScheme (RootFolders (RootFolders, input))
-import WBPS.Core.Keys.ElGamal (AffinePoint (AffinePoint), EncryptionKey (EncryptionKey), Rho, mkRho)
+import WBPS.Core.Keys.ElGamal (EncryptionKey (EncryptionKey))
+import WBPS.Core.Session.Demonstration.Artefacts.Rho (Rho, mkRho)
 
 data CommitmentFixtures = CommitmentFixtures
   { unsignedTxFixture :: Path Abs File

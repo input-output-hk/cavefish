@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module WBPS.Core.Session.Proving.Witness (
+module WBPS.Core.Session.Proving.Artefacts.Witness (
   generate,
   prepareInputs,
   saveCircuitInputs,
@@ -28,27 +28,27 @@ import WBPS.Core.FileScheme (
   WitnessGenerationSetup (WitnessGenerationSetup, wasm),
   getShellLogsFilepath,
  )
-import WBPS.Core.Groth16.Setup qualified as Groth16
 import WBPS.Core.Keys.Ed25519 qualified as Ed25519
-import WBPS.Core.Keys.ElGamal (Rho)
 import WBPS.Core.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
+import WBPS.Core.Registration.Artefacts.Groth16.Setup qualified as Groth16
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered, setup, userWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Commitment (
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (
   Commitment (Commitment, id, payload),
   CommitmentPayload,
  )
-import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage, scalars))
-import WBPS.Core.Session.Demonstration.PreparedMessage (
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
   CircuitMessage (CircuitMessage, private, public),
   MessageBits,
   PreparedMessage (PreparedMessage, circuit),
  )
-import WBPS.Core.Session.Demonstration.R (R (R))
-import WBPS.Core.Session.Demonstration.Scalars (Scalars (Scalars, ekPowRho, gPowRho, rho))
+import WBPS.Core.Session.Demonstration.Artefacts.R (R (R))
+import WBPS.Core.Session.Demonstration.Artefacts.Rho (Rho)
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars (Scalars, ekPowRho, gPowRho, rho))
+import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage, scalars))
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
-import WBPS.Core.Session.Proving.Challenge (Challenge)
+import WBPS.Core.Session.Proving.Artefacts.Challenge (Challenge)
 
 data CircuitInputs = CircuitInputs
   { signer_key :: [Word8]
@@ -73,7 +73,7 @@ generate ::
   m ()
 generate
   registered@Registered {userWalletPublicKey}
-  commitmentDemonstrated@CommitmentDemonstrated {commitment = WBPS.Core.Session.Demonstration.Commitment.Commitment {id = commitmentId}}
+  commitmentDemonstrated@CommitmentDemonstrated {commitment = WBPS.Core.Session.Demonstration.Artefacts.Commitment.Commitment {id = commitmentId}}
   bigR
   challenge = do
     sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId

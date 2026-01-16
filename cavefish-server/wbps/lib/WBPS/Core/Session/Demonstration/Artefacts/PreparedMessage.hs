@@ -1,6 +1,6 @@
 -- | Types for prepared demonstration messages, carrying both structured parts
 --   and their circuit-ready bit representations.
-module WBPS.Core.Session.Demonstration.PreparedMessage (
+module WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
   PreparedMessage (..),
   MessageParts (..),
   Message (..),
@@ -18,7 +18,7 @@ import Data.ByteString qualified as BS
 import Data.Vector qualified as V
 import Data.Word (Word8)
 import GHC.Generics (Generic)
-import WBPS.Core.Cardano.UnsignedTx (
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (
   AbstractUnsignedTx (AbstractUnsignedTx),
   PrivateTxInputs,
   UnsignedTx (UnsignedTx),

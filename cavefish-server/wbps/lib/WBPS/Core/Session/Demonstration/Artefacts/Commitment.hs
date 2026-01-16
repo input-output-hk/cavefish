@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module WBPS.Core.Session.Demonstration.Commitment (
+module WBPS.Core.Session.Demonstration.Artefacts.Commitment (
   mkCommitment,
   Commitment (..),
   CommitmentPayload (..),

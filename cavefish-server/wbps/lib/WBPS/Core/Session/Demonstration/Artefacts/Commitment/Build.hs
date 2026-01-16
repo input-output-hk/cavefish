@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module WBPS.Core.Session.Demonstration.Commitment.Build (
+module WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build (
   build,
   Context (..),
   Input (..),
@@ -30,6 +30,7 @@ import Shh (Proc, Stream (Append, StdOut), (&!>), (&>))
 import System.FilePath qualified as FP
 import Text.Hex (encodeHex)
 import Text.Read (readMaybe)
+import WBPS.Adapter.Math.AffinePoint (AffinePoint (AffinePoint), x, y)
 import WBPS.Adapter.Monad.Control (allM)
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (
@@ -47,20 +48,19 @@ import WBPS.Core.FileScheme (
 import WBPS.Core.FileScheme qualified as Filescheme
 import WBPS.Core.FileScheme qualified as Setup (Setup (buildCommitment))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Keys.ElGamal (AffinePoint (AffinePoint), x, y)
 import WBPS.Core.Primitives.Circom (
   compileBuildCommitmentForFileScheme,
  )
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
 import WBPS.Core.Primitives.SnarkjsOverFileScheme (getGenerateBuildCommitmentWitnessProcess)
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
-import WBPS.Core.Session.Demonstration.Commitment (
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (
   Commitment (Commitment, id),
   CommitmentPayload (CommitmentPayload),
   MessageLimbs (MessageLimbs),
   mkCommitment,
  )
-import WBPS.Core.Session.Demonstration.PreparedMessage (MessageBits)
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (MessageBits)
 import WBPS.Core.Session.FileScheme (deriveSessionDirectoryFrom)
 
 build ::

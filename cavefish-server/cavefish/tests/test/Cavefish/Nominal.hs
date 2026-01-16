@@ -35,8 +35,8 @@ import WBPS.Core.Keys.Ed25519 (
   paymentAddress,
   publicKey,
  )
-import WBPS.Core.Session.Demonstration.Commitment (Commitment (Commitment, id))
-import WBPS.Core.Session.Demonstration.R (R (R))
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment, id))
+import WBPS.Core.Session.Demonstration.Artefacts.R (R (R))
 
 spec :: Spec
 spec = do

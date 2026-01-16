@@ -1,14 +1,12 @@
 -- | Commitment scalar utilities will live here.
-module WBPS.Core.Session.Demonstration.Scalars (
+module WBPS.Core.Session.Demonstration.Artefacts.Scalars (
   Scalars (..),
 ) where
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import WBPS.Core.Keys.ElGamal (
-  AffinePoint,
-  Rho,
- )
+import WBPS.Adapter.Math.AffinePoint (AffinePoint)
+import WBPS.Core.Session.Demonstration.Artefacts.Rho (Rho)
 
 data Scalars
   = Scalars

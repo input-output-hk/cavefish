@@ -14,7 +14,7 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import WBPS.Adapter.CardanoCryptoClass.Crypto (Codec (encode))
 import WBPS.Core.Registration.Registered (Registered)
-import WBPS.Core.Session.Demonstration.Commitment (Commitment (Commitment), CommitmentId (CommitmentId), id)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId (CommitmentId), id)
 import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment))
 import WBPS.Core.Session.Proving.Proved (CommitmentProved)
 

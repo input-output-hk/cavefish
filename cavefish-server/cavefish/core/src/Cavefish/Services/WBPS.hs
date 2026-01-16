@@ -7,12 +7,12 @@ import Cardano.Api (
   MonadIO,
  )
 import Servant.Server.Internal.ServerError (ServerError)
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Registered (Registered)
-import WBPS.Core.Session.Demonstration.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.R (R)
 import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated)
-import WBPS.Core.Session.Demonstration.R (R)
 import WBPS.Core.Session.Proving.Proved (CommitmentProved)
 import WBPS.Core.Session.Session (Session)
 

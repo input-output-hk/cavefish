@@ -1,4 +1,4 @@
-module WBPS.Core.Session.Demonstration.R (
+module WBPS.Core.Session.Demonstration.Artefacts.R (
   R (..),
 ) where
 

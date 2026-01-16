@@ -21,8 +21,8 @@ import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO)
 import Data.ByteString qualified as BS
 import Data.Default (Default (def))
-import WBPS.Core.Cardano.UnsignedTx (UnsignedTx (txUnsigned))
 import WBPS.Core.Failure (WBPSFailure (TxBuiltTooLarge, TxInputsCountMismatch))
+import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (txUnsigned))
 
 data CircuitParameters = CircuitParameters
   { messageSize :: CircuitMessageMaxSize

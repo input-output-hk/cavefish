@@ -3,9 +3,9 @@ module WBPS.Core.Session.Proving.Proved (
 ) where
 
 import GHC.Generics (Generic)
-import WBPS.Core.Session.Demonstration.R (R)
-import WBPS.Core.Session.Proving.Challenge (Challenge)
-import WBPS.Core.Session.Proving.Proof (Proof)
+import WBPS.Core.Session.Demonstration.Artefacts.R (R)
+import WBPS.Core.Session.Proving.Artefacts.Challenge (Challenge)
+import WBPS.Core.Session.Proving.Artefacts.Proof (Proof)
 
 data CommitmentProved
   = CommitmentProved

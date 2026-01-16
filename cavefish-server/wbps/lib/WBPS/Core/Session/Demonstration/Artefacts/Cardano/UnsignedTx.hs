@@ -1,4 +1,4 @@
-module WBPS.Core.Cardano.UnsignedTx (
+module WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (
   PrivateTxInputs (..),
   UnsignedTx (..),
   AbstractUnsignedTx (..),

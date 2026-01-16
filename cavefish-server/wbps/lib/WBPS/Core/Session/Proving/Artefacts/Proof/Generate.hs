@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module WBPS.Core.Session.Proving.Proof.Generate (
+module WBPS.Core.Session.Proving.Artefacts.Proof.Generate (
   generateProof,
 ) where
 
@@ -27,9 +27,9 @@ import WBPS.Core.FileScheme qualified as FileScheme
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Primitives.Snarkjs qualified as Snarkjs
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
-import WBPS.Core.Session.Demonstration.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
-import WBPS.Core.Session.Proving.Proof (Proof (Proof))
+import WBPS.Core.Session.Proving.Artefacts.Proof (Proof (Proof))
 import WBPS.Core.Session.Session (deriveId, unSessionId)
 
 generateProof ::
