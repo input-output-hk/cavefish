@@ -28,15 +28,20 @@ import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NE
 import Intent.Example.DSL (AddressW (AddressW), IntentDSL (AndExpsW, PayToW, SpendFromW), satisfies)
 import Path (reldir)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (
   PaymentAddess (PaymentAddess),
   generateKeyTuple,
   paymentAddress,
   publicKey,
  )
-import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment, id))
+import WBPS.Core.Session.BlindSigning.ThetaStatement (rebuildThetaStatement, rebuildThetaStatementFromDemonstrated)
+import WBPS.Core.Session.BlindSigning.VerifyProof (verifyProof)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment, id), payload)
 import WBPS.Core.Session.Demonstration.Artefacts.R (R (R))
+import WBPS.Core.Session.FetchSession (loadExistingCommitmentDemonstrationEvents)
+import WBPS.Core.Setup.Circuit.FileScheme (mkFileSchemeFromRoot)
+import WBPS.WBPS (runWBPS)
 
 spec :: Spec
 spec = do
@@ -74,13 +79,18 @@ spec = do
 
                 (r, bigR) <- generateKeyTuple
 
-                _ <-
+                AskCommitmentProof.Outputs {challenge, proof} <-
                   askCommitmentProof
                     AskCommitmentProof.Inputs
                       { userWalletPublicKey = publicKey alice
                       , commitmentId
                       , bigR = R bigR
                       }
+
+                verifyProof
+                  publicVerificationContext
+                  (rebuildThetaStatement (publicKey alice) (R bigR) challenge (payload commitment) (gPowRho scalars))
+                  proof
 
                 FetchAccount.Outputs {accountMaybe} <- fetchAccount . FetchAccount.Inputs . publicKey $ alice
 
