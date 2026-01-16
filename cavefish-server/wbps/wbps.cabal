@@ -68,38 +68,43 @@ library
     WBPS.Adapter.Math.Integer
     WBPS.Adapter.Monad.Control
     WBPS.Adapter.Path
-    WBPS.Core.Cardano.Cbor
-    WBPS.Core.Cardano.TxAbs
-    WBPS.Core.Cardano.UnsignedTx
+    WBPS.Core.Circuit.Parameters
     WBPS.Core.Failure
     WBPS.Core.FileScheme
-    WBPS.Core.Groth16.Setup
     WBPS.Core.Keys.Ed25519
     WBPS.Core.Keys.ElGamal
     WBPS.Core.Primitives.Circom
     WBPS.Core.Primitives.Snarkjs
     WBPS.Core.Primitives.SnarkjsOverFileScheme
-    WBPS.Core.Registration.Account
+    WBPS.Core.Registration.Artefacts.Groth16.Setup
     WBPS.Core.Registration.FetchAccounts
     WBPS.Core.Registration.FileScheme
     WBPS.Core.Registration.FileScheme.Directories
     WBPS.Core.Registration.Register
+    WBPS.Core.Registration.Registered
     WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh
     WBPS.Core.Registration.SnarkJs.OverShh
-    WBPS.Core.Session.Challenge
-    WBPS.Core.Session.Commitment
-    WBPS.Core.Session.Commitment.Build
-    WBPS.Core.Session.Commitment.Scalars
-    WBPS.Core.Session.Commitment.Scalars.Compute
-    WBPS.Core.Session.Create
+    WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx
+    WBPS.Core.Session.Demonstration.Artefacts.Commitment
+    WBPS.Core.Session.Demonstration.Artefacts.Commitment.Build
+    WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage
+    WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare
+    WBPS.Core.Session.Demonstration.Artefacts.R
+    WBPS.Core.Session.Demonstration.Artefacts.Rho
+    WBPS.Core.Session.Demonstration.Artefacts.Scalars
+    WBPS.Core.Session.Demonstration.Artefacts.Scalars.Compute
+    WBPS.Core.Session.Demonstration.Demonstrate
+    WBPS.Core.Session.Demonstration.Demonstrated
     WBPS.Core.Session.FetchSession
     WBPS.Core.Session.FileScheme
     WBPS.Core.Session.FileScheme.Directories
-    WBPS.Core.Session.R
+    WBPS.Core.Session.Proving.Artefacts.Challenge
+    WBPS.Core.Session.Proving.Artefacts.Proof
+    WBPS.Core.Session.Proving.Artefacts.Proof.Generate
+    WBPS.Core.Session.Proving.Artefacts.Witness
+    WBPS.Core.Session.Proving.Prove
+    WBPS.Core.Session.Proving.Proved
     WBPS.Core.Session.Session
-    WBPS.Core.Session.Witness
-    WBPS.Core.Session.Witness.Generate
-    WBPS.Core.ZK.Message
     WBPS.WBPS
 
   build-depends:
@@ -108,6 +113,7 @@ library
     , cardano-api
     , cardano-crypto-class
     , cardano-ledger-api
+    , cardano-ledger-core   ^>=1.17.0.0
     , containers
     , cooked-validators
     , cryptonite
@@ -132,15 +138,19 @@ test-suite wbps-unit-tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests/unit
   main-is:        Main.hs
+  ghc-options:    -Wno-unused-packages
   other-modules:
     WBPS.Specs.Core.Keys.Ed25519
-    WBPS.Specs.Session.Commitment.Scalars
+    WBPS.Specs.Session.Demonstration.PreparedMessage.Prepare
+    WBPS.Specs.Session.Demonstration.Scalars
 
   build-depends:
     , aeson
     , bytestring
+    , mtl
     , QuickCheck
     , tasty
+    , tasty-hunit
     , tasty-quickcheck
     , wbps
 
@@ -149,12 +159,13 @@ test-suite wbps-integration-tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests/integration
   main-is:        Main.hs
+  ghc-options:    -Wno-unused-packages
   other-modules:
     WBPS.Specs.Adapter.Fixture
     WBPS.Specs.Adapter.GenCardanoKeys
     WBPS.Specs.Adapter.Test
     WBPS.Specs.NominalCase
-    WBPS.Specs.Session.Commitment.Build
+    WBPS.Specs.Session.Demonstration.Commitment.Build
 
   build-depends:
     , aeson

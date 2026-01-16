@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Module for fetching and loading user accounts from the file system.
@@ -17,25 +18,26 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ask, asks)
 import Data.String (IsString (fromString))
-import Path (Dir, Path, toFilePath, (</>))
+import Path (Dir, Path, reldir, toFilePath, (</>))
 import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (RegistrationFailed (EncryptionKeysNotFound))
+import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound))
 import WBPS.Core.FileScheme (
-  Account (
+  FileScheme (FileScheme, account),
+  Registration (
+    Registration,
     encryptionKeys,
     provingKey,
     userPublicKey,
     verificationContext
   ),
-  FileScheme (FileScheme, account),
  )
 import WBPS.Core.FileScheme qualified as FileScheme
-import WBPS.Core.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Registration.Account (AccountCreated (AccountCreated))
+import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
+import WBPS.Core.Registration.Registered (Registered (Registered))
 
 getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [UserWalletPublicKey]
 getRecordedUserWalletPublicKeys p = do
@@ -43,16 +45,16 @@ getRecordedUserWalletPublicKeys p = do
   return $ fromString . takeWhile (/= '/') . toFilePath <$> a
 
 loadAccounts ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
-  m [AccountCreated]
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  m [Registered]
 loadAccounts = do
   FileScheme {..} <- ask
   recordedKeys <- getRecordedUserWalletPublicKeys accounts
   traverse loadExistingAccount recordedKeys
 
 loadAccount ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
-  UserWalletPublicKey -> m (Maybe AccountCreated)
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  UserWalletPublicKey -> m (Maybe Registered)
 loadAccount userWalletPublicKey = do
   account <- deriveAccountDirectoryFrom userWalletPublicKey
   ifM
@@ -61,15 +63,17 @@ loadAccount userWalletPublicKey = do
     (Just <$> loadExistingAccount userWalletPublicKey)
 
 loadExistingAccount ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
-  UserWalletPublicKey -> m AccountCreated
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  UserWalletPublicKey -> m Registered
 loadExistingAccount userWalletPublicKey = do
   accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
-  FileScheme.Account {..} <- asks account
-  AccountCreated userWalletPublicKey
-    <$> ( Setup (accountDirectory </> provingKey)
-            <$> (readFrom (accountDirectory </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
-            <*> ( PublicVerificationContext (accountDirectory </> verificationContext)
-                    <$> (readFrom (accountDirectory </> verificationContext) >>= whenNothingThrow [EncryptionKeysNotFound userWalletPublicKey])
+  FileScheme.Account {registration = Registration {..}} <- asks account
+  Registered userWalletPublicKey
+    <$> ( Setup (accountDirectory </> [reldir|registered|] </> provingKey)
+            <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey])
+            <*> ( PublicVerificationContext (accountDirectory </> [reldir|registered|] </> verificationContext)
+                    <$> ( readFrom (accountDirectory </> [reldir|registered|] </> verificationContext)
+                            >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey]
+                        )
                 )
         )

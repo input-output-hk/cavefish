@@ -15,13 +15,13 @@ import Path (parseRelDir, (</>))
 import Path.IO (doesDirExist)
 import WBPS.Adapter.Monad.Control (ifM)
 import WBPS.Core.Failure (
-  RegistrationFailed (SessionIdInvalidToCreateAFolder, SessionNotFound),
+  WBPSFailure (SessionIdInvalidToCreateAFolder, SessionNotFound),
  )
 import WBPS.Core.FileScheme (FileScheme)
 import WBPS.Core.FileScheme qualified as FileScheme
 import WBPS.Core.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
-import WBPS.Core.Session.Commitment (CommitmentId)
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.FileScheme.Directories qualified as Directory
 import WBPS.Core.Session.Session (
   SessionId (SessionId),
@@ -29,26 +29,31 @@ import WBPS.Core.Session.Session (
  )
 
 deriveExistingSessionDirectoryFrom ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> CommitmentId -> m Directory.Session
 deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId = do
   sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey commitmentId
   ifM
     (not <$> doesDirExist sessionDirectory)
-    (throwError [SessionNotFound userWalletPublicKey commitmentId])
+    (throwError [SessionNotFound (show userWalletPublicKey) (commitmentIdToString commitmentId)])
     (return sessionDirectory)
 
 deriveSessionDirectoryFrom ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [RegistrationFailed] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> CommitmentId -> m Directory.Session
 deriveSessionDirectoryFrom userWalletPublicKey commitmentId = do
   accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
   FileScheme.Account {sessions} <- asks FileScheme.account
   ((accountDirectory </> sessions) </>) <$> (getSessionDirectoryName . deriveId $ commitmentId)
 
-getSessionDirectoryName :: MonadError [RegistrationFailed] m => SessionId -> m Directory.SessionName
-getSessionDirectoryName sessionId@(SessionId x) =
+getSessionDirectoryName :: MonadError [WBPSFailure] m => SessionId -> m Directory.SessionName
+getSessionDirectoryName (SessionId x) =
   either
-    (const . throwError $ [SessionIdInvalidToCreateAFolder sessionId])
+    (const . throwError $ [SessionIdInvalidToCreateAFolder x])
     pure
     (Path.parseRelDir x)
+
+commitmentIdToString :: CommitmentId -> String
+commitmentIdToString commitmentId =
+  let SessionId sessionId = deriveId commitmentId
+   in sessionId
