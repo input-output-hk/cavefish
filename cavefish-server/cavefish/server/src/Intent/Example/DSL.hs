@@ -142,17 +142,17 @@ instance Monoid CanonicalIntent where
 instance Default CanonicalIntent where
   def = CanonicalIntent def def def def def def
 
-type EvalMonad a = ExceptT Text (Writer CanonicalIntent) a
+type EvalDSL a = ExceptT Text (Writer CanonicalIntent) a
 
-runApp :: IntentDSL -> (Either Text (), CanonicalIntent)
-runApp dsl = runWriter (runExceptT (evalIntentDSL dsl))
+runDSL :: IntentDSL -> (Either Text (), CanonicalIntent)
+runDSL dsl = runWriter (runExceptT (evalIntentDSL dsl))
 
 toCanonicalIntent :: IntentDSL -> Either Text CanonicalIntent
-toCanonicalIntent dsl = case runApp dsl of
+toCanonicalIntent dsl = case runDSL dsl of
   (Left e, _) -> Left e
   (Right (), intent) -> Right intent
 
-evalIntentDSL :: IntentDSL -> EvalMonad ()
+evalIntentDSL :: IntentDSL -> EvalDSL ()
 evalIntentDSL dsl = do
   case dsl of
     MustMintW v -> tell mempty {mustMint = [v]}
