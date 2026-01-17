@@ -142,15 +142,38 @@ instance Monoid CanonicalIntent where
 instance Default CanonicalIntent where
   def = CanonicalIntent def def def def def def
 
-type EvalDSL a = ExceptT Text (Writer CanonicalIntent) a
+type EvalMonad a = ExceptT Text (Writer CanonicalIntent) a
 
-runDSLTransformer :: IntentDSL -> (Either Text (), CanonicalIntent)
-runDSLTransformer dsl = runWriter (runExceptT (evalIntentDSL dsl))
+runApp :: IntentDSL -> (Either Text (), CanonicalIntent)
+runApp dsl = runWriter (runExceptT (evalIntentDSL dsl))
 
 toCanonicalIntent :: IntentDSL -> Either Text CanonicalIntent
-toCanonicalIntent dsl = case runDSLTransformer dsl of
+toCanonicalIntent dsl = case runApp dsl of
   (Left e, _) -> Left e
   (Right (), intent) -> Right intent
+
+evalIntentDSL :: IntentDSL -> EvalMonad ()
+evalIntentDSL dsl = do
+  case dsl of
+    MustMintW v -> tell mempty {mustMint = [v]}
+    SpendFromW w@(AddressW walletAddr) -> case parseAddr w of
+      Nothing ->
+        throwError $ "invalid address : " <> walletAddr
+      Just addr -> tell mempty {spendFrom = [addr]}
+    MaxIntervalW w -> tell mempty {maxInterval = Just $ fromInteger w}
+    PayToW value w@(AddressW walletAddr) -> case parseAddr w of
+      Nothing ->
+        throwError $ "invalid address : " <> walletAddr
+      Just addr -> tell mempty {payTo = [(value, addr)]}
+    ChangeToW a -> tell mempty {changeTo = parseAddr a}
+    MaxFeeW i -> tell mempty {maxFee = Just i}
+    AndExpsW ys -> mapM_ evalIntentDSL ys
+  where
+    parseAddr :: AddressW -> Maybe AdressConwayEra
+    parseAddr (AddressW addr) =
+      fmap
+        AdressConwayEra
+        (Api.deserialiseAddress (Api.AsAddressInEra Api.AsConwayEra) addr)
 
 evalIntentDSL :: IntentDSL -> EvalDSL ()
 evalIntentDSL dsl = case dsl of
