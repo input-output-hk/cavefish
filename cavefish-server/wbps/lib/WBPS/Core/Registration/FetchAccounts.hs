@@ -23,7 +23,11 @@ import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound))
-import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContext (PublicVerificationContext), Setup (Setup))
+import WBPS.Core.Registration.Artefacts.Groth16.Setup (
+  PublicVerificationContext (PublicVerificationContext),
+  PublicVerificationContextAsJSON (PublicVerificationContextAsJSON),
+  Setup (Setup),
+ )
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered))
@@ -72,8 +76,10 @@ loadExistingAccount userWalletPublicKey = do
     <$> ( Setup (accountDirectory </> [reldir|registered|] </> provingKey)
             <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey])
             <*> ( PublicVerificationContext (accountDirectory </> [reldir|registered|] </> verificationContext)
-                    <$> ( readFrom (accountDirectory </> [reldir|registered|] </> verificationContext)
-                            >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey]
+                    <$> ( PublicVerificationContextAsJSON
+                            <$> ( readFrom (accountDirectory </> [reldir|registered|] </> verificationContext)
+                                    >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey]
+                                )
                         )
                 )
         )

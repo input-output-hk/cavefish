@@ -36,7 +36,7 @@ import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
 import WBPS.Core.Session.Demonstration.Artefacts.R (R)
 import WBPS.Core.Session.Demonstration.Artefacts.R qualified as R
 import WBPS.Core.Session.Demonstration.Artefacts.Rho (Rho)
-import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars (Scalars, ekPowRho, gPowRho, rho))
+import WBPS.Core.Session.Demonstration.Artefacts.Scalars (Scalars (Scalars, ekPowRho, rho))
 import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage, scalars))
 import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Proving.Artefacts.Challenge (Challenge)
@@ -56,7 +56,6 @@ data CircuitInputs = CircuitInputs
   , solver_encryption_key :: [Text]
   , solver_encryption_key_pow_rho :: [Text]
   , commitment_point_bits :: [Word8]
-  , commitment_point_affine :: [Text]
   , commitment_randomizer_rho :: Rho
   , commitment_payload :: CommitmentPayload
   , challenge :: Challenge
@@ -123,7 +122,7 @@ prepareInputs
     }
   CommitmentDemonstrated
     { preparedMessage = PreparedMessage {circuit = CircuitMessage {public, private}}
-    , scalars = Scalars {gPowRho, rho, ekPowRho}
+    , scalars = Scalars {rho, ekPowRho}
     , commitment = Commitment {payload}
     }
   bigR
@@ -133,7 +132,6 @@ prepareInputs
       , solver_encryption_key = AffinePoint.toText solverKeyPoint
       , solver_encryption_key_pow_rho = AffinePoint.toText ekPowRho
       , commitment_point_bits = R.toWord8s bigR
-      , commitment_point_affine = AffinePoint.toText gPowRho
       , commitment_randomizer_rho = rho
       , commitment_payload = payload
       , challenge = challengeValue

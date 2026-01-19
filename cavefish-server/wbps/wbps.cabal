@@ -83,6 +83,7 @@ library
     WBPS.Core.Registration.Registered
     WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh
     WBPS.Core.Registration.SnarkJs.OverShh
+    WBPS.Core.Session.BlindSigning.Sign
     WBPS.Core.Session.BlindSigning.ThetaStatement
     WBPS.Core.Session.BlindSigning.VerifyProof
     WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx
@@ -164,11 +165,13 @@ test-suite wbps-integration-tests
   main-is:        Main.hs
   ghc-options:    -Wno-unused-packages
   other-modules:
+    WBPS.Specs.Adapter.BlindSigning
     WBPS.Specs.Adapter.Fixture
     WBPS.Specs.Adapter.FixtureIO
     WBPS.Specs.Adapter.GenCardanoKeys
     WBPS.Specs.Adapter.Test
     WBPS.Specs.NominalCase
+    WBPS.Specs.Session.BlindSigning.Sign
     WBPS.Specs.Session.BlindSigning.ThetaStatement
     WBPS.Specs.Session.BlindSigning.ThetaStatementFixture
     WBPS.Specs.Session.Demonstration.Commitment.Build
@@ -178,6 +181,7 @@ test-suite wbps-integration-tests
     , bytestring
     , cardano-crypto-class
     , containers
+    , cryptonite
     , data-default
     , directory
     , filepath
