@@ -14,10 +14,11 @@ import Cavefish (
  )
 import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, register))
 import Control.Monad.Reader (MonadReader (ask))
-import Data.Aeson (FromJSON, ToJSON, Value)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (
   PublicVerificationContext (PublicVerificationContext, asJson),
+  PublicVerificationContextAsJSON,
   Setup (Setup, encryptionKeys, publicVerificationContext),
  )
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
@@ -32,7 +33,7 @@ newtype Inputs = Inputs
 
 data Outputs = Outputs
   { ek :: EncryptionKey
-  , publicVerificationContext :: Value
+  , publicVerificationContext :: PublicVerificationContextAsJSON
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 

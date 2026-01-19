@@ -4,7 +4,17 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase, (@?=))
 import WBPS.Core.Session.BlindSigning.ThetaStatement (
   ThetaStatement (ThetaStatement),
-  rebuildThetaStatementFromDemonstrated,
+  rebuildThetaStatement,
+ )
+import WBPS.Core.Session.Demonstration.Artefacts.Commitment (
+  Commitment (Commitment, payload),
+ )
+import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
+  MessageParts (MessageParts, public),
+  PreparedMessage (PreparedMessage, parts),
+ )
+import WBPS.Core.Session.Demonstration.Demonstrated (
+  CommitmentDemonstrated (CommitmentDemonstrated, commitment, preparedMessage),
  )
 import WBPS.Specs.Session.BlindSigning.ThetaStatementFixture (
   ThetaStatementFixture (ThetaStatementFixture, bigR, challenge, commitmentDemonstrated, expectedStatement, userWalletPublicKey),
@@ -23,7 +33,11 @@ rebuildsStatement = do
   ThetaStatementFixture {userWalletPublicKey, commitmentDemonstrated, challenge, bigR, expectedStatement} <-
     loadThetaStatementFixture
 
-  let ThetaStatement actual =
-        rebuildThetaStatementFromDemonstrated userWalletPublicKey bigR challenge commitmentDemonstrated
+  let CommitmentDemonstrated
+        { commitment = Commitment {payload = commitmentPayload}
+        , preparedMessage = PreparedMessage {parts = MessageParts {public = publicMessage}}
+        } = commitmentDemonstrated
+      ThetaStatement actual =
+        rebuildThetaStatement userWalletPublicKey bigR challenge commitmentPayload publicMessage
 
   actual @?= expectedStatement
