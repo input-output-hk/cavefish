@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module Cavefish.Endpoints.Write.AskCommitmentProof (handle, Inputs (..), Outputs (..)) where
+module Cavefish.Endpoints.Write.ProveCommitment (handle, Inputs (..), Outputs (..)) where
 
 import Cavefish (
   CavefishServerM,

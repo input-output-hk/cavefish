@@ -11,8 +11,8 @@ module Sp.Server (
 import Cavefish (CavefishServerM, CavefishServices, runCavefishMonad)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
 import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts
-import Cavefish.Endpoints.Write.AskCommitmentProof qualified as AskCommitmentProof
 import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Cavefish.Endpoints.Write.ProveCommitment qualified as ProveCommitment
 import Cavefish.Endpoints.Write.Register qualified as Register
 import Network.Wai (Application, Middleware)
 import Network.Wai.Middleware.Cors (
@@ -35,7 +35,7 @@ import Servant.API ((:<|>) ((:<|>)), (:>))
 type Cavefish =
   Register
     :<|> DemonstrateCommitment
-    :<|> AskCommitmentProof
+    :<|> ProveCommitment
     -- :<|> "askSubmission" :> ReqBody '[JSON] AskSubmission.Inputs :> Post '[JSON] AskSubmission.Outputs
     :<|> FetchAccount
     :<|> FetchAccounts
@@ -47,10 +47,10 @@ type DemonstrateCommitment =
     :> ReqBody '[JSON] DemonstrateCommitment.Inputs
     :> Post '[JSON] DemonstrateCommitment.Outputs
 
-type AskCommitmentProof =
-  "askCommitmentProof"
-    :> ReqBody '[JSON] AskCommitmentProof.Inputs
-    :> Post '[JSON] AskCommitmentProof.Outputs
+type ProveCommitment =
+  "proveCommitment"
+    :> ReqBody '[JSON] ProveCommitment.Inputs
+    :> Post '[JSON] ProveCommitment.Outputs
 
 type FetchAccount =
   "fetchAccount" :> ReqBody '[JSON] FetchAccount.Inputs :> Post '[JSON] FetchAccount.Outputs
@@ -78,7 +78,7 @@ server :: ServerT Cavefish CavefishServerM
 server =
   Register.handle
     :<|> DemonstrateCommitment.handle
-    :<|> AskCommitmentProof.handle
+    :<|> ProveCommitment.handle
     -- :<|> AskSubmission.handle
     :<|> FetchAccount.handle
     :<|> FetchAccounts.handle
