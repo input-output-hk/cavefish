@@ -14,16 +14,16 @@ import Adapter.Cavefish.Client (
   UserToolkitAPI (UserToolkitAPI, assertProofIsValid, signBlindly),
   WriteAPI (
     WriteAPI,
-    askCommitmentProof,
     demonstrateCommitment,
+    proveCommitment,
     register
   ),
   setupCavefish,
  )
 import Cardano.Api (lovelaceToValue)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
-import Cavefish.Endpoints.Write.AskCommitmentProof qualified as AskCommitmentProof
 import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
+import Cavefish.Endpoints.Write.ProveCommitment qualified as ProveCommitment
 import Cavefish.Endpoints.Write.Register qualified as Register
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NE
@@ -53,7 +53,7 @@ spec = do
             \Setup
                { serviceProvider =
                  ServiceProviderAPI
-                   { write = WriteAPI {register, demonstrateCommitment, askCommitmentProof}
+                   { write = WriteAPI {register, demonstrateCommitment, proveCommitment}
                    , read = ReadAPI {fetchAccount}
                    }
                , userToolkit = UserToolkitAPI {assertProofIsValid, signBlindly}
@@ -78,9 +78,9 @@ spec = do
 
                 (r, bigR) <- R.generateKeyTuple
 
-                AskCommitmentProof.Outputs {challenge, proof} <-
-                  askCommitmentProof
-                    AskCommitmentProof.Inputs
+                ProveCommitment.Outputs {challenge, proof} <-
+                  proveCommitment
+                    ProveCommitment.Inputs
                       { userWalletPublicKey = publicKey alice
                       , commitmentId
                       , bigR = bigR
