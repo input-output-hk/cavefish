@@ -14,16 +14,16 @@ import Adapter.Cavefish.Client (
   UserToolkitAPI (UserToolkitAPI, assertProofIsValid, signBlindly),
   WriteAPI (
     WriteAPI,
-    demonstrateCommitment,
-    proveCommitment,
+    demonstrate,
+    prove,
     register
   ),
   setupCavefish,
  )
 import Cardano.Api (lovelaceToValue)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
-import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
-import Cavefish.Endpoints.Write.ProveCommitment qualified as ProveCommitment
+import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate
+import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NE
@@ -53,7 +53,7 @@ spec = do
             \Setup
                { serviceProvider =
                  ServiceProviderAPI
-                   { write = WriteAPI {register, demonstrateCommitment, proveCommitment}
+                   { write = WriteAPI {register, demonstrate, prove}
                    , read = ReadAPI {fetchAccount}
                    }
                , userToolkit = UserToolkitAPI {assertProofIsValid, signBlindly}
@@ -69,18 +69,18 @@ spec = do
                         )
                 Register.Outputs {publicVerificationContext, ek} <- register . Register.Inputs . publicKey $ alice
 
-                DemonstrateCommitment.Outputs {commitment = commitment@Commitment {id = commitmentId, payload}, txAbs} <-
-                  demonstrateCommitment
-                    . DemonstrateCommitment.Inputs (publicKey alice)
+                Demonstrate.Outputs {commitment = commitment@Commitment {id = commitmentId, payload}, txAbs} <-
+                  demonstrate
+                    . Demonstrate.Inputs (publicKey alice)
                     $ intent
 
                 satisfies intent txAbs `shouldBe` True
 
                 (r, bigR) <- R.generateKeyTuple
 
-                ProveCommitment.Outputs {challenge, proof} <-
-                  proveCommitment
-                    ProveCommitment.Inputs
+                Prove.Outputs {challenge, proof} <-
+                  prove
+                    Prove.Inputs
                       { userWalletPublicKey = publicKey alice
                       , commitmentId
                       , bigR = bigR

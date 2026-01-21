@@ -3,7 +3,7 @@
 -- and provides a handler function that builds an unsigned transaction based on
 -- the provided intent, creates a session for the commitment, and returns the
 -- generated commitment along with the abstract unsigned transaction.
-module Cavefish.Endpoints.Write.DemonstrateCommitment (
+module Cavefish.Endpoints.Write.Demonstrate (
   handle,
   Inputs (..),
   Outputs (..),
