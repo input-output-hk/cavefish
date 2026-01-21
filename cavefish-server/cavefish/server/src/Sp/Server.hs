@@ -11,8 +11,8 @@ module Sp.Server (
 import Cavefish (CavefishServerM, CavefishServices, runCavefishMonad)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
 import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts
-import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment
-import Cavefish.Endpoints.Write.ProveCommitment qualified as ProveCommitment
+import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate
+import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register
 import Network.Wai (Application, Middleware)
 import Network.Wai.Middleware.Cors (
@@ -34,23 +34,23 @@ import Servant.API ((:<|>) ((:<|>)), (:>))
 
 type Cavefish =
   Register
-    :<|> DemonstrateCommitment
-    :<|> ProveCommitment
+    :<|> Demonstrate
+    :<|> Prove
     -- :<|> "askSubmission" :> ReqBody '[JSON] AskSubmission.Inputs :> Post '[JSON] AskSubmission.Outputs
     :<|> FetchAccount
     :<|> FetchAccounts
 
 type Register = "register" :> ReqBody '[JSON] Register.Inputs :> Post '[JSON] Register.Outputs
 
-type DemonstrateCommitment =
-  "demonstrateCommitment"
-    :> ReqBody '[JSON] DemonstrateCommitment.Inputs
-    :> Post '[JSON] DemonstrateCommitment.Outputs
+type Demonstrate =
+  "demonstrate"
+    :> ReqBody '[JSON] Demonstrate.Inputs
+    :> Post '[JSON] Demonstrate.Outputs
 
-type ProveCommitment =
-  "proveCommitment"
-    :> ReqBody '[JSON] ProveCommitment.Inputs
-    :> Post '[JSON] ProveCommitment.Outputs
+type Prove =
+  "prove"
+    :> ReqBody '[JSON] Prove.Inputs
+    :> Post '[JSON] Prove.Outputs
 
 type FetchAccount =
   "fetchAccount" :> ReqBody '[JSON] FetchAccount.Inputs :> Post '[JSON] FetchAccount.Outputs
@@ -77,8 +77,8 @@ mkServer cavefishMiddleware env =
 server :: ServerT Cavefish CavefishServerM
 server =
   Register.handle
-    :<|> DemonstrateCommitment.handle
-    :<|> ProveCommitment.handle
+    :<|> Demonstrate.handle
+    :<|> Prove.handle
     -- :<|> AskSubmission.handle
     :<|> FetchAccount.handle
     :<|> FetchAccounts.handle

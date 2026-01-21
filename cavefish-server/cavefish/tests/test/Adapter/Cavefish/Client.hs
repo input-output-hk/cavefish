@@ -10,8 +10,8 @@ module Adapter.Cavefish.Client (
 import Cavefish.Api.ServerConfiguration (ServerConfiguration (ServerConfiguration, httpServer, serviceProviderFee, transactionExpiry, wbps))
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount (Inputs, Outputs)
 import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts (Outputs)
-import Cavefish.Endpoints.Write.DemonstrateCommitment qualified as DemonstrateCommitment (Inputs, Outputs)
-import Cavefish.Endpoints.Write.ProveCommitment qualified as ProveCommitment
+import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate (Inputs, Outputs)
+import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register (Inputs, Outputs)
 import Cavefish.Services.TxBuilding (ServiceFee (ServiceFee, amount, paidTo))
 import Control.Monad ((>=>))
@@ -46,8 +46,8 @@ getServiceProviderAPI fee port = do
   manager <- newManager defaultManagerSettings {managerResponseTimeout = responseTimeoutMicro 300_000_000}
   let baseUrl = BaseUrl SC.Http "127.0.0.1" port ""
       ( register
-          :<|> demonstrateCommitment
-          :<|> proveCommitment
+          :<|> demonstrate
+          :<|> prove
           :<|> fetchAccount
           :<|> fetchAccounts
         ) = SC.client (Proxy @Cavefish)
@@ -57,8 +57,8 @@ getServiceProviderAPI fee port = do
       , write =
           WriteAPI
             { register = runClientOrFail (SC.mkClientEnv manager baseUrl) . register
-            , demonstrateCommitment = runClientOrFail (SC.mkClientEnv manager baseUrl) . demonstrateCommitment
-            , proveCommitment = runClientOrFail (SC.mkClientEnv manager baseUrl) . proveCommitment
+            , demonstrate = runClientOrFail (SC.mkClientEnv manager baseUrl) . demonstrate
+            , prove = runClientOrFail (SC.mkClientEnv manager baseUrl) . prove
             }
       , read =
           ReadAPI
@@ -82,8 +82,8 @@ data ServiceProviderAPI
 
 data WriteAPI = WriteAPI
   { register :: Register.Inputs -> IO Register.Outputs
-  , demonstrateCommitment :: DemonstrateCommitment.Inputs -> IO DemonstrateCommitment.Outputs
-  , proveCommitment :: ProveCommitment.Inputs -> IO ProveCommitment.Outputs
+  , demonstrate :: Demonstrate.Inputs -> IO Demonstrate.Outputs
+  , prove :: Prove.Inputs -> IO Prove.Outputs
   }
 
 data ReadAPI = ReadAPI
