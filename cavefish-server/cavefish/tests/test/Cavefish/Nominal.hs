@@ -16,15 +16,17 @@ import Adapter.Cavefish.Client (
     WriteAPI,
     demonstrate,
     prove,
-    register
+    register,
+    submit
   ),
   setupCavefish,
  )
 import Cardano.Api (lovelaceToValue)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
-import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate
-import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register
+import Cavefish.Endpoints.Write.Session.Demonstrate qualified as Demonstrate
+import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
+import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NE
 import Intent.Example.DSL (AddressW (AddressW), IntentDSL (AndExpsW, PayToW, SpendFromW), satisfies)
@@ -36,10 +38,10 @@ import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (
   paymentAddress,
   publicKey,
  )
-import WBPS.Core.Session.BlindSigning.ThetaStatement (rebuildThetaStatement)
-import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment, id, payload))
-import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (PublicMessage (PublicMessage))
-import WBPS.Core.Session.Demonstration.Artefacts.R qualified as R
+import WBPS.Core.Session.Steps.BlindSigning.ThetaStatement (rebuildThetaStatement)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment, id, payload))
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (PublicMessage (PublicMessage))
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.R qualified as R
 
 spec :: Spec
 spec = do
@@ -53,7 +55,7 @@ spec = do
             \Setup
                { serviceProvider =
                  ServiceProviderAPI
-                   { write = WriteAPI {register, demonstrate, prove}
+                   { write = WriteAPI {register, demonstrate, prove, submit}
                    , read = ReadAPI {fetchAccount}
                    }
                , userToolkit = UserToolkitAPI {assertProofIsValid, signBlindly}
@@ -92,6 +94,14 @@ spec = do
                   proof
 
                 signature <- signBlindly (keyPair alice) r challenge
+
+                Submit.Outputs {txId} <-
+                  submit
+                    Submit.Inputs
+                      { userWalletPublicKey = publicKey alice
+                      , commitmentId
+                      , signature
+                      }
 
                 FetchAccount.Outputs {accountMaybe} <- fetchAccount . FetchAccount.Inputs . publicKey $ alice
 

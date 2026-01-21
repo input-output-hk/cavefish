@@ -19,12 +19,12 @@ import WBPS.Core.Failure (WBPSFailure (AccountAlreadyRegistered))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Registration.FetchAccounts (loadAccount, loadExistingAccount)
-import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
-import WBPS.Core.Registration.FileScheme.Directories qualified as Directory
+import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
+import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
+import WBPS.Core.Registration.Persistence.SnarkJs.OverFileSchemeAndShh (getGenerateProvingKeyProcess, getGenerateVerificationKeyProcess)
 import WBPS.Core.Registration.Registered (
   Registered (Registered, userWalletPublicKey),
  )
-import WBPS.Core.Registration.SnarkJs.OverFileSchemeAndShh (getGenerateProvingKeyProcess, getGenerateVerificationKeyProcess)
 import WBPS.Core.Setup.Circuit.FileScheme (
   Account (Account, registration),
   FileScheme (FileScheme, account),

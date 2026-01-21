@@ -14,9 +14,10 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import WBPS.Adapter.CardanoCryptoClass.Crypto (Codec (encode))
 import WBPS.Core.Registration.Registered (Registered)
-import WBPS.Core.Session.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId (CommitmentId), id)
-import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment))
-import WBPS.Core.Session.Proving.Proved (CommitmentProved)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId (CommitmentId), id)
+import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment))
+import WBPS.Core.Session.Steps.Proving.Proved (CommitmentProved)
+import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted)
 
 newtype SessionId = SessionId {unSessionId :: String} deriving (Show, Eq)
 
@@ -32,6 +33,12 @@ data Session
       { registered :: Registered
       , demonstrated :: CommitmentDemonstrated
       , proved :: CommitmentProved
+      }
+  | Submitted
+      { registered :: Registered
+      , demonstrated :: CommitmentDemonstrated
+      , proved :: CommitmentProved
+      , submitted :: CommitmentSubmitted
       }
   deriving (Eq, Show, Generic)
 

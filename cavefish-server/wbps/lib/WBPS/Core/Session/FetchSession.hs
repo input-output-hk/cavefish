@@ -26,16 +26,16 @@ import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (WBPSFailure (AccountNotFound, EncryptionKeysNotFound, SessionMessageNotFound))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FetchAccounts (loadAccount, loadAccounts)
-import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
+import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered, userWalletPublicKey))
-import WBPS.Core.Session.Demonstration.Artefacts.Commitment (CommitmentId)
-import WBPS.Core.Session.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
-import WBPS.Core.Session.FileScheme (deriveExistingSessionDirectoryFrom)
+import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Session (
   Session (Demonstrated),
   SessionId (SessionId),
   deriveId,
  )
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
+import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
 import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
 
