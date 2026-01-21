@@ -1,0 +1,125 @@
+module WBPS.Core.Session.Steps.Submitting.Submit (
+  submit,
+) where
+
+import Cardano.Api qualified as Api
+import Cardano.Crypto.DSIGN (Ed25519DSIGN, VerKeyDSIGN, rawDeserialiseVerKeyDSIGN)
+import Control.Monad (unless)
+import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Reader (MonadReader)
+import Crypto.ECC.Edwards25519 (Point, Scalar, pointAdd, pointDecode, pointMul, scalarDecodeLong, toPoint)
+import Crypto.Error (CryptoFailable (CryptoFailed, CryptoPassed))
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
+import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
+import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed))
+import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
+import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
+import WBPS.Core.Session.FetchSession (loadExistingCommitmentDemonstrationEvents)
+import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature, signatureBytes)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
+  CircuitMessage (CircuitMessage, message),
+  Message (Message),
+  MessageParts (MessageParts, message),
+  PreparedMessage (PreparedMessage, circuit, parts),
+ )
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (R (R))
+import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, preparedMessage))
+import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
+import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge qualified as Challenge
+import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, txId))
+import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
+
+submit ::
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  UserWalletPublicKey ->
+  CommitmentId ->
+  BlindSignature ->
+  m CommitmentSubmitted
+submit userWalletPublicKey commitmentId signature = do
+  ( _
+    , CommitmentDemonstrated
+        { preparedMessage = PreparedMessage {circuit = CircuitMessage {message = messageBits}, parts = MessageParts {message = Message (UnsignedTx txBody)}}
+        }
+    ) <-
+    loadExistingCommitmentDemonstrationEvents userWalletPublicKey commitmentId
+  bigR <- decodeSignatureR signature
+  let challenge = Challenge.compute userWalletPublicKey messageBits bigR
+  validateSignature userWalletPublicKey challenge signature
+  let txId = Api.getTxId txBody
+  pure CommitmentSubmitted {txId}
+
+decodeSignatureR ::
+  MonadError [WBPSFailure] m =>
+  BlindSignature ->
+  m R
+decodeSignatureR signature = do
+  (rBytes, _) <- splitSignature signature
+  case rawDeserialiseVerKeyDSIGN rBytes :: Maybe (VerKeyDSIGN Ed25519DSIGN) of
+    Nothing ->
+      throwError [BlindSignatureFailed "Signature R failed Ed25519 deserialisation."]
+    Just verKey ->
+      pure (R (Ed25519.PublicKey (Adapter.PublicKey verKey)))
+
+splitSignature ::
+  MonadError [WBPSFailure] m =>
+  BlindSignature ->
+  m (ByteString, ByteString)
+splitSignature signature =
+  let bytes = signatureBytes signature
+      bytesLen = BS.length bytes
+   in if bytesLen /= signatureSizeBytes
+        then throwError [BlindSignatureFailed ("Signature bytes length mismatch: expected 64, got " <> show bytesLen <> ".")]
+        else pure (BS.splitAt signatureHalfBytes bytes)
+
+validateSignature ::
+  MonadError [WBPSFailure] m =>
+  UserWalletPublicKey ->
+  Challenge ->
+  BlindSignature ->
+  m ()
+validateSignature userWalletPublicKey challenge signature = do
+  (rBytes, sBytes) <- splitSignature signature
+  rPoint <- decodePoint "signature R" rBytes
+  xPoint <- decodePoint "signer public key" (publicKeyBytes userWalletPublicKey)
+  cScalar <- decodeScalar "challenge" (BS.pack (Challenge.toWord8s challenge))
+  sScalar <- decodeScalar "signature scalar" sBytes
+  let left = toPoint sScalar
+      right = pointAdd rPoint (pointMul cScalar xPoint)
+  unless (left == right) $
+    throwError [BlindSignatureFailed "Signature verification failed: Schnorr equation mismatch."]
+
+publicKeyBytes :: UserWalletPublicKey -> ByteString
+publicKeyBytes (UserWalletPublicKey (Ed25519.PublicKey pk)) =
+  Adapter.toByteString pk
+
+decodePoint ::
+  MonadError [WBPSFailure] m =>
+  String ->
+  ByteString ->
+  m Point
+decodePoint label bytes =
+  case pointDecode bytes of
+    CryptoPassed point -> pure point
+    CryptoFailed err ->
+      throwError [BlindSignatureFailed (label <> ": " <> show err)]
+
+decodeScalar ::
+  MonadError [WBPSFailure] m =>
+  String ->
+  ByteString ->
+  m Scalar
+decodeScalar label bytes =
+  case scalarDecodeLong bytes of
+    CryptoPassed scalar -> pure scalar
+    CryptoFailed err ->
+      throwError [BlindSignatureFailed (label <> ": " <> show err)]
+
+signatureSizeBytes :: Int
+signatureSizeBytes = 64
+
+signatureHalfBytes :: Int
+signatureHalfBytes = 32

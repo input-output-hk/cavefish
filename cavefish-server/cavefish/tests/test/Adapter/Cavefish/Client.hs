@@ -10,9 +10,10 @@ module Adapter.Cavefish.Client (
 import Cavefish.Api.ServerConfiguration (ServerConfiguration (ServerConfiguration, httpServer, serviceProviderFee, transactionExpiry, wbps))
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount (Inputs, Outputs)
 import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts (Outputs)
-import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate (Inputs, Outputs)
-import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register (Inputs, Outputs)
+import Cavefish.Endpoints.Write.Session.Demonstrate qualified as Demonstrate (Inputs, Outputs)
+import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
+import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Cavefish.Services.TxBuilding (ServiceFee (ServiceFee, amount, paidTo))
 import Control.Monad ((>=>))
 import Cooked (InitialDistribution (InitialDistribution), Payable (Value), receives)
@@ -32,12 +33,12 @@ import Sp.Server (Cavefish, mkServer)
 import Test.Hspec (expectationFailure)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContextAsJSON)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (KeyPair, Wallet (Wallet, paymentAddress), generateWallet)
-import WBPS.Core.Session.BlindSigning.Sign (BlindSignature, sign)
-import WBPS.Core.Session.BlindSigning.ThetaStatement (ThetaStatement)
-import WBPS.Core.Session.BlindSigning.VerifyProof qualified as VerifyProof
-import WBPS.Core.Session.Demonstration.Artefacts.R (RSecret)
-import WBPS.Core.Session.Proving.Artefacts.Challenge (Challenge)
-import WBPS.Core.Session.Proving.Artefacts.Proof (Proof)
+import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature, sign)
+import WBPS.Core.Session.Steps.BlindSigning.ThetaStatement (ThetaStatement)
+import WBPS.Core.Session.Steps.BlindSigning.VerifyProof qualified as VerifyProof
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (RSecret)
+import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
+import WBPS.Core.Session.Steps.Proving.Artefacts.Proof (Proof)
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme, mkFileSchemeFromRoot)
 import WBPS.WBPS (runWBPS)
 
@@ -48,6 +49,7 @@ getServiceProviderAPI fee port = do
       ( register
           :<|> demonstrate
           :<|> prove
+          :<|> submit
           :<|> fetchAccount
           :<|> fetchAccounts
         ) = SC.client (Proxy @Cavefish)
@@ -59,6 +61,7 @@ getServiceProviderAPI fee port = do
             { register = runClientOrFail (SC.mkClientEnv manager baseUrl) . register
             , demonstrate = runClientOrFail (SC.mkClientEnv manager baseUrl) . demonstrate
             , prove = runClientOrFail (SC.mkClientEnv manager baseUrl) . prove
+            , submit = runClientOrFail (SC.mkClientEnv manager baseUrl) . submit
             }
       , read =
           ReadAPI
@@ -84,6 +87,7 @@ data WriteAPI = WriteAPI
   { register :: Register.Inputs -> IO Register.Outputs
   , demonstrate :: Demonstrate.Inputs -> IO Demonstrate.Outputs
   , prove :: Prove.Inputs -> IO Prove.Outputs
+  , submit :: Submit.Inputs -> IO Submit.Outputs
   }
 
 data ReadAPI = ReadAPI

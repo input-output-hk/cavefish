@@ -1,6 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
+{- HLINT ignore "Functor law" -}
+
 -- | Module for fetching and loading user accounts from the file system.
 -- This module provides functions to load existing accounts, load a specific account,
 -- and retrieve all recorded user wallet public keys. It handles errors related to
@@ -29,7 +31,7 @@ import WBPS.Core.Registration.Artefacts.Groth16.Setup (
   Setup (Setup),
  )
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Registration.FileScheme (deriveAccountDirectoryFrom)
+import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered))
 import WBPS.Core.Setup.Circuit.FileScheme (
   FileScheme (FileScheme, account),

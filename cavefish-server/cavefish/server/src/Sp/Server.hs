@@ -11,9 +11,10 @@ module Sp.Server (
 import Cavefish (CavefishServerM, CavefishServices, runCavefishMonad)
 import Cavefish.Endpoints.Read.FetchAccount qualified as FetchAccount
 import Cavefish.Endpoints.Read.FetchAccounts qualified as FetchAccounts
-import Cavefish.Endpoints.Write.Demonstrate qualified as Demonstrate
-import Cavefish.Endpoints.Write.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Register qualified as Register
+import Cavefish.Endpoints.Write.Session.Demonstrate qualified as Demonstrate
+import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
+import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Network.Wai (Application, Middleware)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsMethods, corsRequestHeaders),
@@ -36,7 +37,7 @@ type Cavefish =
   Register
     :<|> Demonstrate
     :<|> Prove
-    -- :<|> "askSubmission" :> ReqBody '[JSON] AskSubmission.Inputs :> Post '[JSON] AskSubmission.Outputs
+    :<|> Submit
     :<|> FetchAccount
     :<|> FetchAccounts
 
@@ -51,6 +52,11 @@ type Prove =
   "prove"
     :> ReqBody '[JSON] Prove.Inputs
     :> Post '[JSON] Prove.Outputs
+
+type Submit =
+  "submit"
+    :> ReqBody '[JSON] Submit.Inputs
+    :> Post '[JSON] Submit.Outputs
 
 type FetchAccount =
   "fetchAccount" :> ReqBody '[JSON] FetchAccount.Inputs :> Post '[JSON] FetchAccount.Outputs
@@ -79,6 +85,6 @@ server =
   Register.handle
     :<|> Demonstrate.handle
     :<|> Prove.handle
-    -- :<|> AskSubmission.handle
+    :<|> Submit.handle
     :<|> FetchAccount.handle
     :<|> FetchAccounts.handle

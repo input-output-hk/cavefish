@@ -9,11 +9,11 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, testCase)
 import Test.Tasty.QuickCheck (Gen, Property, counterexample, elements, forAll, ioProperty, testProperty, (===))
 import WBPS.Core.Failure (WBPSFailure (TxBuiltTooLarge, TxInputsCountMismatch))
-import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (PrivateTxInputs (PrivateTxInputs), UnsignedTx, extractPrivateElements)
-import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage (
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (PrivateTxInputs (PrivateTxInputs), UnsignedTx, extractPrivateElements)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
   PreparedMessage (PreparedMessage, circuit),
  )
-import WBPS.Core.Session.Demonstration.Artefacts.PreparedMessage.Prepare (
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage.Prepare (
   prepare,
   recompose,
  )

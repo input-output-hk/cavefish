@@ -35,7 +35,7 @@ import Path (
  )
 import Path.IO (ensureDir)
 import System.Environment (getEnv)
-import WBPS.Core.Registration.FileScheme.Directories qualified as Directory
+import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
 
 data RootFolders = RootFolders {input :: Path Abs Dir, output :: Path Abs Dir}
 
