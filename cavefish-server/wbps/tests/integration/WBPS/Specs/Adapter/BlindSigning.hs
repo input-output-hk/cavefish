@@ -12,13 +12,11 @@ import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
 import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (KeyPair, PublicKey (PublicKey), generateKeyPair, getPublicKey, userWalletPK)
 import WBPS.Core.Registration.Register (register)
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature, sign, signatureBytes)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (R (R), RSecret, generateKeyTuple)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate (demonstrate)
-import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
-import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge qualified as Challenge
 import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
@@ -81,9 +79,8 @@ runBlindSigningFlow :: BlindSigningFixture -> IO (Either [WBPSFailure] BlindSign
 runBlindSigningFlow fixture =
   runWBPS fileScheme $ do
     _ <- register userWalletPublicKey
-    demonstrationHistory <- demonstrate userWalletPublicKey unsignedTx
-    let commitmentId = commitmentIdFromSession demonstrationHistory
-    Proved.EventHistory {proved = CommitmentProved {challenge}} <- prove userWalletPublicKey commitmentId noncePublic
+    (sessionId, _) <- demonstrate registrationId unsignedTx
+    Proved.EventHistory {proved = CommitmentProved {challenge}} <- prove sessionId noncePublic
     signature <- sign userKeyPair nonceSecret challenge
     pure
       BlindSigningResult
@@ -95,6 +92,7 @@ runBlindSigningFlow fixture =
   where
     BlindSigningFixture {fileScheme, unsignedTx, userKeyPair, nonceSecret, noncePublic} = fixture
     userWalletPublicKey = userWalletPK userKeyPair
+    registrationId = RegistrationId userWalletPublicKey
     userPublicKey = getPublicKey userKeyPair
     noncePublicKey = publicKeyFromR noncePublic
 
@@ -136,12 +134,6 @@ decodeSignatureInputs rBytes sBytes signerPublicKey challenge = do
 
 publicKeyFromR :: R -> PublicKey
 publicKeyFromR (R pk) = pk
-
-commitmentIdFromSession ::
-  Demonstrated.EventHistory ->
-  CommitmentId
-commitmentIdFromSession Demonstrated.EventHistory {demonstrated = CommitmentDemonstrated _ _ (Commitment commitmentId _)} =
-  commitmentId
 
 publicKeyBytes :: PublicKey -> ByteString
 publicKeyBytes (PublicKey pk) = Adapter.toByteString pk

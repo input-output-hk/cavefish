@@ -35,6 +35,7 @@ import WBPS.Core.Registration.Artefacts.Groth16.Setup (
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Registered (Registered (Registered))
+import WBPS.Core.Registration.RegistrationId (RegistrationId)
 import WBPS.Core.Setup.Circuit.FileScheme (
   FileScheme (FileScheme, account),
   Registration (
@@ -47,7 +48,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
  )
 import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
 
-getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [UserWalletPublicKey]
+getRecordedUserWalletPublicKeys :: MonadIO m => Path b Dir -> m [RegistrationId]
 getRecordedUserWalletPublicKeys p = do
   a <- fst <$> (liftIO . listDirRel $ p)
   return $ fromString . takeWhile (/= '/') . toFilePath <$> a
@@ -62,33 +63,33 @@ loadAllRegistered = do
 
 loadRegisteredMaybe ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> m (Maybe Registered)
-loadRegisteredMaybe userWalletPublicKey = do
-  account <- deriveAccountDirectoryFrom userWalletPublicKey
+  RegistrationId -> m (Maybe Registered)
+loadRegisteredMaybe registrationId = do
+  account <- deriveAccountDirectoryFrom registrationId
   ifM
     (not <$> doesDirExist account)
     (return Nothing)
-    (Just <$> loadExistingRegistered userWalletPublicKey)
+    (Just <$> loadExistingRegistered registrationId)
 
 loadRegistered ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> m Registered
-loadRegistered userWalletPublicKey =
-  loadRegisteredMaybe userWalletPublicKey >>= whenNothingThrow [AccountNotFound (show userWalletPublicKey)]
+  RegistrationId -> m Registered
+loadRegistered registrationId =
+  loadRegisteredMaybe registrationId >>= whenNothingThrow [AccountNotFound registrationId]
 
 loadExistingRegistered ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> m Registered
-loadExistingRegistered userWalletPublicKey = do
-  accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
+  RegistrationId -> m Registered
+loadExistingRegistered registrationId = do
+  accountDirectory <- deriveAccountDirectoryFrom registrationId
   FileScheme.Account {registration = Registration {..}} <- asks account
-  Registered userWalletPublicKey
+  Registered registrationId
     <$> ( Setup (accountDirectory </> [reldir|registered|] </> provingKey)
-            <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey])
+            <$> (readFrom (accountDirectory </> [reldir|registered|] </> encryptionKeys) >>= whenNothingThrow [EncryptionKeysNotFound registrationId])
             <*> ( PublicVerificationContext (accountDirectory </> [reldir|registered|] </> verificationContext)
                     <$> ( PublicVerificationContextAsJSON
                             <$> ( readFrom (accountDirectory </> [reldir|registered|] </> verificationContext)
-                                    >>= whenNothingThrow [EncryptionKeysNotFound . show $ userWalletPublicKey]
+                                    >>= whenNothingThrow [EncryptionKeysNotFound registrationId]
                                 )
                         )
                 )

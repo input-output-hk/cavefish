@@ -18,9 +18,10 @@ import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
 import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
+import WBPS.Core.Registration.RegistrationId (RegistrationId (..))
+import WBPS.Core.Session.SessionId (SessionId (..))
 import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature, signatureBytes)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
   CircuitMessage (CircuitMessage, message),
   Message (Message),
@@ -43,11 +44,10 @@ import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
 submit ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   (Api.Tx Api.ConwayEra -> m ()) ->
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   BlindSignature ->
   m CommitmentSubmitted
-submit submitTx userWalletPublicKey commitmentId signature = do
+submit submitTx sessionId@SessionId {registrationId = RegistrationId {userWalletPublicKey}} signature = do
   Proved.EventHistory
     { registered
     , demonstrated =
@@ -55,7 +55,7 @@ submit submitTx userWalletPublicKey commitmentId signature = do
         { preparedMessage = PreparedMessage {circuit = CircuitMessage {message = messageBits}, parts = MessageParts {message = Message (UnsignedTx txBody)}}
         }
     } <-
-    Proved.loadHistory userWalletPublicKey commitmentId
+    Proved.loadHistory sessionId
   bigR <- decodeSignatureR signature
   let challenge = Challenge.compute userWalletPublicKey messageBits bigR
   validateSignature userWalletPublicKey challenge signature
@@ -99,10 +99,10 @@ validateSignature ::
   Challenge ->
   BlindSignature ->
   m ()
-validateSignature userWalletPublicKey challenge signature = do
+validateSignature registrationId challenge signature = do
   (rBytes, sBytes) <- splitSignature signature
   rPoint <- decodePoint "signature R" rBytes
-  xPoint <- decodePoint "signer public key" (publicKeyBytes userWalletPublicKey)
+  xPoint <- decodePoint "signer public key" (publicKeyBytes registrationId)
   cScalar <- decodeScalar "challenge" (BS.pack (Challenge.toWord8s challenge))
   sScalar <- decodeScalar "signature scalar" sBytes
   let left = toPoint sScalar

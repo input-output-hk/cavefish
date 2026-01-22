@@ -14,12 +14,10 @@ import Path (Dir, Path, reldir, (</>))
 import WBPS.Adapter.Monad.Control (whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (WBPSFailure (SessionProofNotFound))
-import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FetchAccounts (loadRegistered)
 import WBPS.Core.Registration.Registered (Registered)
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom)
-import WBPS.Core.Session.SessionId (toSessionIdString)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
+import WBPS.Core.Session.SessionId
 import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated)
 import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Session.Steps.Proving.Proved (CommitmentProved (CommitmentProved))
@@ -35,21 +33,20 @@ data EventHistory = EventHistory
 
 loadHistory ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> CommitmentId -> m EventHistory
-loadHistory userWalletPublicKey commitmentId = do
-  sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId
+  SessionId -> m EventHistory
+loadHistory sessionId@SessionId {registrationId} = do
+  sessionDirectory <- deriveExistingSessionDirectoryFrom sessionId
   EventHistory
-    <$> loadRegistered userWalletPublicKey
-    <*> Demonstrated.load sessionDirectory userWalletPublicKey commitmentId
-    <*> load sessionDirectory userWalletPublicKey commitmentId
+    <$> loadRegistered registrationId
+    <*> Demonstrated.load sessionDirectory sessionId
+    <*> load sessionDirectory sessionId
 
 load ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Path b Dir ->
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m CommitmentProved
-load sessionDirectory userWalletPublicKey commitmentId = do
+load sessionDirectory sessionId = do
   proving <- asks (FileScheme.proving . FileScheme.session . FileScheme.account)
   let FileScheme.Proving
         { bigR = bigRFile
@@ -59,11 +56,11 @@ load sessionDirectory userWalletPublicKey commitmentId = do
   let provedDirectory = sessionDirectory </> [reldir|proved|]
   CommitmentProved
     <$> ( readFrom (provedDirectory </> bigRFile)
-            >>= whenNothingThrow [SessionProofNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+            >>= whenNothingThrow [SessionProofNotFound sessionId]
         )
     <*> ( readFrom (provedDirectory </> challengeFile)
-            >>= whenNothingThrow [SessionProofNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+            >>= whenNothingThrow [SessionProofNotFound sessionId]
         )
     <*> ( readFrom (provedDirectory </> proofFile)
-            >>= whenNothingThrow [SessionProofNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+            >>= whenNothingThrow [SessionProofNotFound sessionId]
         )

@@ -11,12 +11,10 @@ import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (generateKeyPair, userWalletPK)
 import WBPS.Core.Registration.Register (register)
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature (BlindSignature), sign)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (generateKeyTuple)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate (demonstrate)
-import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
-import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
 import WBPS.Core.Session.Steps.Proving.Prove (prove)
 import WBPS.Core.Session.Steps.Proving.Proved (CommitmentProved (CommitmentProved, challenge))
@@ -44,14 +42,14 @@ submitValidatesSignature = do
   result <-
     runWBPS fileScheme $ do
       let userWalletPublicKey = userWalletPK keyPair
+      let registrationId = RegistrationId userWalletPublicKey
       _ <- register userWalletPublicKey
-      demonstrationHistory <- demonstrate userWalletPublicKey unsignedTx
-      let commitmentId = commitmentIdFromSession demonstrationHistory
-      Proved.EventHistory {proved = CommitmentProved {challenge}} <- prove userWalletPublicKey commitmentId noncePublic
+      (sessionId, _) <- demonstrate registrationId unsignedTx
+      Proved.EventHistory {proved = CommitmentProved {challenge}} <- prove sessionId noncePublic
       signature <- sign keyPair nonceSecret challenge
-      _ <- submit (const (pure ())) userWalletPublicKey commitmentId signature
+      _ <- submit (const (pure ())) sessionId signature
       let badSignature = tamperSignature signature
-      (submit (const (pure ())) userWalletPublicKey commitmentId badSignature >> pure Nothing)
+      (submit (const (pure ())) sessionId badSignature >> pure Nothing)
         `catchError` (pure . Just)
 
   case result of
@@ -76,9 +74,3 @@ isBlindSignatureFailed failure =
   case failure of
     BlindSignatureFailed _ -> True
     _ -> False
-
-commitmentIdFromSession ::
-  Demonstrated.EventHistory ->
-  CommitmentId
-commitmentIdFromSession Demonstrated.EventHistory {demonstrated = CommitmentDemonstrated _ _ (Commitment commitmentId _)} =
-  commitmentId

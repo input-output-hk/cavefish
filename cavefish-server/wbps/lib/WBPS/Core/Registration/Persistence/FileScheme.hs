@@ -11,11 +11,11 @@ import Control.Monad.Error.Class (MonadError (throwError))
 import Control.Monad.RWS (MonadIO, MonadReader (ask))
 import Path (parseRelDir, (</>))
 import WBPS.Core.Failure (
-  WBPSFailure (AccountIdInvalidToCreateAFolder),
+  WBPSFailure (RegistrationIdInvalid),
  )
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
-import WBPS.Core.Registration.Registered (AccountId (AccountId), deriveId)
+import WBPS.Core.Registration.RegistrationId (RegistrationId)
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme (FileScheme, accounts))
 
 -- | Derive the directory path for a user account based on their wallet public key.
@@ -24,16 +24,16 @@ import WBPS.Core.Setup.Circuit.FileScheme (FileScheme (FileScheme, accounts))
 -- wallet public key.
 deriveAccountDirectoryFrom ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> m Directory.Account
-deriveAccountDirectoryFrom userWalletPublicKey = do
+  RegistrationId -> m Directory.Account
+deriveAccountDirectoryFrom registrationId = do
   FileScheme {accounts} <- ask
-  (accounts </>) <$> (getAccountDirectoryName . deriveId $ userWalletPublicKey)
+  (accounts </>) <$> getAccountDirectoryName registrationId
 
 -- | Get the directory name for a given account ID.
 -- This function attempts to parse the account ID into a valid directory name.
-getAccountDirectoryName :: MonadError [WBPSFailure] m => AccountId -> m Directory.AccountName
-getAccountDirectoryName (AccountId x) =
+getAccountDirectoryName :: MonadError [WBPSFailure] m => RegistrationId -> m Directory.AccountName
+getAccountDirectoryName registrationId =
   either
-    (const . throwError $ [AccountIdInvalidToCreateAFolder x])
+    (const . throwError $ [RegistrationIdInvalid registrationId])
     pure
-    (Path.parseRelDir x)
+    (Path.parseRelDir (show registrationId))

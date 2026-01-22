@@ -8,6 +8,8 @@ import Control.Monad.Reader (MonadReader)
 import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Registered (Registered)
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId, userWalletPublicKey))
+import WBPS.Core.Session.SessionId (SessionId (..))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
   CircuitMessage (CircuitMessage, message),
@@ -29,15 +31,14 @@ import WBPS.Core.Setup.Circuit.FileScheme (
 
 prove ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   R ->
   m EventHistory
-prove userWalletPublicKey commitmentId bigR = do
-  (registered, demonstrated, messageBits) <- project userWalletPublicKey commitmentId
+prove sessionId@SessionId {registrationId = RegistrationId {userWalletPublicKey}} bigR = do
+  (registered, demonstrated, messageBits) <- project sessionId
   let challenge = Challenge.compute userWalletPublicKey messageBits bigR
   Witness.generate registered demonstrated bigR challenge
-  proof <- generateProof userWalletPublicKey commitmentId
+  proof <- generateProof sessionId
   return $
     EventHistory
       registered
@@ -46,19 +47,17 @@ prove userWalletPublicKey commitmentId bigR = do
 
 project ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m (Registered, CommitmentDemonstrated, MessageBits)
-project userWalletPublicKey commitmentId = do
-  Previous.EventHistory
-    { registered
-    , demonstrated =
-      demonstrated@CommitmentDemonstrated
-        { preparedMessage =
-          PreparedMessage
-            { circuit = CircuitMessage {message = messageBits}
-            }
-        }
-    } <-
-    Demonstrated.loadHistory userWalletPublicKey commitmentId
-  return (registered, demonstrated, messageBits)
+project sessionId =
+  Demonstrated.loadHistory sessionId
+    >>= \Previous.EventHistory
+           { registered
+           , demonstrated =
+             demonstrated@CommitmentDemonstrated
+               { preparedMessage =
+                 PreparedMessage
+                   { circuit = CircuitMessage {message = messageBits}
+                   }
+               }
+           } -> return (registered, demonstrated, messageBits)

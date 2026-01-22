@@ -16,13 +16,14 @@ import Path (Dir, Path, reldir, (</>))
 import Path.IO (ensureDir)
 import WBPS.Adapter.Monad.Control (whenNothingThrow)
 import WBPS.Adapter.Path (readFrom, writeTo)
-import WBPS.Core.Failure (WBPSFailure (BlindSignatureNotFound, SessionProofNotFound, SubmittedTxNotFound, TxSignatureNotFound))
-import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Failure (WBPSFailure (SessionBlindSignatureNotFound, SessionSubmittedTxNotFound, SessionTxSignatureNotFound))
 import WBPS.Core.Registration.FetchAccounts (loadRegistered)
-import WBPS.Core.Registration.Registered (Registered (Registered, userWalletPublicKey))
+import WBPS.Core.Registration.Registered (
+  Registered (Registered, registrationId),
+ )
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom, deriveSessionDirectoryFrom)
-import WBPS.Core.Session.SessionId (toSessionIdString)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment, id), CommitmentId)
+import WBPS.Core.Session.SessionId (SessionId (..))
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment, id))
 import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, commitment))
 import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
@@ -44,35 +45,33 @@ data EventHistory = EventHistory
 
 loadHistory ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m EventHistory
-loadHistory userWalletPublicKey commitmentId = do
-  sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId
+loadHistory sessionId@SessionId {registrationId} = do
+  sessionDirectory <- deriveExistingSessionDirectoryFrom sessionId
   EventHistory
-    <$> loadRegistered userWalletPublicKey
-    <*> Demonstrated.load sessionDirectory userWalletPublicKey commitmentId
-    <*> Proved.load sessionDirectory userWalletPublicKey commitmentId
-    <*> load sessionDirectory userWalletPublicKey commitmentId
+    <$> loadRegistered registrationId
+    <*> Demonstrated.load sessionDirectory sessionId
+    <*> Proved.load sessionDirectory sessionId
+    <*> load sessionDirectory sessionId
 
 load ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Path b Dir ->
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m CommitmentSubmitted
-load sessionDirectory userWalletPublicKey commitmentId = do
+load sessionDirectory sessionId = do
   submitting <- asks (FileScheme.submitting . FileScheme.session . FileScheme.account)
   let submittedDirectory = sessionDirectory </> [reldir|submitted|]
   blindSignature <-
     readFrom (submittedDirectory </> FileScheme.blindSignature submitting)
-      >>= whenNothingThrow [BlindSignatureNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+      >>= whenNothingThrow [SessionBlindSignatureNotFound sessionId]
   txSignature <-
     readFrom (submittedDirectory </> FileScheme.txSignature submitting)
-      >>= whenNothingThrow [TxSignatureNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+      >>= whenNothingThrow [SessionTxSignatureNotFound sessionId]
   submittedTx <-
     readFrom (submittedDirectory </> FileScheme.submittedTx submitting)
-      >>= whenNothingThrow [SubmittedTxNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+      >>= whenNothingThrow [SessionSubmittedTxNotFound sessionId]
   let SubmittedTx (Api.Tx txBody _) = submittedTx
   let txId = Api.getTxId txBody
   pure CommitmentSubmitted {blindSignature, txSignature, submittedTx, txId}
@@ -84,10 +83,10 @@ persist ::
   CommitmentSubmitted ->
   m CommitmentSubmitted
 persist
-  Registered {userWalletPublicKey}
+  Registered {registrationId}
   CommitmentDemonstrated {commitment = Commitment {id = commitmentId}}
   event@CommitmentSubmitted {blindSignature, txSignature, submittedTx} = do
-    sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey commitmentId
+    sessionDirectory <- deriveSessionDirectoryFrom (SessionId {..})
     ensureDir sessionDirectory
     submitting <- asks (FileScheme.submitting . FileScheme.session . FileScheme.account)
     let submittedDirectory = sessionDirectory </> [reldir|submitted|]

@@ -17,7 +17,7 @@ import WBPS.Core.Failure (WBPSFailure (SessionProofNotFound))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom)
-import WBPS.Core.Session.SessionId (toSessionIdString)
+import WBPS.Core.Session.SessionId
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Proof (Proof (Proof))
 import WBPS.Core.Setup.Circuit.FileScheme (
@@ -34,12 +34,11 @@ import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
 
 generateProof ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m Proof
-generateProof userWalletPublicKey commitmentId = do
-  sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId
-  accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
+generateProof sessionId@SessionId {registrationId} = do
+  sessionDirectory <- deriveExistingSessionDirectoryFrom sessionId
+  accountDirectory <- deriveAccountDirectoryFrom registrationId
   Account
     { registration = Registration {provingKey}
     , session =
@@ -67,5 +66,5 @@ generateProof userWalletPublicKey commitmentId = do
       &> Append shellLogsFilepath
   Proof
     <$> ( readFrom (provedDirectory </> proofOutput)
-            >>= whenNothingThrow [SessionProofNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+            >>= whenNothingThrow [SessionProofNotFound sessionId]
         )
