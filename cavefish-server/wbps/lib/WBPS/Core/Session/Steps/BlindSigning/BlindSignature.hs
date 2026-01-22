@@ -1,6 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module WBPS.Core.Session.Steps.BlindSigning.Sign (
+module WBPS.Core.Session.Steps.BlindSigning.BlindSignature (
   BlindSignature (..),
   signatureBytes,
   sign,

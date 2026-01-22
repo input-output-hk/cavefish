@@ -3,7 +3,9 @@ module WBPS.Core.Session.Steps.Submitting.Submit (
 ) where
 
 import Cardano.Api qualified as Api
-import Cardano.Crypto.DSIGN (Ed25519DSIGN, VerKeyDSIGN, rawDeserialiseVerKeyDSIGN)
+import Cardano.Crypto.DSIGN (Ed25519DSIGN, SigDSIGN, VerKeyDSIGN, rawDeserialiseSigDSIGN, rawDeserialiseVerKeyDSIGN)
+import Cardano.Crypto.DSIGN.Class qualified as DSIGN
+import Cardano.Ledger.Keys qualified as LedgerKeys
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO)
@@ -16,8 +18,7 @@ import WBPS.Adapter.CardanoCryptoClass.Crypto qualified as Adapter
 import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey (UserWalletPublicKey))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
-import WBPS.Core.Session.FetchSession (loadExistingCommitmentDemonstrationEvents)
-import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature, signatureBytes)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature, signatureBytes)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx (UnsignedTx))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
@@ -30,27 +31,44 @@ import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (R (R))
 import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated, preparedMessage))
 import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge qualified as Challenge
-import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, txId))
+import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
+import WBPS.Core.Session.Steps.Submitting.Artefacts.SubmittedTx (SubmittedTx (SubmittedTx))
+import WBPS.Core.Session.Steps.Submitting.Artefacts.TxSignature (TxSignature (TxSignature))
+import WBPS.Core.Session.Steps.Submitting.Persistence.Events qualified as Submitted
+import WBPS.Core.Session.Steps.Submitting.Submitted (
+  CommitmentSubmitted (CommitmentSubmitted, blindSignature, submittedTx, txId, txSignature),
+ )
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
 
 submit ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  (Api.Tx Api.ConwayEra -> m ()) ->
   UserWalletPublicKey ->
   CommitmentId ->
   BlindSignature ->
   m CommitmentSubmitted
-submit userWalletPublicKey commitmentId signature = do
-  ( _
-    , CommitmentDemonstrated
+submit submitTx userWalletPublicKey commitmentId signature = do
+  Proved.EventHistory
+    { registered
+    , demonstrated =
+      demonstrated@CommitmentDemonstrated
         { preparedMessage = PreparedMessage {circuit = CircuitMessage {message = messageBits}, parts = MessageParts {message = Message (UnsignedTx txBody)}}
         }
-    ) <-
-    loadExistingCommitmentDemonstrationEvents userWalletPublicKey commitmentId
+    } <-
+    Proved.loadHistory userWalletPublicKey commitmentId
   bigR <- decodeSignatureR signature
   let challenge = Challenge.compute userWalletPublicKey messageBits bigR
   validateSignature userWalletPublicKey challenge signature
+  txSignature <- mkTxSignature userWalletPublicKey signature
+  let tx = Api.makeSignedTransaction [unTxSignature txSignature] txBody
+  submitTx tx
+  let submittedTx = SubmittedTx tx
   let txId = Api.getTxId txBody
-  pure CommitmentSubmitted {txId}
+  let event = CommitmentSubmitted {blindSignature = signature, txSignature, submittedTx, txId}
+  Submitted.persist registered demonstrated event
+
+unTxSignature :: TxSignature -> Api.KeyWitness Api.ConwayEra
+unTxSignature (TxSignature witness) = witness
 
 decodeSignatureR ::
   MonadError [WBPSFailure] m =>
@@ -117,6 +135,31 @@ decodeScalar label bytes =
     CryptoPassed scalar -> pure scalar
     CryptoFailed err ->
       throwError [BlindSignatureFailed (label <> ": " <> show err)]
+
+mkTxSignature ::
+  MonadError [WBPSFailure] m =>
+  UserWalletPublicKey ->
+  BlindSignature ->
+  m TxSignature
+mkTxSignature userWalletPublicKey signature = do
+  sig <- decodeSignature signature
+  let vkey = toLedgerVKey userWalletPublicKey
+  let witness = Api.ShelleyKeyWitness Api.ShelleyBasedEraConway (LedgerKeys.WitVKey vkey (DSIGN.SignedDSIGN sig))
+  pure (TxSignature witness)
+
+toLedgerVKey :: UserWalletPublicKey -> LedgerKeys.VKey LedgerKeys.Witness
+toLedgerVKey (UserWalletPublicKey (Ed25519.PublicKey (Adapter.PublicKey verKey))) =
+  LedgerKeys.VKey verKey
+
+decodeSignature ::
+  MonadError [WBPSFailure] m =>
+  BlindSignature ->
+  m (SigDSIGN Ed25519DSIGN)
+decodeSignature signature =
+  case rawDeserialiseSigDSIGN (signatureBytes signature) of
+    Nothing ->
+      throwError [BlindSignatureFailed "Signature bytes failed Ed25519 deserialisation."]
+    Just sig -> pure sig
 
 signatureSizeBytes :: Int
 signatureSizeBytes = 64

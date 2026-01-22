@@ -8,12 +8,14 @@
 -- and retrieve all recorded user wallet public keys. It handles errors related to
 -- missing encryption keys and uses a file scheme for directory structure.
 module WBPS.Core.Registration.FetchAccounts (
-  loadAccount,
+  loadRegisteredMaybe,
+  -- | Load a specific account if it exists
+  loadRegistered,
   -- | Load a specific account
-  loadExistingAccount,
-  -- | Load an existing accountj
-  loadAccounts,
-  -- | Load all existing accounts
+  loadExistingRegistered,
+  -- | Load an existing account
+  loadAllRegistered,
+  -- | Load all existing registered accounts
 ) where
 
 import Control.Monad.Error.Class (MonadError)
@@ -24,7 +26,7 @@ import Path (Dir, Path, reldir, toFilePath, (</>))
 import Path.IO (doesDirExist, listDirRel)
 import WBPS.Adapter.Monad.Control (ifM, whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
-import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound))
+import WBPS.Core.Failure (WBPSFailure (AccountNotFound, EncryptionKeysNotFound))
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (
   PublicVerificationContext (PublicVerificationContext),
   PublicVerificationContextAsJSON (PublicVerificationContextAsJSON),
@@ -50,28 +52,34 @@ getRecordedUserWalletPublicKeys p = do
   a <- fst <$> (liftIO . listDirRel $ p)
   return $ fromString . takeWhile (/= '/') . toFilePath <$> a
 
-loadAccounts ::
+loadAllRegistered ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   m [Registered]
-loadAccounts = do
+loadAllRegistered = do
   FileScheme {..} <- ask
   recordedKeys <- getRecordedUserWalletPublicKeys accounts
-  traverse loadExistingAccount recordedKeys
+  traverse loadExistingRegistered recordedKeys
 
-loadAccount ::
+loadRegisteredMaybe ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> m (Maybe Registered)
-loadAccount userWalletPublicKey = do
+loadRegisteredMaybe userWalletPublicKey = do
   account <- deriveAccountDirectoryFrom userWalletPublicKey
   ifM
     (not <$> doesDirExist account)
     (return Nothing)
-    (Just <$> loadExistingAccount userWalletPublicKey)
+    (Just <$> loadExistingRegistered userWalletPublicKey)
 
-loadExistingAccount ::
+loadRegistered ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey -> m Registered
-loadExistingAccount userWalletPublicKey = do
+loadRegistered userWalletPublicKey =
+  loadRegisteredMaybe userWalletPublicKey >>= whenNothingThrow [AccountNotFound (show userWalletPublicKey)]
+
+loadExistingRegistered ::
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
+  UserWalletPublicKey -> m Registered
+loadExistingRegistered userWalletPublicKey = do
   accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
   FileScheme.Account {registration = Registration {..}} <- asks account
   Registered userWalletPublicKey

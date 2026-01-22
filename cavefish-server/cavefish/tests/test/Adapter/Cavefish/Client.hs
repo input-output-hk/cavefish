@@ -33,7 +33,7 @@ import Sp.Server (Cavefish, mkServer)
 import Test.Hspec (expectationFailure)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContextAsJSON)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (KeyPair, Wallet (Wallet, paymentAddress), generateWallet)
-import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature, sign)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature, sign)
 import WBPS.Core.Session.Steps.BlindSigning.ThetaStatement (ThetaStatement)
 import WBPS.Core.Session.Steps.BlindSigning.VerifyProof qualified as VerifyProof
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (RSecret)

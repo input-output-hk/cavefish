@@ -18,7 +18,7 @@ import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure (AccountAlreadyRegistered))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Registration.FetchAccounts (loadAccount, loadExistingAccount)
+import WBPS.Core.Registration.FetchAccounts (loadExistingRegistered, loadRegisteredMaybe)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
 import WBPS.Core.Registration.Persistence.SnarkJs.OverFileSchemeAndShh (getGenerateProvingKeyProcess, getGenerateVerificationKeyProcess)
@@ -37,12 +37,12 @@ register ::
   UserWalletPublicKey ->
   m Registered
 register userWalletPublicKey =
-  loadAccount userWalletPublicKey
+  loadRegisteredMaybe userWalletPublicKey
     >>= \case
       Just Registered {userWalletPublicKey = existingUserWalletKey} -> throwError [AccountAlreadyRegistered . show $ existingUserWalletKey]
       Nothing -> do
         register' =<< deriveAccountDirectoryFrom userWalletPublicKey
-        loadExistingAccount userWalletPublicKey
+        loadExistingRegistered userWalletPublicKey
 
 register' ::
   (MonadIO m, MonadReader FileScheme m) =>

@@ -4,7 +4,7 @@ import Cavefish (
   CavefishServerM,
   CavefishServices (CavefishServices, wbpsService),
  )
-import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, loadAccount))
+import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, loadRegisteredMaybe))
 import Control.Monad.Reader (MonadReader (ask))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -19,8 +19,8 @@ import WBPS.Core.Registration.Registered (Registered (Registered, setup))
 
 handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey} = do
-  CavefishServices {wbpsService = Service.WBPS {loadAccount}} <- ask
-  loadAccount userWalletPublicKey
+  CavefishServices {wbpsService = Service.WBPS {loadRegisteredMaybe}} <- ask
+  loadRegisteredMaybe userWalletPublicKey
     >>= \case
       Nothing -> pure . Outputs $ Nothing
       (Just Registered {setup = Setup {encryptionKeys = ElGamal.KeyPair {..}, publicVerificationContext}}) ->

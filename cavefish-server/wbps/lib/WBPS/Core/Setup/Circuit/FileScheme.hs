@@ -16,6 +16,7 @@ module WBPS.Core.Setup.Circuit.FileScheme (
   Registration (..),
   Demonstration (..),
   Proving (..),
+  Submitting (..),
   RootFolders (..),
 ) where
 
@@ -112,6 +113,12 @@ defaultFileScheme RootFolders {..} =
                       , bigR = [relfile|big_r.json|]
                       , challenge = [relfile|challenge.json|]
                       }
+                , submitting =
+                    Submitting
+                      { blindSignature = [relfile|blindSignature.json|]
+                      , txSignature = [relfile|txSignature.json|]
+                      , submittedTx = [relfile|submittedTx.json|]
+                      }
                 }
           , shellLogs = [relfile|shellLogs.txt|]
           }
@@ -173,6 +180,7 @@ data Registration = Registration
 data Session = Session
   { demonstration :: Demonstration
   , proving :: Proving
+  , submitting :: Submitting
   }
   deriving (Show, Eq)
 
@@ -190,6 +198,13 @@ data Demonstration
   , scalars :: Path Rel File
   , commitment :: Path Rel File
   , buildCommitmentInternals :: BuildCommitmentInternals
+  }
+  deriving (Show, Eq)
+
+data Submitting = Submitting
+  { blindSignature :: Path Rel File
+  , txSignature :: Path Rel File
+  , submittedTx :: Path Rel File
   }
   deriving (Show, Eq)
 

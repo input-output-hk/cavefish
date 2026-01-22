@@ -4,7 +4,7 @@ import Cavefish (
   CavefishServerM,
   CavefishServices (CavefishServices, wbpsService),
  )
-import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, loadAccounts))
+import Cavefish.Services.WBPS qualified as Service (WBPS (WBPS, loadAllRegistered))
 import Control.Monad.Reader (MonadReader (ask))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -19,8 +19,8 @@ import WBPS.Core.Registration.Registered (Registered (Registered, setup, userWal
 
 handle :: CavefishServerM Outputs
 handle = do
-  CavefishServices {wbpsService = Service.WBPS {loadAccounts}} <- ask
-  accountsCreated <- loadAccounts
+  CavefishServices {wbpsService = Service.WBPS {loadAllRegistered}} <- ask
+  accountsCreated <- loadAllRegistered
   return
     . Outputs
     . map

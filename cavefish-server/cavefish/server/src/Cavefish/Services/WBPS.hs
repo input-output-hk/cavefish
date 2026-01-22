@@ -10,7 +10,7 @@ import Servant.Server.Internal.ServerError (ServerError)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Registered (Registered)
 import WBPS.Core.Session.Session (Session)
-import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (R)
@@ -27,7 +27,7 @@ data WBPS = WBPS
   , demonstrate ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
-      UserWalletPublicKey -> UnsignedTx -> m Session
+      UserWalletPublicKey -> UnsignedTx -> m CommitmentDemonstrated
   , prove ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
@@ -36,11 +36,11 @@ data WBPS = WBPS
       forall m.
       (MonadIO m, MonadError ServerError m) =>
       UserWalletPublicKey -> CommitmentId -> BlindSignature -> m CommitmentSubmitted
-  , loadAccount ::
+  , loadRegisteredMaybe ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
       UserWalletPublicKey -> m (Maybe Registered)
-  , loadAccounts ::
+  , loadAllRegistered ::
       forall m.
       (MonadIO m, MonadError ServerError m) =>
       m [Registered]

@@ -4,9 +4,15 @@ module WBPS.Core.Session.Steps.Submitting.Submitted (
 
 import Cardano.Api (TxId)
 import GHC.Generics (Generic)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature)
+import WBPS.Core.Session.Steps.Submitting.Artefacts.SubmittedTx (SubmittedTx)
+import WBPS.Core.Session.Steps.Submitting.Artefacts.TxSignature (TxSignature)
 
-newtype CommitmentSubmitted
+data CommitmentSubmitted
   = CommitmentSubmitted
-  { txId :: TxId
+  { blindSignature :: BlindSignature
+  , txSignature :: TxSignature
+  , submittedTx :: SubmittedTx
+  , txId :: TxId
   }
   deriving (Eq, Show, Generic)
