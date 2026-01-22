@@ -7,16 +7,18 @@ module Cavefish.Endpoints.Write.Session.Submit (handle, Inputs (..), Outputs (..
 import Cardano.Api (TxId)
 import Cavefish (
   CavefishServerM,
-  CavefishServices (CavefishServices, wbpsService),
+  CavefishServices (CavefishServices, txBuildingService, wbpsService),
  )
+import Cavefish.Services.TxBuilding qualified as TxService
 import Cavefish.Services.WBPS qualified as WbpsService
 import Control.Monad.Reader (ask)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
-import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
-import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, txId))
+import WBPS.Core.Session.Steps.Submitting.Artefacts.SubmittedTx (SubmittedTx (SubmittedTx))
+import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, submittedTx, txId))
 
 data Inputs = Inputs
   { userWalletPublicKey :: UserWalletPublicKey
@@ -32,8 +34,14 @@ newtype Outputs = Outputs
 
 handle :: Inputs -> CavefishServerM Outputs
 handle Inputs {userWalletPublicKey, commitmentId, signature} = do
-  CavefishServices {wbpsService = WbpsService.WBPS {submit}} <- ask
-  toOutputs <$> submit userWalletPublicKey commitmentId signature
+  CavefishServices
+    { wbpsService = WbpsService.WBPS {submit}
+    , txBuildingService = TxService.TxBuilding {submit = submitTx}
+    } <-
+    ask
+  submitted@CommitmentSubmitted {submittedTx = SubmittedTx tx} <- submit userWalletPublicKey commitmentId signature
+  submitTx tx
+  pure (toOutputs submitted)
 
 toOutputs :: CommitmentSubmitted -> Outputs
 toOutputs CommitmentSubmitted {txId} =

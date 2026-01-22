@@ -14,7 +14,7 @@ import Cavefish.Api.ServerConfiguration (
  )
 import Cavefish.Services.TxBuilding (ServiceFee, TxBuilding (TxBuilding, build, fees, submit))
 import Cavefish.Services.WBPS (
-  WBPS (WBPS, demonstrate, loadAccount, loadAccounts, loadCommitmentDemonstrationEvents, loadSession, prove, register, submit),
+  WBPS (WBPS, demonstrate, loadAllRegistered, loadCommitmentDemonstrationEvents, loadRegisteredMaybe, loadSession, prove, register, submit),
  )
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Cooked (
@@ -40,6 +40,8 @@ import WBPS.Core.Registration.Register qualified as Registration
 import WBPS.Core.Session.FetchSession qualified as SessionFetch
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate qualified as Demonstration
+import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
+import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
 import WBPS.Core.Session.Steps.Proving.Prove qualified as Proving
 import WBPS.Core.Session.Steps.Submitting.Submit qualified as Submitting
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
@@ -73,26 +75,26 @@ mkServerContext
                 liftIO (runWBPS wbpsScheme (Demonstration.demonstrate userWalletPublicKey tx))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
-                    (Right x) -> pure x
+                    (Right Demonstrated.EventHistory {demonstrated}) -> pure demonstrated
             , prove = \userWalletPublicKey commitmentId bigR ->
                 liftIO (runWBPS wbpsScheme (Proving.prove userWalletPublicKey commitmentId bigR))
                   >>= \case
                     Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
-                    Right x -> pure x
+                    Right Proved.EventHistory {proved} -> pure proved
             , submit = \userWalletPublicKey commitmentId signature ->
-                liftIO (runWBPS wbpsScheme (Submitting.submit userWalletPublicKey commitmentId signature))
+                liftIO (runWBPS wbpsScheme (Submitting.submit (const (pure ())) userWalletPublicKey commitmentId signature))
                   >>= \case
                     Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , loadAccount = \userWalletPublicKey ->
-                liftIO (runWBPS wbpsScheme (Registration.loadAccount userWalletPublicKey))
+            , loadRegisteredMaybe = \userWalletPublicKey ->
+                liftIO (runWBPS wbpsScheme (Registration.loadRegisteredMaybe userWalletPublicKey))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , loadAccounts =
-                liftIO (runWBPS wbpsScheme Registration.loadAccounts)
+            , loadAllRegistered =
+                liftIO (runWBPS wbpsScheme Registration.loadAllRegistered)
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
@@ -103,11 +105,11 @@ mkServerContext
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
             , loadCommitmentDemonstrationEvents = \userWalletPublicKey commitmentId ->
-                liftIO (runWBPS wbpsScheme (SessionFetch.loadExistingCommitmentDemonstrationEvents userWalletPublicKey commitmentId))
+                liftIO (runWBPS wbpsScheme (Demonstrated.loadHistory userWalletPublicKey commitmentId))
                   >>= \case
                     Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
-                    Right x -> pure x
+                    Right Demonstrated.EventHistory {registered, demonstrated} -> pure (registered, demonstrated)
             }
       }
 

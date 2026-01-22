@@ -20,9 +20,10 @@ import WBPS.Core.Failure (
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Session.Persistence.FileScheme.Directories qualified as Directory
-import WBPS.Core.Session.Session (
+import WBPS.Core.Session.SessionId (
   SessionId (SessionId),
   deriveId,
+  toSessionIdString,
  )
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
@@ -35,7 +36,7 @@ deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId = do
   sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey commitmentId
   ifM
     (not <$> doesDirExist sessionDirectory)
-    (throwError [SessionNotFound (show userWalletPublicKey) (commitmentIdToString commitmentId)])
+    (throwError [SessionNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)])
     (return sessionDirectory)
 
 deriveSessionDirectoryFrom ::
@@ -52,8 +53,3 @@ getSessionDirectoryName (SessionId x) =
     (const . throwError $ [SessionIdInvalidToCreateAFolder x])
     pure
     (Path.parseRelDir x)
-
-commitmentIdToString :: CommitmentId -> String
-commitmentIdToString commitmentId =
-  let SessionId sessionId = deriveId commitmentId
-   in sessionId

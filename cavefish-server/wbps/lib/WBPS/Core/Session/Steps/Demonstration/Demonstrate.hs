@@ -1,31 +1,22 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 
 module WBPS.Core.Session.Steps.Demonstration.Demonstrate (
   demonstrate,
 ) where
 
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader)
-import Control.Monad.Reader.Class (asks)
 import Data.Default (Default (def))
-import Path (reldir, (</>))
-import Path.IO (ensureDir)
-import WBPS.Adapter.Path (writeTo)
-import WBPS.Core.Failure (
-  WBPSFailure (AccountNotFound),
- )
+import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (Setup (Setup, encryptionKeys))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Registration.Artefacts.Keys.ElGamal (EncryptionKey)
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
-import WBPS.Core.Registration.FetchAccounts (loadAccount)
-import WBPS.Core.Registration.Registered (Registered (Registered, setup, userWalletPublicKey))
-import WBPS.Core.Session.Persistence.FileScheme (deriveSessionDirectoryFrom)
-import WBPS.Core.Session.Session (Session (Demonstrated))
+import WBPS.Core.Registration.FetchAccounts (loadRegistered)
+import WBPS.Core.Registration.Registered (Registered (Registered, setup))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment, id))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment.Build (Input (Input), build)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (CircuitMessage (message), circuit)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage.Prepare (prepare)
@@ -42,44 +33,27 @@ import WBPS.Core.Session.Steps.Demonstration.Demonstrated (
     scalars
   ),
  )
+import WBPS.Core.Session.Steps.Demonstration.Persistence.Events (EventHistory (EventHistory), persist)
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
-import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
 
 demonstrate ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> UnsignedTx -> m Session
-demonstrate userWalletPublicKey unsignedTx =
-  loadAccount userWalletPublicKey
-    >>= \case
-      Nothing -> throwError [AccountNotFound (show userWalletPublicKey)]
-      Just account@Registered {setup = Setup {encryptionKeys = ElGamal.KeyPair {ek}}} -> do
-        preparedMessage <- prepare def unsignedTx
-        scalars@Scalars {ekPowRho} <- Scalars.compute ek =<< Rho.generateElGamalExponent
-        commitment <- build userWalletPublicKey . Input ekPowRho . message . circuit $ preparedMessage
-        Demonstrated account
-          <$> save
-            account
-            CommitmentDemonstrated
-              { preparedMessage
-              , scalars
-              , commitment
-              }
+  UserWalletPublicKey -> UnsignedTx -> m EventHistory
+demonstrate userWalletPublicKey unsignedTx = do
+  (registered, ek) <- project userWalletPublicKey
+  preparedMessage <- prepare def unsignedTx
+  scalars@Scalars {ekPowRho} <- Scalars.compute ek =<< Rho.generateElGamalExponent
+  commitment <- build userWalletPublicKey . Input ekPowRho . message . circuit $ preparedMessage
+  EventHistory registered
+    <$> persist
+      registered
+      CommitmentDemonstrated
+        { preparedMessage
+        , scalars
+        , commitment
+        }
 
-save ::
-  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  Registered -> CommitmentDemonstrated -> m CommitmentDemonstrated
-save
-  Registered {userWalletPublicKey}
-  event@CommitmentDemonstrated
-    { preparedMessage
-    , scalars
-    , commitment = commitment@Commitment {id = sessionId}
-    } = do
-    sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey sessionId
-    ensureDir sessionDirectory
-
-    demonstration <- asks (FileScheme.demonstration . FileScheme.session . FileScheme.account)
-    writeTo (sessionDirectory </> [reldir|demonstrated|] </> FileScheme.preparedMessage demonstration) preparedMessage
-    writeTo (sessionDirectory </> [reldir|demonstrated|] </> FileScheme.scalars demonstration) scalars
-    writeTo (sessionDirectory </> [reldir|demonstrated|] </> FileScheme.commitment demonstration) commitment
-    return event
+project :: (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) => UserWalletPublicKey -> m (Registered, EncryptionKey)
+project userWalletPublicKey = do
+  registered@Registered {setup = Setup {encryptionKeys = ElGamal.KeyPair {ek}}} <- loadRegistered userWalletPublicKey
+  return (registered, ek)

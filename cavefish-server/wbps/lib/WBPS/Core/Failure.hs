@@ -21,22 +21,31 @@ toWBPSFailure :: MonadError [WBPSFailure] m => Either String a -> m a
 toWBPSFailure = either (throwError . pure . BuildCommitmentFailed) pure
 
 data WBPSFailure
-  = AccountIdInvalidToCreateAFolder AccountId
+  = -- Account/registration failures
+    AccountIdInvalidToCreateAFolder AccountId
   | VerificationNotFound UserWalletPublicKey
   | EncryptionKeysNotFound UserWalletPublicKey
   | AccountAlreadyRegistered UserWalletPublicKey
   | AccountNotFound UserWalletPublicKey
-  | BuildCommitmentFailed String
+  | -- Commitment/circuit failures
+    BuildCommitmentFailed String
   | CircuitMessageDecodeFailed String
-  | TxBuiltTooLarge String
+  | -- Transaction assembly failures
+    TxBuiltTooLarge String
   | TxInputsCountMismatch String
-  | SessionIdInvalidToCreateAFolder SessionId
+  | -- Session directory/session lookup failures
+    SessionIdInvalidToCreateAFolder SessionId
   | SessionNotFound UserWalletPublicKey CommitmentId
-  | SessionMessageNotFound UserWalletPublicKey CommitmentId
+  | -- Session artefact persistence failures
+    SessionMessageNotFound UserWalletPublicKey CommitmentId
   | SessionRhoNotFound UserWalletPublicKey CommitmentId
   | SessionScalarsNotFound UserWalletPublicKey CommitmentId
   | SessionCommitmentNotFound UserWalletPublicKey CommitmentId
   | SessionProofNotFound UserWalletPublicKey CommitmentId
-  | ProofVerificationFailed String
+  | BlindSignatureNotFound UserWalletPublicKey CommitmentId
+  | TxSignatureNotFound UserWalletPublicKey CommitmentId
+  | SubmittedTxNotFound UserWalletPublicKey CommitmentId
+  | -- Proof/signature failures
+    ProofVerificationFailed String
   | BlindSignatureFailed String
   deriving (Show, Eq)

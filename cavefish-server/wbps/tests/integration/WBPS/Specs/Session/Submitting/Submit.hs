@@ -2,21 +2,22 @@
 
 module WBPS.Specs.Session.Submitting.Submit (specs) where
 
-import Control.Monad.Except (MonadError, catchError, throwError)
+import Control.Monad.Except (catchError)
 import Data.Bits (xor)
 import Data.Word (Word8)
 import Path (reldir)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
-import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed, BuildCommitmentFailed))
+import WBPS.Core.Failure (WBPSFailure (BlindSignatureFailed))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (generateKeyPair, userWalletPK)
 import WBPS.Core.Registration.Register (register)
-import WBPS.Core.Session.Session (Session (Demonstrated))
-import WBPS.Core.Session.Steps.BlindSigning.Sign (BlindSignature (BlindSignature), sign)
+import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature (BlindSignature), sign)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment), CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (generateKeyTuple)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate (demonstrate)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrated (CommitmentDemonstrated (CommitmentDemonstrated))
+import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
+import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
 import WBPS.Core.Session.Steps.Proving.Prove (prove)
 import WBPS.Core.Session.Steps.Proving.Proved (CommitmentProved (CommitmentProved, challenge))
 import WBPS.Core.Session.Steps.Submitting.Submit (submit)
@@ -44,13 +45,13 @@ submitValidatesSignature = do
     runWBPS fileScheme $ do
       let userWalletPublicKey = userWalletPK keyPair
       _ <- register userWalletPublicKey
-      session <- demonstrate userWalletPublicKey unsignedTx
-      commitmentId <- commitmentIdFromSession session
-      CommitmentProved {challenge} <- prove userWalletPublicKey commitmentId noncePublic
+      demonstrationHistory <- demonstrate userWalletPublicKey unsignedTx
+      let commitmentId = commitmentIdFromSession demonstrationHistory
+      Proved.EventHistory {proved = CommitmentProved {challenge}} <- prove userWalletPublicKey commitmentId noncePublic
       signature <- sign keyPair nonceSecret challenge
-      _ <- submit userWalletPublicKey commitmentId signature
+      _ <- submit (const (pure ())) userWalletPublicKey commitmentId signature
       let badSignature = tamperSignature signature
-      (submit userWalletPublicKey commitmentId badSignature >> pure Nothing)
+      (submit (const (pure ())) userWalletPublicKey commitmentId badSignature >> pure Nothing)
         `catchError` (pure . Just)
 
   case result of
@@ -77,12 +78,7 @@ isBlindSignatureFailed failure =
     _ -> False
 
 commitmentIdFromSession ::
-  MonadError [WBPSFailure] m =>
-  Session ->
-  m CommitmentId
-commitmentIdFromSession session =
-  case session of
-    Demonstrated _ (CommitmentDemonstrated _ _ (Commitment commitmentId _)) ->
-      pure commitmentId
-    _ ->
-      throwError [BuildCommitmentFailed "Expected a demonstrated session."]
+  Demonstrated.EventHistory ->
+  CommitmentId
+commitmentIdFromSession Demonstrated.EventHistory {demonstrated = CommitmentDemonstrated _ _ (Commitment commitmentId _)} =
+  commitmentId
