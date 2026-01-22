@@ -22,9 +22,8 @@ import WBPS.Core.Registration.FetchAccounts (loadExistingRegistered, loadRegiste
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
 import WBPS.Core.Registration.Persistence.SnarkJs.OverFileSchemeAndShh (getGenerateProvingKeyProcess, getGenerateVerificationKeyProcess)
-import WBPS.Core.Registration.Registered (
-  Registered (Registered, userWalletPublicKey),
- )
+import WBPS.Core.Registration.Registered
+import WBPS.Core.Registration.RegistrationId (RegistrationId (..))
 import WBPS.Core.Setup.Circuit.FileScheme (
   Account (Account, registration),
   FileScheme (FileScheme, account),
@@ -36,13 +35,14 @@ register ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   UserWalletPublicKey ->
   m Registered
-register userWalletPublicKey =
-  loadRegisteredMaybe userWalletPublicKey
+register userWalletPublicKey = do
+  let registrationId = RegistrationId userWalletPublicKey
+  loadRegisteredMaybe registrationId
     >>= \case
-      Just Registered {userWalletPublicKey = existingUserWalletKey} -> throwError [AccountAlreadyRegistered . show $ existingUserWalletKey]
+      Just Registered {registrationId = existingRegistrationId} -> throwError [AccountAlreadyRegistered existingRegistrationId]
       Nothing -> do
-        register' =<< deriveAccountDirectoryFrom userWalletPublicKey
-        loadExistingRegistered userWalletPublicKey
+        register' =<< deriveAccountDirectoryFrom registrationId
+        loadExistingRegistered registrationId
 
 register' ::
   (MonadIO m, MonadReader FileScheme m) =>

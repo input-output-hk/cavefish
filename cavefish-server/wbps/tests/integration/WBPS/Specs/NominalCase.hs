@@ -14,6 +14,7 @@ import Test.Tasty.QuickCheck (testProperty)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (KeyPair, userWalletPK)
 import WBPS.Core.Registration.FetchAccounts (loadAllRegistered)
 import WBPS.Core.Registration.Register (register)
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.FetchSession (loadSessions)
 import WBPS.Core.Session.Session (Session (Demonstrated))
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate (demonstrate)
@@ -60,8 +61,8 @@ specs =
               accountsCreated <- NL.toList <$> mapM (register . userWalletPK) userWalletKeyPairs
               accountsLoaded <- filter (`elem` accountsCreated) <$> loadAllRegistered
               anUnsignedTx <- liftIO (readFixture . unsignedTxFixture . commitmentFixtures $ rootFolders)
-              demonstrationHistories <- NL.toList <$> mapM (flip demonstrate anUnsignedTx . userWalletPK) userWalletKeyPairs
-              let demonstratedSessions = Demonstrated <$> demonstrationHistories
+              demonstrationHistories <- NL.toList <$> mapM (flip demonstrate anUnsignedTx . RegistrationId . userWalletPK) userWalletKeyPairs
+              let demonstratedSessions = Demonstrated . snd <$> demonstrationHistories
               sessionsLoaded <- filter (`elem` demonstratedSessions) <$> loadSessions
               pure (accountsCreated, accountsLoaded, demonstratedSessions, sessionsLoaded)
           )

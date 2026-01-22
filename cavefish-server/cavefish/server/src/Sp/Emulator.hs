@@ -71,25 +71,25 @@ mkServerContext
                     Left [AccountAlreadyRegistered _] -> throwError err422 {errBody = BL8.pack "Account Already Registered"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , demonstrate = \userWalletPublicKey tx ->
-                liftIO (runWBPS wbpsScheme (Demonstration.demonstrate userWalletPublicKey tx))
+            , demonstrate = \registrationId tx ->
+                liftIO (runWBPS wbpsScheme (Demonstration.demonstrate registrationId tx))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
-                    (Right Demonstrated.EventHistory {demonstrated}) -> pure demonstrated
-            , prove = \userWalletPublicKey commitmentId bigR ->
-                liftIO (runWBPS wbpsScheme (Proving.prove userWalletPublicKey commitmentId bigR))
+                    (Right (sessionId, Demonstrated.EventHistory {demonstrated})) -> pure (sessionId, demonstrated)
+            , prove = \sessionId bigR ->
+                liftIO (runWBPS wbpsScheme (Proving.prove sessionId bigR))
                   >>= \case
-                    Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
+                    Left [SessionNotFound _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right Proved.EventHistory {proved} -> pure proved
-            , submit = \userWalletPublicKey commitmentId signature ->
-                liftIO (runWBPS wbpsScheme (Submitting.submit (const (pure ())) userWalletPublicKey commitmentId signature))
+            , submit = \sessionId _ signature ->
+                liftIO (runWBPS wbpsScheme (Submitting.submit (const (pure ())) sessionId signature))
                   >>= \case
-                    Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
+                    Left [SessionNotFound _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , loadRegisteredMaybe = \userWalletPublicKey ->
-                liftIO (runWBPS wbpsScheme (Registration.loadRegisteredMaybe userWalletPublicKey))
+            , loadRegisteredMaybe = \registrationId ->
+                liftIO (runWBPS wbpsScheme (Registration.loadRegisteredMaybe registrationId))
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
@@ -98,16 +98,16 @@ mkServerContext
                   >>= \case
                     (Left e) -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , loadSession = \userWalletPublicKey commitmentId ->
-                liftIO (runWBPS wbpsScheme (SessionFetch.loadExistingSession userWalletPublicKey commitmentId))
+            , loadSession = \sessionId ->
+                liftIO (runWBPS wbpsScheme (SessionFetch.loadExistingSession sessionId))
                   >>= \case
-                    Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
+                    Left [SessionNotFound _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right x -> pure x
-            , loadCommitmentDemonstrationEvents = \userWalletPublicKey commitmentId ->
-                liftIO (runWBPS wbpsScheme (Demonstrated.loadHistory userWalletPublicKey commitmentId))
+            , loadCommitmentDemonstrationEvents = \sessionId ->
+                liftIO (runWBPS wbpsScheme (Demonstrated.loadHistory sessionId))
                   >>= \case
-                    Left [SessionNotFound _ _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
+                    Left [SessionNotFound _] -> throwError err404 {errBody = BL8.pack "Session Not Found"}
                     Left e -> throwError err500 {errBody = BL8.pack ("Unexpected event" ++ show e)}
                     Right Demonstrated.EventHistory {registered, demonstrated} -> pure (registered, demonstrated)
             }

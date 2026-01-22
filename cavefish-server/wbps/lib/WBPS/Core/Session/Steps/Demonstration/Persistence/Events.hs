@@ -15,12 +15,12 @@ import Path (Dir, Path, reldir, (</>))
 import Path.IO (ensureDir)
 import WBPS.Adapter.Monad.Control (whenNothingThrow)
 import WBPS.Adapter.Path (readFrom, writeTo)
-import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound, SessionMessageNotFound))
+import WBPS.Core.Failure (WBPSFailure (EncryptionKeysNotFound, SessionCommitmentNotFound, SessionPreparedMessageNotFound, SessionScalarsNotFound))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FetchAccounts (loadRegistered)
-import WBPS.Core.Registration.Registered (Registered (Registered, userWalletPublicKey))
+import WBPS.Core.Registration.Registered
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom, deriveSessionDirectoryFrom)
-import WBPS.Core.Session.SessionId (toSessionIdString)
+import WBPS.Core.Session.SessionId
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment (Commitment, id), CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Demonstrated (
   CommitmentDemonstrated (
@@ -41,44 +41,43 @@ data EventHistory = EventHistory
 
 loadHistory ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> CommitmentId -> m EventHistory
-loadHistory userWalletPublicKey commitmentId = do
-  sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId
+  SessionId -> m EventHistory
+loadHistory sessionId@SessionId {registrationId} = do
+  sessionDirectory <- deriveExistingSessionDirectoryFrom sessionId
   EventHistory
-    <$> loadRegistered userWalletPublicKey
-    <*> load sessionDirectory userWalletPublicKey commitmentId
+    <$> loadRegistered registrationId
+    <*> load sessionDirectory sessionId
 
 load ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Path b Dir ->
-  UserWalletPublicKey ->
-  CommitmentId ->
+  SessionId ->
   m CommitmentDemonstrated
-load sessionDirectory userWalletPublicKey commitmentId = do
+load sessionDirectory sessionId = do
   demonstration <- asks (FileScheme.demonstration . FileScheme.session . FileScheme.account)
   let demonstratedDirectory = sessionDirectory </> [reldir|demonstrated|]
   CommitmentDemonstrated
     <$> ( readFrom (demonstratedDirectory </> FileScheme.preparedMessage demonstration)
-            >>= whenNothingThrow [SessionMessageNotFound (show userWalletPublicKey) (toSessionIdString commitmentId)]
+            >>= whenNothingThrow [SessionPreparedMessageNotFound sessionId]
         )
     <*> ( readFrom (demonstratedDirectory </> FileScheme.scalars demonstration)
-            >>= whenNothingThrow [EncryptionKeysNotFound (show userWalletPublicKey)]
+            >>= whenNothingThrow [SessionScalarsNotFound sessionId]
         )
     <*> ( readFrom (demonstratedDirectory </> FileScheme.commitment demonstration)
-            >>= whenNothingThrow [EncryptionKeysNotFound (show userWalletPublicKey)]
+            >>= whenNothingThrow [SessionCommitmentNotFound sessionId]
         )
 
 persist ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   Registered -> CommitmentDemonstrated -> m CommitmentDemonstrated
 persist
-  Registered {userWalletPublicKey}
+  Registered {registrationId}
   event@CommitmentDemonstrated
     { preparedMessage
     , scalars
-    , commitment = commitment@Commitment {id = sessionId}
+    , commitment = commitment@Commitment {id = commitmentId}
     } = do
-    sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey sessionId
+    sessionDirectory <- deriveSessionDirectoryFrom (SessionId registrationId commitmentId)
     ensureDir sessionDirectory
     demonstration <- asks (FileScheme.demonstration . FileScheme.session . FileScheme.account)
     writeTo (sessionDirectory </> [reldir|demonstrated|] </> FileScheme.preparedMessage demonstration) preparedMessage

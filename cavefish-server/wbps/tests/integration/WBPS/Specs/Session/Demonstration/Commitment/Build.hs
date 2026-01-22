@@ -12,6 +12,7 @@ import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
 import WBPS.Adapter.Math.AffinePoint (AffinePoint)
 import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (generateKeyPair, userWalletPK)
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (
   CommitmentPayload (unPayload),
   MessageLimbs (unMessageLimbs),
@@ -66,6 +67,7 @@ commitmentMatchesCircuit = do
       m ([Integer], AffinePoint)
     runCommitmentFlow CommitmentFixtures {unsignedTxFixture, messageBitsFixture, commitmentFixture} = do
       userWalletPublicKey <- liftIO (userWalletPK <$> generateKeyPair)
+      let registrationId = RegistrationId userWalletPublicKey
       Scalars {ekPowRho} <- compute sampleEncryptionKey sampleRho
       message <- liftIO (readFixture unsignedTxFixture)
       messageBitsFromFixture <- liftIO (readFixture messageBitsFixture)
@@ -75,7 +77,7 @@ commitmentMatchesCircuit = do
 
       commitmentPayload <-
         unPayload . payload
-          <$> build userWalletPublicKey Input {ekPowRho, messageBits = messageBitsFromFixture}
+          <$> build registrationId Input {ekPowRho, messageBits = messageBitsFromFixture}
 
       whenMismatch "Commitment payload fixture" (commitmentPayload == expectedCommitmentBits)
 

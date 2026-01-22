@@ -20,6 +20,8 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Intent.Example.DSL (IntentDSL)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Registration.RegistrationId
+import WBPS.Core.Session.SessionId (SessionId)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (AbstractUnsignedTx)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (Commitment)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.PreparedMessage (
@@ -33,7 +35,7 @@ import WBPS.Core.Session.Steps.Demonstration.Demonstrated (
 
 -- | Inputs for demonstrating a commitment.
 data Inputs = Inputs
-  { userWalletPublicKey :: UserWalletPublicKey
+  { registrationId :: RegistrationId
   -- ^ The user's wallet public key.
   , intent :: IntentDSL
   -- ^ The intent for which to demonstrate the commitment.
@@ -42,7 +44,8 @@ data Inputs = Inputs
 
 -- | Outputs from demonstrating a commitment.
 data Outputs = Outputs
-  { commitment :: Commitment
+  { sessionId :: SessionId
+  , commitment :: Commitment
   -- ^ The generated commitment.
   , txAbs :: AbstractUnsignedTx
   -- ^ The abstract unsigned transaction.
@@ -54,14 +57,14 @@ data Outputs = Outputs
 -- creates a session for the commitment using the user's wallet public key,
 -- and returns the abstract unsigned transaction along with the generated commitment.
 handle :: Inputs -> CavefishServerM Outputs
-handle Inputs {userWalletPublicKey, intent} = do
+handle Inputs {registrationId, intent} = do
   CavefishServices
     { txBuildingService = TxService.TxBuilding {build}
     , wbpsService = WbpsService.WBPS {demonstrate}
     } <-
     ask
-  toOuput <$> (demonstrate userWalletPublicKey =<< build intent)
+  toOuput <$> (demonstrate registrationId =<< build intent)
 
-toOuput :: CommitmentDemonstrated -> Outputs
-toOuput CommitmentDemonstrated {preparedMessage = PreparedMessage {parts = MessageParts {public = PublicMessage txAbs}}, commitment} =
-  Outputs {txAbs, commitment}
+toOuput :: (SessionId, CommitmentDemonstrated) -> Outputs
+toOuput (sessionId, CommitmentDemonstrated {preparedMessage = PreparedMessage {parts = MessageParts {public = PublicMessage txAbs}}, commitment}) =
+  Outputs {sessionId, txAbs, commitment}

@@ -69,11 +69,11 @@ spec = do
                             , PayToW (lovelaceToValue 10_000_000) (coerce . paymentAddress $ bob)
                             ]
                         )
-                Register.Outputs {publicVerificationContext, ek} <- register . Register.Inputs . publicKey $ alice
+                Register.Outputs {registrationId, publicVerificationContext, ek} <- register . Register.Inputs . publicKey $ alice
 
-                Demonstrate.Outputs {commitment = commitment@Commitment {id = commitmentId, payload}, txAbs} <-
+                Demonstrate.Outputs {sessionId, commitment = commitment@Commitment {payload}, txAbs} <-
                   demonstrate
-                    . Demonstrate.Inputs (publicKey alice)
+                    . Demonstrate.Inputs registrationId
                     $ intent
 
                 satisfies intent txAbs `shouldBe` True
@@ -83,8 +83,7 @@ spec = do
                 Prove.Outputs {challenge, proof} <-
                   prove
                     Prove.Inputs
-                      { userWalletPublicKey = publicKey alice
-                      , commitmentId
+                      { sessionId
                       , bigR = bigR
                       }
 
@@ -98,12 +97,11 @@ spec = do
                 Submit.Outputs {txId} <-
                   submit
                     Submit.Inputs
-                      { userWalletPublicKey = publicKey alice
-                      , commitmentId
+                      { sessionId
                       , signature
                       }
 
-                FetchAccount.Outputs {accountMaybe} <- fetchAccount . FetchAccount.Inputs . publicKey $ alice
+                FetchAccount.Outputs {accountMaybe} <- fetchAccount . FetchAccount.Inputs $ registrationId
 
                 accountMaybe
-                  `shouldBe` Just FetchAccount.Account {userWalletPublicKey = publicKey alice, ek, publicVerificationContext}
+                  `shouldBe` Just FetchAccount.Account {registrationId, ek, publicVerificationContext}

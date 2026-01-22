@@ -14,15 +14,12 @@ import Cavefish.Services.WBPS qualified as WbpsService
 import Control.Monad.Reader (ask)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
+import WBPS.Core.Session.SessionId (SessionId)
 import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature)
-import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
-import WBPS.Core.Session.Steps.Submitting.Artefacts.SubmittedTx (SubmittedTx (SubmittedTx))
-import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, submittedTx, txId))
+import WBPS.Core.Session.Steps.Submitting.Submitted (CommitmentSubmitted (CommitmentSubmitted, txId))
 
 data Inputs = Inputs
-  { userWalletPublicKey :: UserWalletPublicKey
-  , commitmentId :: CommitmentId
+  { sessionId :: SessionId
   , signature :: BlindSignature
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -33,15 +30,13 @@ newtype Outputs = Outputs
   deriving newtype (Eq, Show, FromJSON, ToJSON)
 
 handle :: Inputs -> CavefishServerM Outputs
-handle Inputs {userWalletPublicKey, commitmentId, signature} = do
+handle Inputs {sessionId, signature} = do
   CavefishServices
     { wbpsService = WbpsService.WBPS {submit}
     , txBuildingService = TxService.TxBuilding {submit = submitTx}
     } <-
     ask
-  submitted@CommitmentSubmitted {submittedTx = SubmittedTx tx} <- submit userWalletPublicKey commitmentId signature
-  submitTx tx
-  pure (toOutputs submitted)
+  toOutputs <$> submit sessionId submitTx signature
 
 toOutputs :: CommitmentSubmitted -> Outputs
 toOutputs CommitmentSubmitted {txId} =

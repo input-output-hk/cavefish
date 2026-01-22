@@ -23,9 +23,10 @@ import WBPS.Core.Failure (WBPSFailure)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.FetchAccounts (loadAllRegistered, loadRegistered)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
-import WBPS.Core.Registration.Registered (Registered (Registered, userWalletPublicKey))
+import WBPS.Core.Registration.Registered
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.Session (Session (Demonstrated))
+import WBPS.Core.Session.SessionId (SessionId (..))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (CommitmentId)
 import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
@@ -41,30 +42,30 @@ loadSessions ::
 loadSessions = do
   ( loadAllRegistered
       >>= mapM
-        ( \Registered {userWalletPublicKey} -> do
-            accountDir <- deriveAccountDirectoryFrom userWalletPublicKey
+        ( \Registered {registrationId} -> do
+            accountDir <- deriveAccountDirectoryFrom registrationId
             FileScheme.Account {sessions} <- asks FileScheme.account
             recordedIds <- getRecordedCommitmentIds (accountDir </> sessions)
-            traverse (loadExistingSession userWalletPublicKey) recordedIds
+            traverse (loadExistingSession . SessionId registrationId) recordedIds
         )
     )
     <&> join
 
 loadSession ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> CommitmentId -> m (Maybe Session)
-loadSession userWalletPublicKey commitmentId = do
-  account <- deriveAccountDirectoryFrom userWalletPublicKey
+  SessionId -> m (Maybe Session)
+loadSession sessionId@SessionId {registrationId} = do
+  account <- deriveAccountDirectoryFrom registrationId
   ifM
     (not <$> doesDirExist account)
     (return Nothing)
-    (Just <$> loadExistingSession userWalletPublicKey commitmentId)
+    (Just <$> loadExistingSession sessionId)
 
 loadExistingSession ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey -> CommitmentId -> m Session
-loadExistingSession userWalletPublicKey commitmentId = do
-  sessionDirectory <- deriveExistingSessionDirectoryFrom userWalletPublicKey commitmentId
-  registered <- loadRegistered userWalletPublicKey
-  demonstrated <- Demonstrated.load sessionDirectory userWalletPublicKey commitmentId
+  SessionId -> m Session
+loadExistingSession sessionId@SessionId {registrationId} = do
+  sessionDirectory <- deriveExistingSessionDirectoryFrom sessionId
+  registered <- loadRegistered registrationId
+  demonstrated <- Demonstrated.load sessionDirectory sessionId
   pure (Demonstrated Demonstrated.EventHistory {registered, demonstrated})

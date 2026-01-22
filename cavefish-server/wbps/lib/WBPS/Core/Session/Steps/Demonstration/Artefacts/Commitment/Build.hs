@@ -44,7 +44,9 @@ import WBPS.Core.Failure (
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
+import WBPS.Core.Registration.RegistrationId (RegistrationId)
 import WBPS.Core.Session.Persistence.FileScheme (deriveSessionDirectoryFrom)
+import WBPS.Core.Session.SessionId (SessionId (..))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Commitment (
   Commitment (Commitment, id),
   CommitmentPayload (CommitmentPayload),
@@ -66,18 +68,18 @@ import WBPS.Core.Setup.Circuit.FileScheme qualified as Setup (Setup (buildCommit
 
 build ::
   (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
-  UserWalletPublicKey ->
+  RegistrationId ->
   Input ->
   m Commitment
-build userWalletPublicKey input = do
-  accountDirectory <- deriveAccountDirectoryFrom userWalletPublicKey
+build registrationId input = do
+  accountDirectory <- deriveAccountDirectoryFrom registrationId
   ensureDir accountDirectory
   randSuffix <- liftIO (encodeHex <$> getRandomBytes 16)
   let tmpPrefix = "build-commitment-tmp-" <> T.unpack randSuffix <> "-"
   tmpRoot <- createTempDir accountDirectory tmpPrefix
   Output {maskedChunks} <- toWBPSFailure =<< runBuildCommitment def tmpRoot input
   let commitment@Commitment {id = commitmentId} = mkCommitment (CommitmentPayload maskedChunks)
-  sessionDirectory <- deriveSessionDirectoryFrom userWalletPublicKey commitmentId
+  sessionDirectory <- deriveSessionDirectoryFrom (SessionId registrationId commitmentId)
   ensureDir sessionDirectory
   renameDir tmpRoot (sessionDirectory </> [reldir|build-commitment-traces|])
   return commitment

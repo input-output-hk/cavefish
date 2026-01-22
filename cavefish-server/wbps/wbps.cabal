@@ -82,6 +82,7 @@ library
     WBPS.Core.Registration.Persistence.SnarkJs.OverShh
     WBPS.Core.Registration.Register
     WBPS.Core.Registration.Registered
+    WBPS.Core.Registration.RegistrationId
     WBPS.Core.Session.FetchSession
     WBPS.Core.Session.Persistence.FileScheme
     WBPS.Core.Session.Persistence.FileScheme.Directories
