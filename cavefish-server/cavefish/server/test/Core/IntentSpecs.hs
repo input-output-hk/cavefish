@@ -7,6 +7,7 @@ module Core.IntentSpecs (tests) where
 import Cardano.Api (lovelaceToValue, serialiseAddress)
 import Cardano.Api qualified as Api
 import Cavefish.Services.TxBuilding (ServiceFee (ServiceFee, amount, paidTo))
+import Control.Monad.IO.Class (liftIO)
 import Cooked qualified
 import Core.IntentDSLGen (genDSL)
 import Data.Either (isLeft)
@@ -23,14 +24,14 @@ import Intent.Example.DSL (
  )
 import Ledger.CardanoWallet qualified
 import Plutus.Script.Utils.Value qualified as Script
-import Sp.Emulator (buildWithCooked)
+import Sp.Emulator (buildWithCooked, newMockChainStore)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.Hedgehog (testPropertyNamed)
 import Test.Tasty.Hspec (testSpec)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (PaymentAddess (PaymentAddess), Wallet (Wallet, paymentAddress))
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
-import WBPS.Core.Session.Demonstration.Artefacts.Cardano.UnsignedTx (AbstractUnsignedTx (AbstractUnsignedTx))
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (AbstractUnsignedTx (AbstractUnsignedTx))
 
 tests :: IO ()
 tests = do
@@ -63,6 +64,7 @@ propIntentDSL = property $ do
           . Ledger.CardanoWallet.mockWalletAddress
           $ Cooked.wallet 6
   let servicefee = ServiceFee {amount = 7, paidTo = paymentAddress}
+  mockChainStore <- liftIO (newMockChainStore initialDistribution)
 
   let intent = toCanonicalIntent dsl
   case intent of
@@ -70,7 +72,7 @@ propIntentDSL = property $ do
       footnote ("IntentDSL to CanonicalIntent conversion Error: " <> Text.unpack err)
       assert False
     Right _ -> do
-      absTx <- buildWithCooked initialDistribution servicefee dsl
+      absTx <- buildWithCooked mockChainStore servicefee dsl
       assert $ satisfies dsl (AbstractUnsignedTx absTx)
 
 specs :: Spec

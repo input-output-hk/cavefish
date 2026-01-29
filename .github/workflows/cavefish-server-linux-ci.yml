@@ -36,21 +36,10 @@ jobs:
         shell: bash
 
     steps:
-      # ✅ Ensure LFS objects are fetched by the checkout itself
       - uses: actions/checkout@v4
         with:
-          lfs: true          # <— pull LFS blobs (not just pointers)
-          fetch-depth: 0     # <— needed if you pin to specific commits/tags
-
-      # (Optional but safe) Install/initialize git-lfs explicitly and verify files
-      - name: Initialize Git LFS and materialize files
-        run: |
-          git lfs install
-          # Double-ensure all LFS objects are fetched & checked out
-          git lfs fetch --all
-          git lfs checkout
-          # Quick sanity: show a few tracked files if present
-          git lfs ls-files || true
+          lfs: false
+          fetch-depth: 0
 
       - name: Free up disk space
         run: |

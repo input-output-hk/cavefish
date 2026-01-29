@@ -7,6 +7,7 @@
 module Sp.Emulator (
   mkServerContext,
   buildWithCooked,
+  newMockChainStore,
 ) where
 
 import Cardano.Api qualified as Api
