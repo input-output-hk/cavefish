@@ -5,42 +5,20 @@ module Core.IntentDSLGen (
 ) where
 
 import Cardano.Api qualified as Api
-import Cardano.Api.Era (ShelleyBasedEra (ShelleyBasedEraConway))
-import Control.Monad.IO.Class (liftIO)
 import Cooked qualified
-import Data.Functor.Identity
-import Data.List.NonEmpty (NonEmpty ((:|)), singleton)
-import Data.Text (pack)
-import Debug.Trace qualified as Debug
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Hedgehog (Gen)
-import Hedgehog qualified
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Intent.Example.DSL (
   AddressW (AddressW),
-  AdressConwayEra (AdressConwayEra),
-  IntentDSL (AndExpsW, ChangeToW, MaxFeeW, MaxIntervalW, MustMintW, PayToW, SpendFromW),
+  IntentDSL (AndExpsW, ChangeToW, MaxFeeW, PayToW, SpendFromW),
  )
-import Ledger.CardanoWallet qualified
 import Ledger.CardanoWallet qualified as Ledger
-import System.IO.Unsafe (unsafePerformIO)
 import Test.Gen.Cardano.Api.Typed (
-  genAssetId,
   genQuantity,
   genValue,
  )
-import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (
-  KeyPair,
-  PaymentAddess (..),
-  Wallet (Wallet, paymentAddress),
-  generateWallet,
- )
-
-genWallet :: Gen Wallet
-genWallet = pure $ unsafePerformIO $ generateWallet
-
-addressWFromWallet :: Wallet -> AddressW
-addressWFromWallet = AddressW . unPaymentAddess . paymentAddress
 
 genPayToW :: AddressW -> Gen IntentDSL
 genPayToW addressW = do
@@ -53,9 +31,9 @@ genDSL = do
     mustMintW <- MustMintW <$> genValue genAssetId (genQuantity $ Range.linear 1 10)
   -}
   let
-    alice = AddressW . Api.serialiseAddress $ Ledger.CardanoWallet.mockWalletAddress $ Cooked.wallet 1
-    mary = AddressW . Api.serialiseAddress $ Ledger.CardanoWallet.mockWalletAddress $ Cooked.wallet 2
-    bob = AddressW . Api.serialiseAddress $ Ledger.CardanoWallet.mockWalletAddress $ Cooked.wallet 3
+    alice = AddressW . Api.serialiseAddress $ Ledger.mockWalletAddress $ Cooked.wallet 1
+    mary = AddressW . Api.serialiseAddress $ Ledger.mockWalletAddress $ Cooked.wallet 2
+    bob = AddressW . Api.serialiseAddress $ Ledger.mockWalletAddress $ Cooked.wallet 3
     spendFromW = SpendFromW alice
     changeToW = ChangeToW mary
   payToW <- genPayToW bob

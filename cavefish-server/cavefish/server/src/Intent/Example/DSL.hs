@@ -27,7 +27,6 @@ import Data.List (uncons)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import GHC.IsList qualified
@@ -40,7 +39,6 @@ import Plutus.Script.Utils.Address (
   ToAddress (toAddress),
   ToPubKeyHash (toPubKeyHash),
  )
-import PlutusLedgerApi.V1 qualified
 import PlutusLedgerApi.V1.Interval (
   Extended (Finite),
   Interval (Interval),
@@ -221,11 +219,7 @@ satisfiesMaxInterval CanonicalIntent {maxInterval} tx =
 -- This function is based on the cavefish paper section 5.1, figure 2.  The formula is:
 -- SpendFrom: s(dom (tx.sigs), tx.validityInterval)
 satisfiesSpendFrom :: CanonicalIntent -> Api.TxBodyContent build era -> Bool
-satisfiesSpendFrom CanonicalIntent {spendFrom} txbody = True
-
-hasSigners :: Set.Set PlutusLedgerApi.V1.PubKeyHash -> [PlutusLedgerApi.V1.PubKeyHash] -> Bool
-hasSigners sigs spendFrom =
-  Set.isProperSubsetOf (Set.fromList spendFrom) sigs
+satisfiesSpendFrom _ _ = True
 
 satisfiesChangeTo :: CanonicalIntent -> [Api.TxOut Api.CtxTx Api.ConwayEra] -> Bool
 satisfiesChangeTo CanonicalIntent {spendFrom, changeTo} txouts =
