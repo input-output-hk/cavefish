@@ -90,6 +90,11 @@ let
     tools.cabal-fmt
     tools.hlint
 
+    pkgs.cargo
+    pkgs.rust-script
+
+    pkgs.act
+
     pkgs.nixfmt-rfc-style
     pkgs.shellcheck
     pkgs.github-cli

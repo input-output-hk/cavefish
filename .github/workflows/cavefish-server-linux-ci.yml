@@ -36,21 +36,10 @@ jobs:
         shell: bash
 
     steps:
-      # ✅ Ensure LFS objects are fetched by the checkout itself
       - uses: actions/checkout@v4
         with:
-          lfs: true          # <— pull LFS blobs (not just pointers)
-          fetch-depth: 0     # <— needed if you pin to specific commits/tags
-
-      # (Optional but safe) Install/initialize git-lfs explicitly and verify files
-      - name: Initialize Git LFS and materialize files
-        run: |
-          git lfs install
-          # Double-ensure all LFS objects are fetched & checked out
-          git lfs fetch --all
-          git lfs checkout
-          # Quick sanity: show a few tracked files if present
-          git lfs ls-files || true
+          lfs: false
+          fetch-depth: 0
 
       - name: Free up disk space
         run: |
@@ -111,6 +100,59 @@ jobs:
       - name: Circomlib
         working-directory: ./wbps
         run: make deps-circomlib
+
+      - name: Generate WBPS setup artifacts (no LFS)
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE"
+          SETUP="$ROOT/cavefish-server/wbps/setup"
+          mkdir -p "$SETUP/commitment" "$SETUP/relation"
+
+          if [ ! -f "$SETUP/commitment/BuildCommitment.r1cs" ] || [ ! -f "$SETUP/commitment/BuildCommitment.sym" ] || [ ! -f "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm" ]; then
+            echo "Compiling BuildCommitment.circom"
+            circom "$SETUP/commitment/BuildCommitment.circom" \
+              --r1cs --sym --wasm \
+              -l "$ROOT/wbps/vendor/circomlib" \
+              -l "$ROOT/wbps/vendor/hashing_circuits" \
+              -o "$SETUP/commitment"
+          fi
+
+          if [ ! -f "$SETUP/relation/relation.r1cs" ] || [ ! -f "$SETUP/relation/relation.sym" ] || [ ! -f "$SETUP/relation/relation_js/relation.wasm" ]; then
+            echo "Compiling relation.circom"
+            circom "$SETUP/relation/relation.circom" \
+              --r1cs --sym --wasm \
+              -l "$ROOT/wbps/vendor/circomlib" \
+              -l "$ROOT/wbps/vendor/hashing_circuits" \
+              -o "$SETUP/relation"
+          fi
+
+          if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ]; then
+            echo "Generating powersOfTauPrepared.ptau"
+            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" | python3 - <<'PY'
+import re,sys
+data=sys.stdin.read()
+m=re.search(r'Constraints\\s*[:=]\\s*([0-9,]+)', data)
+if not m:
+    print("")
+    sys.exit(0)
+print(m.group(1).replace(",", ""))
+PY
+            )
+            if [ -z "${constraints:-}" ]; then
+              constraints=2000000
+            fi
+            bits=$(python3 - <<PY
+import math
+constraints=int("${constraints}")
+bits=math.ceil(math.log2(constraints)) + 1
+print(max(bits, 22))
+PY
+            )
+            echo "Using PTAU_BITS=$bits for constraints=$constraints"
+            tmp_ptau="$RUNNER_TEMP/powersoftau.ptau"
+            snarkjs powersoftau new bn128 "$bits" "$tmp_ptau" -v
+            snarkjs powersoftau prepare phase2 "$tmp_ptau" "$SETUP/powersOfTauPrepared.ptau" -v
+          fi
 
       - name: Install Haskell
         id: install-haskell
