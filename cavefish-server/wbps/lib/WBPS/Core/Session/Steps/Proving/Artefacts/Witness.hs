@@ -10,7 +10,9 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ask)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Path (File, Path, reldir, toFilePath, (</>))
@@ -19,6 +21,7 @@ import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
 import WBPS.Adapter.Math.AffinePoint qualified as AffinePoint
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure)
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup qualified as Groth16
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
@@ -50,6 +53,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Setup (Setup, witness),
   WitnessGeneration (WitnessGeneration, input, output),
   WitnessGenerationSetup (WitnessGenerationSetup, wasm),
+  getPerformanceLogFilepath,
   getShellLogsFilepath,
  )
 
@@ -102,15 +106,26 @@ generate
       (prepareInputs registered commitmentDemonstrated bigR challenge)
 
     shellLogsFilepath <- getShellLogsFilepath accountDirectory
+    perfLogPath <- getPerformanceLogFilepath
+    let tags =
+          Map.fromList
+            [ (Text.pack "sessionId", Text.pack (show sessionId))
+            , (Text.pack "registrationId", Text.pack (show registrationId))
+            ]
     liftIO $
-      Snarkjs.generateWitness
-        Snarkjs.WitnessScheme
-          { wasm = toFilePath wasm
-          , input = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> input)
-          , witnessOutput = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> output)
-          }
-        &!> StdOut
-        &> Append shellLogsFilepath
+      withPerfEventIO
+        perfLogPath
+        (Text.pack "snarkjs.witness")
+        tags
+        ( Snarkjs.generateWitness
+            Snarkjs.WitnessScheme
+              { wasm = toFilePath wasm
+              , input = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> input)
+              , witnessOutput = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> output)
+              }
+            &!> StdOut
+            &> Append shellLogsFilepath
+        )
 
 prepareInputs ::
   Registered ->

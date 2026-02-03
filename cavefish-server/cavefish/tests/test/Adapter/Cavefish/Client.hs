@@ -16,13 +16,14 @@ import Cavefish.Endpoints.Write.Session.Demonstrate qualified as Demonstrate (In
 import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Cavefish.Services.TxBuilding (ServiceFee (ServiceFee, amount, paidTo))
-import Control.Monad ((>=>))
+import Control.Monad (when, (>=>))
 import Cooked (InitialDistribution (InitialDistribution), Payable (Value), receives)
 import Data.Default (Default (def))
 import Data.Foldable (foldl')
 import Network.HTTP.Client (defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
 import Network.Wai.Handler.Warp qualified as Warp
-import Path (Dir, Path, Rel)
+import Path (Abs, Dir, File, Path, Rel)
+import Path.IO (doesFileExist, removeFile)
 import Plutus.Script.Utils.Value (ada)
 import PlutusLedgerApi.V3 qualified as Api
 import Servant (Application, Proxy (Proxy), type (:<|>) ((:<|>)))
@@ -40,7 +41,7 @@ import WBPS.Core.Session.Steps.BlindSigning.VerifyProof qualified as VerifyProof
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.R (RSecret)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Proof (Proof)
-import WBPS.Core.Setup.Circuit.FileScheme (FileScheme, mkFileSchemeFromRoot)
+import WBPS.Core.Setup.Circuit.FileScheme (FileScheme, mkFileSchemeFromRoot, performanceLogFilepath)
 import WBPS.WBPS (runWBPS)
 
 getServiceProviderAPI :: ServiceFee -> Int -> IO ServiceProviderAPI
@@ -122,6 +123,9 @@ mkTestCavefishMonad wbpsScheme initialDistribution serverConfiguration = do
 setupCavefish :: Path Rel Dir -> (Setup -> IO a) -> IO a
 setupCavefish folderLabel actions = do
   wbpsScheme <- mkFileSchemeFromRoot folderLabel
+  let performanceLogPath = performanceLogFilepath wbpsScheme
+  perfLogExists <- doesFileExist performanceLogPath
+  when perfLogExists (removeFile performanceLogPath)
   alice <- generateWallet
   bob <- generateWallet
   provider@Wallet {paymentAddress} <- generateWallet
@@ -172,4 +176,5 @@ data Setup = Setup
   , alice :: Wallet
   , bob :: Wallet
   , provider :: Wallet
+  , performanceLogPath :: Path Abs File
   }

@@ -11,11 +11,14 @@ module WBPS.Core.Registration.Register (
 import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ask)
+import Data.Map.Strict qualified as Map
+import Data.Text qualified as Text
 import Path (reldir, (</>))
 import Path.IO (ensureDir)
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure (AccountAlreadyRegistered))
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Registration.FetchAccounts (loadExistingRegistered, loadRegisteredMaybe)
@@ -28,6 +31,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Account (Account, registration),
   FileScheme (FileScheme, account),
   Registration (Registration, encryptionKeys),
+  getPerformanceLogFilepath,
   getShellLogsFilepath,
  )
 
@@ -41,21 +45,37 @@ register userWalletPublicKey = do
     >>= \case
       Just Registered {registrationId = existingRegistrationId} -> throwError [AccountAlreadyRegistered existingRegistrationId]
       Nothing -> do
-        register' =<< deriveAccountDirectoryFrom registrationId
+        register' registrationId =<< deriveAccountDirectoryFrom registrationId
         loadExistingRegistered registrationId
 
 register' ::
   (MonadIO m, MonadReader FileScheme m) =>
+  RegistrationId ->
   Directory.Account ->
   m ()
-register' accountDirectory = do
+register' registrationId accountDirectory = do
   FileScheme {account = Account {registration = Registration {encryptionKeys}}} <- ask
   ensureDir accountDirectory
   ElGamal.generateKeyPair >>= writeTo (accountDirectory </> [reldir|registered|] </> encryptionKeys)
   generateProvingKeyProcess <- getGenerateProvingKeyProcess accountDirectory
   generateVerificationKeyProcess <- getGenerateVerificationKeyProcess accountDirectory
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
+  perfLogPath <- getPerformanceLogFilepath
+  let tags = Map.fromList [(Text.pack "registrationId", Text.pack (show registrationId))]
   liftIO $
-    (generateProvingKeyProcess >> generateVerificationKeyProcess)
-      &!> StdOut
-      &> Append shellLogsFilepath
+    withPerfEventIO
+      perfLogPath
+      (Text.pack "snarkjs.proving.key")
+      tags
+      ( generateProvingKeyProcess
+          &!> StdOut
+          &> Append shellLogsFilepath
+      )
+      >> withPerfEventIO
+        perfLogPath
+        (Text.pack "snarkjs.public.verification.context")
+        tags
+        ( generateVerificationKeyProcess
+            &!> StdOut
+            &> Append shellLogsFilepath
+        )

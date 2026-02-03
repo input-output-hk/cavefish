@@ -10,7 +10,7 @@ module Cavefish.Nominal (spec) where
 import Adapter.Cavefish.Client (
   ReadAPI (ReadAPI, fetchTxStatus),
   ServiceProviderAPI (ServiceProviderAPI, read, write),
-  Setup (Setup, alice, bob, serviceProvider, userToolkit),
+  Setup (Setup, alice, bob, performanceLogPath, serviceProvider, userToolkit),
   UserToolkitAPI (UserToolkitAPI, assertProofIsValid, signBlindly),
   WriteAPI (
     WriteAPI,
@@ -29,9 +29,11 @@ import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Cavefish.Services.TxBuilding (TxStatus (TxStatusSubmitted))
 import Data.List.NonEmpty qualified as NE
+import Data.Text.IO qualified as TIO
 import Intent.Example.DSL (AddressW (AddressW), IntentDSL (AndExpsW, PayToW, SpendFromW), satisfies)
 import Path (reldir)
 import Test.Hspec (Spec, describe, it, shouldBe)
+import WBPS.Core.Performance (writePerformanceReport)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (
   PaymentAddess (unPaymentAddess),
   keyPair,
@@ -61,6 +63,7 @@ spec = do
                , userToolkit = UserToolkitAPI {assertProofIsValid, signBlindly}
                , alice
                , bob
+               , performanceLogPath
                } -> do
                 let intent =
                       AndExpsW
@@ -104,3 +107,6 @@ spec = do
 
                 FetchTxStatus.Outputs {status} <- fetchTxStatus . FetchTxStatus.Inputs $ txId
                 status `shouldBe` TxStatusSubmitted
+
+                report <- writePerformanceReport performanceLogPath
+                TIO.putStrLn report
