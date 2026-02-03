@@ -15,12 +15,13 @@ on:
 
 jobs:
   build:
-    name: GHC ${{ matrix.ghc-version }} on ${{ matrix.os }}
+    name: GHC ${{ matrix.ghc-version }} on ${{ matrix.os }} (lfs=${{ matrix.lfs }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
         ghc-version: ['9.6.6']
+        lfs: [true]
       fail-fast: false
 
     env:
@@ -30,6 +31,8 @@ jobs:
       SECP_CACHE_VERSION: "2022-12-30"
       WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/cavefish-server/wbps/setup
       WBPS_TEST_OUTPUT_ROOT: ${{ github.workspace }}/cavefish-server/output/tests
+      CIRCOM_REV: "2eaaa6dface934356972b34cab64b25d382e59de"
+      SNARKJS_VERSION: "0.7.6"
 
     defaults:
       run:
@@ -38,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: false
+          lfs: ${{ matrix.lfs }}
           fetch-depth: 0
 
       - name: Free up disk space
@@ -92,8 +95,8 @@ jobs:
 
       - name: Install circom & snarkjs
         run: |
-          cargo install --git https://github.com/iden3/circom --locked --force
-          npm install -g snarkjs@^0.7.0
+          cargo install --git https://github.com/iden3/circom --rev "$CIRCOM_REV" --locked --force
+          npm install -g "snarkjs@$SNARKJS_VERSION"
           circom --version
           snarkjs -v || true
 
@@ -101,15 +104,65 @@ jobs:
         working-directory: ./wbps
         run: make deps-circomlib
 
+      - name: Validate LFS setup artifacts
+        if: ${{ matrix.lfs }}
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE"
+          SETUP="$ROOT/cavefish-server/wbps/setup"
+          is_lfs_pointer() {
+            local f="$1"
+            [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
+          }
+
+          for f in \
+            "$SETUP/commitment/BuildCommitment.r1cs" \
+            "$SETUP/commitment/BuildCommitment.sym" \
+            "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm" \
+            "$SETUP/relation/relation.r1cs" \
+            "$SETUP/relation/relation.sym" \
+            "$SETUP/relation/relation_js/relation.wasm" \
+            "$SETUP/powersOfTauPrepared.ptau"
+          do
+            if [ ! -f "$f" ]; then
+              echo "Missing LFS artifact: $f"
+              exit 1
+            fi
+            if is_lfs_pointer "$f"; then
+              echo "LFS pointer detected (download failed?): $f"
+              exit 1
+            fi
+          done
+
       - name: Generate WBPS setup artifacts (no LFS)
+        if: ${{ !matrix.lfs }}
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
           SETUP="$ROOT/cavefish-server/wbps/setup"
           mkdir -p "$SETUP/commitment" "$SETUP/relation"
 
-          if [ ! -f "$SETUP/commitment/BuildCommitment.r1cs" ] || [ ! -f "$SETUP/commitment/BuildCommitment.sym" ] || [ ! -f "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm" ]; then
+          is_lfs_pointer() {
+            local f="$1"
+            [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
+          }
+
+          need_build_commitment=0
+          for f in \
+            "$SETUP/commitment/BuildCommitment.r1cs" \
+            "$SETUP/commitment/BuildCommitment.sym" \
+            "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm"
+          do
+            if [ ! -f "$f" ] || is_lfs_pointer "$f"; then
+              need_build_commitment=1
+              break
+            fi
+          done
+
+          if [ "$need_build_commitment" -eq 1 ]; then
             echo "Compiling BuildCommitment.circom"
+            rm -f "$SETUP/commitment/BuildCommitment.r1cs" "$SETUP/commitment/BuildCommitment.sym"
+            rm -rf "$SETUP/commitment/BuildCommitment_js"
             circom "$SETUP/commitment/BuildCommitment.circom" \
               --r1cs --sym --wasm \
               -l "$ROOT/wbps/vendor/circomlib" \
@@ -117,8 +170,22 @@ jobs:
               -o "$SETUP/commitment"
           fi
 
-          if [ ! -f "$SETUP/relation/relation.r1cs" ] || [ ! -f "$SETUP/relation/relation.sym" ] || [ ! -f "$SETUP/relation/relation_js/relation.wasm" ]; then
+          need_relation=0
+          for f in \
+            "$SETUP/relation/relation.r1cs" \
+            "$SETUP/relation/relation.sym" \
+            "$SETUP/relation/relation_js/relation.wasm"
+          do
+            if [ ! -f "$f" ] || is_lfs_pointer "$f"; then
+              need_relation=1
+              break
+            fi
+          done
+
+          if [ "$need_relation" -eq 1 ]; then
             echo "Compiling relation.circom"
+            rm -f "$SETUP/relation/relation.r1cs" "$SETUP/relation/relation.sym"
+            rm -rf "$SETUP/relation/relation_js"
             circom "$SETUP/relation/relation.circom" \
               --r1cs --sym --wasm \
               -l "$ROOT/wbps/vendor/circomlib" \
@@ -126,28 +193,14 @@ jobs:
               -o "$SETUP/relation"
           fi
 
-          if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ]; then
+          if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ] || is_lfs_pointer "$SETUP/powersOfTauPrepared.ptau"; then
             echo "Generating powersOfTauPrepared.ptau"
-            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" | python3 - <<'PY'
-import re,sys
-data=sys.stdin.read()
-m=re.search(r'Constraints\\s*[:=]\\s*([0-9,]+)', data)
-if not m:
-    print("")
-    sys.exit(0)
-print(m.group(1).replace(",", ""))
-PY
-            )
+            rm -f "$SETUP/powersOfTauPrepared.ptau"
+            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" 2>/dev/null | python3 -c 'import re,sys; data=sys.stdin.read(); m=re.search(r"Constraints\\s*[:=]\\s*([0-9,]+)", data); print("" if not m else m.group(1).replace(",",""))' || true)
             if [ -z "${constraints:-}" ]; then
               constraints=2000000
             fi
-            bits=$(python3 - <<PY
-import math
-constraints=int("${constraints}")
-bits=math.ceil(math.log2(constraints)) + 1
-print(max(bits, 22))
-PY
-            )
+            bits=$(python3 -c 'import math; constraints=int("'"${constraints}"'"); bits=math.ceil(math.log2(constraints)) + 1; print(max(bits, 22))')
             echo "Using PTAU_BITS=$bits for constraints=$constraints"
             tmp_ptau="$RUNNER_TEMP/powersoftau.ptau"
             snarkjs powersoftau new bn128 "$bits" "$tmp_ptau" -v
