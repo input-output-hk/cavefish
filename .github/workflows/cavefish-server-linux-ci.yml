@@ -30,6 +30,8 @@ jobs:
       SECP_CACHE_VERSION: "2022-12-30"
       WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/cavefish-server/wbps/setup
       WBPS_TEST_OUTPUT_ROOT: ${{ github.workspace }}/cavefish-server/output/tests
+      CIRCOM_REV: "2eaaa6dface934356972b34cab64b25d382e59de"
+      SNARKJS_VERSION: "0.7.6"
 
     defaults:
       run:
@@ -92,8 +94,8 @@ jobs:
 
       - name: Install circom & snarkjs
         run: |
-          cargo install --git https://github.com/iden3/circom --locked --force
-          npm install -g snarkjs@^0.7.0
+          cargo install --git https://github.com/iden3/circom --rev "$CIRCOM_REV" --locked --force
+          npm install -g "snarkjs@$SNARKJS_VERSION"
           circom --version
           snarkjs -v || true
 
