@@ -128,26 +128,11 @@ jobs:
 
           if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ]; then
             echo "Generating powersOfTauPrepared.ptau"
-            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" | python3 - <<'PY'
-            import re,sys
-            data=sys.stdin.read()
-            m=re.search(r'Constraints\\s*[:=]\\s*([0-9,]+)', data)
-            if not m:
-                print("")
-                sys.exit(0)
-            print(m.group(1).replace(",", ""))
-            PY
-            )
+            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" | python3 -c 'import re,sys; data=sys.stdin.read(); m=re.search(r"Constraints\\s*[:=]\\s*([0-9,]+)", data); print("" if not m else m.group(1).replace(",",""))')
             if [ -z "${constraints:-}" ]; then
               constraints=2000000
             fi
-            bits=$(python3 - <<PY
-            import math
-            constraints=int("${constraints}")
-            bits=math.ceil(math.log2(constraints)) + 1
-            print(max(bits, 22))
-            PY
-            )
+            bits=$(python3 -c 'import math; constraints=int("'"${constraints}"'"); bits=math.ceil(math.log2(constraints)) + 1; print(max(bits, 22))')
             echo "Using PTAU_BITS=$bits for constraints=$constraints"
             tmp_ptau="$RUNNER_TEMP/powersoftau.ptau"
             snarkjs powersoftau new bn128 "$bits" "$tmp_ptau" -v
