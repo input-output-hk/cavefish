@@ -110,8 +110,27 @@ jobs:
           SETUP="$ROOT/cavefish-server/wbps/setup"
           mkdir -p "$SETUP/commitment" "$SETUP/relation"
 
-          if [ ! -f "$SETUP/commitment/BuildCommitment.r1cs" ] || [ ! -f "$SETUP/commitment/BuildCommitment.sym" ] || [ ! -f "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm" ]; then
+          is_lfs_pointer() {
+            local f="$1"
+            [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
+          }
+
+          need_build_commitment=0
+          for f in \
+            "$SETUP/commitment/BuildCommitment.r1cs" \
+            "$SETUP/commitment/BuildCommitment.sym" \
+            "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm"
+          do
+            if [ ! -f "$f" ] || is_lfs_pointer "$f"; then
+              need_build_commitment=1
+              break
+            fi
+          done
+
+          if [ "$need_build_commitment" -eq 1 ]; then
             echo "Compiling BuildCommitment.circom"
+            rm -f "$SETUP/commitment/BuildCommitment.r1cs" "$SETUP/commitment/BuildCommitment.sym"
+            rm -rf "$SETUP/commitment/BuildCommitment_js"
             circom "$SETUP/commitment/BuildCommitment.circom" \
               --r1cs --sym --wasm \
               -l "$ROOT/wbps/vendor/circomlib" \
@@ -119,8 +138,22 @@ jobs:
               -o "$SETUP/commitment"
           fi
 
-          if [ ! -f "$SETUP/relation/relation.r1cs" ] || [ ! -f "$SETUP/relation/relation.sym" ] || [ ! -f "$SETUP/relation/relation_js/relation.wasm" ]; then
+          need_relation=0
+          for f in \
+            "$SETUP/relation/relation.r1cs" \
+            "$SETUP/relation/relation.sym" \
+            "$SETUP/relation/relation_js/relation.wasm"
+          do
+            if [ ! -f "$f" ] || is_lfs_pointer "$f"; then
+              need_relation=1
+              break
+            fi
+          done
+
+          if [ "$need_relation" -eq 1 ]; then
             echo "Compiling relation.circom"
+            rm -f "$SETUP/relation/relation.r1cs" "$SETUP/relation/relation.sym"
+            rm -rf "$SETUP/relation/relation_js"
             circom "$SETUP/relation/relation.circom" \
               --r1cs --sym --wasm \
               -l "$ROOT/wbps/vendor/circomlib" \
@@ -128,9 +161,10 @@ jobs:
               -o "$SETUP/relation"
           fi
 
-          if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ]; then
+          if [ ! -f "$SETUP/powersOfTauPrepared.ptau" ] || is_lfs_pointer "$SETUP/powersOfTauPrepared.ptau"; then
             echo "Generating powersOfTauPrepared.ptau"
-            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" | python3 -c 'import re,sys; data=sys.stdin.read(); m=re.search(r"Constraints\\s*[:=]\\s*([0-9,]+)", data); print("" if not m else m.group(1).replace(",",""))')
+            rm -f "$SETUP/powersOfTauPrepared.ptau"
+            constraints=$(snarkjs r1cs info "$SETUP/relation/relation.r1cs" 2>/dev/null | python3 -c 'import re,sys; data=sys.stdin.read(); m=re.search(r"Constraints\\s*[:=]\\s*([0-9,]+)", data); print("" if not m else m.group(1).replace(",",""))' || true)
             if [ -z "${constraints:-}" ]; then
               constraints=2000000
             fi
