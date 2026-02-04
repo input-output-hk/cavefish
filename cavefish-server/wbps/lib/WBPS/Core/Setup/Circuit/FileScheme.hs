@@ -3,6 +3,8 @@
 module WBPS.Core.Setup.Circuit.FileScheme (
   defaultFileScheme,
   getShellLogsFilepath,
+  getPerformanceLogFilepath,
+  performanceLogFilepath,
   mkFileSchemeFromRoot,
   FileScheme (..),
   Setup (..),
@@ -28,6 +30,7 @@ import Path (
   File,
   Path,
   Rel,
+  parent,
   parseAbsDir,
   reldir,
   relfile,
@@ -37,6 +40,10 @@ import Path (
 import Path.IO (ensureDir)
 import System.Environment (getEnv)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
+
+performanceLogFilepath :: FileScheme -> Path Abs File
+performanceLogFilepath FileScheme {accounts} =
+  parent accounts </> [relfile|performance.jsonl|]
 
 data RootFolders = RootFolders {input :: Path Abs Dir, output :: Path Abs Dir}
 
@@ -129,6 +136,11 @@ getShellLogsFilepath accountDirectory =
   ask
     >>= \FileScheme {account = Account {shellLogs}} ->
       pure . BL8.pack $ Path.toFilePath (accountDirectory </> shellLogs)
+
+getPerformanceLogFilepath :: MonadReader FileScheme m => m (Path Abs File)
+getPerformanceLogFilepath = do
+  scheme <- ask
+  pure (performanceLogFilepath scheme)
 
 data FileScheme = FileScheme
   { setup :: Setup

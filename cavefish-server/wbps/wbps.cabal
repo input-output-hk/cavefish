@@ -72,6 +72,7 @@ library
     WBPS.Adapter.Monad.Control
     WBPS.Adapter.Path
     WBPS.Core.Failure
+    WBPS.Core.Performance
     WBPS.Core.Registration.Artefacts.Groth16.Setup
     WBPS.Core.Registration.Artefacts.Keys.Ed25519
     WBPS.Core.Registration.Artefacts.Keys.ElGamal
@@ -128,6 +129,7 @@ library
     , cardano-ledger-api
     , cardano-ledger-core        ^>=1.17.0.0
     , cardano-strict-containers
+    , clock
     , containers
     , cooked-validators
     , cryptonite
@@ -145,6 +147,7 @@ library
     , scientific
     , shh
     , text
+    , time
     , validation
     , vector
 

@@ -141,8 +141,12 @@ let
       export TMPDIR=/tmp
       export PS1="\n\[\033[1;32m\][nix-shell:\w]\$\[\033[0m\] "
 
-      if [ ! -d "node_modules/snarkjs" ]; then
-        npm install snarkjs@0.7.0 --save-dev
+      export CIRCOM_REV="2eaaa6dface934356972b34cab64b25d382e59de"
+      export CIRCOM_VERSION="2.1.9"
+      export SNARKJS_VERSION="0.7.6"
+
+      if [ ! -f "node_modules/snarkjs/package.json" ] || ! node -e "const v=require('./node_modules/snarkjs/package.json').version; process.exit(v===\"$SNARKJS_VERSION\"?0:1)"; then
+        npm install "snarkjs@$SNARKJS_VERSION" --save-dev
       fi
       if [ ! -f .git/hooks/pre-push ] || ! grep -q "git-lfs" .git/hooks/pre-push 2>/dev/null; then
         git lfs install
@@ -161,6 +165,14 @@ let
       if [ -d "$repo_root/wbps/setup" ]; then
         export PATH="$repo_root/wbps/setup:$PATH"
         export BABYJUBJUB_KEYGEN="$repo_root/wbps/setup/babyjubjub-keygen"
+      fi
+
+      if [ -d "$repo_root/.tools/circom/bin" ]; then
+        export PATH="$repo_root/.tools/circom/bin:$PATH"
+      fi
+
+      if command -v cargo >/dev/null 2>&1; then
+        "$repo_root/scripts/install-circom.sh" || true
       fi
 
       if [ -d "$repo_root/node_modules/.bin" ]; then

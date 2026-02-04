@@ -58,23 +58,20 @@ import Ledger.Address qualified as LedgerAddress
 import Ledger.Index qualified as LedgerIndex
 import Ledger.Tx qualified as LedgerTx
 import Ledger.Tx.CardanoAPI qualified as LedgerApi
+import Path (Abs, File, Path)
 import PlutusLedgerApi.V1 qualified as PlutusV1
 import PlutusLedgerApi.V3.Tx qualified as PlutusTx (TxOutRef (TxOutRef))
-import Servant (
-  ServerError,
-  err404,
-  err422,
-  err500,
-  errBody,
-  throwError,
- )
+import Servant (ServerError, err404, err422, err500, errBody, throwError)
 import WBPS.Core.Failure (
   WBPSFailure (AccountAlreadyRegistered, SessionNotFound),
  )
+import WBPS.Core.Performance (withPerfEvent, withPerfEventFromResult)
 import WBPS.Core.Registration.FetchAccounts qualified as Registration
 import WBPS.Core.Registration.Register qualified as Registration
+import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.FetchSession qualified as SessionFetch
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
+import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx qualified as UnsignedTx
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate qualified as Demonstration
 import WBPS.Core.Session.Steps.Demonstration.Persistence.Events qualified as Demonstrated
 import WBPS.Core.Session.Steps.Proving.Persistence.Events qualified as Proved
@@ -82,6 +79,7 @@ import WBPS.Core.Session.Steps.Proving.Prove qualified as Proving
 import WBPS.Core.Session.Steps.Submitting.Artefacts.SubmittedTx (SubmitTx)
 import WBPS.Core.Session.Steps.Submitting.Submit qualified as Submitting
 import WBPS.Core.Setup.Circuit.FileScheme (FileScheme)
+import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
 
 mkServerContext ::
   InitialDistribution ->
@@ -93,18 +91,25 @@ mkServerContext
   wbpsScheme
   ServerConfiguration {..} = do
     mockChainStore <- newMockChainStore initialDistribution
+    let perfLogPath = FileScheme.performanceLogFilepath wbpsScheme
     pure $
       CavefishServices
         { txBuildingService =
-            txBuildingServiceInstance mockChainStore serviceProviderFee
-        , wbpsService = wbpsServiceInstance wbpsScheme
+            txBuildingServiceInstance perfLogPath mockChainStore serviceProviderFee
+        , wbpsService = wbpsServiceInstance perfLogPath wbpsScheme
         }
 
-txBuildingServiceInstance :: MockChainStore -> ServiceFee -> TxBuilding
-txBuildingServiceInstance mockChainStore serviceProviderFee =
+txBuildingServiceInstance :: Path Abs File -> MockChainStore -> ServiceFee -> TxBuilding
+txBuildingServiceInstance perfLogPath mockChainStore serviceProviderFee =
   TxBuilding
     { fees = serviceProviderFee
-    , build = buildWithCooked mockChainStore serviceProviderFee
+    , build =
+        withPerfEventFromResult
+          perfLogPath
+          "build.transaction"
+          ()
+          (\unsignedTx -> [("tx_body_bytes" :: String, show (UnsignedTx.txBodyMapByteLength unsignedTx))])
+          . buildWithCooked mockChainStore serviceProviderFee
     , submit = submitTx
     , txStatus = getTxStatus
     }
@@ -118,18 +123,29 @@ txBuildingServiceInstance mockChainStore serviceProviderFee =
     getTxStatus :: forall m. MonadIO m => Api.TxId -> m TxStatus
     getTxStatus txId = liftIO $ txStatusFromStore mockChainStore txId
 
-wbpsServiceInstance :: FileScheme -> WBPS
-wbpsServiceInstance wbpsScheme =
+wbpsServiceInstance :: Path Abs File -> FileScheme -> WBPS
+wbpsServiceInstance perfLogPath wbpsScheme =
   WBPS
-    { register = runWBPSWith wbpsScheme . Registration.register
+    { register = \userWalletPublicKey ->
+        let registrationId = RegistrationId userWalletPublicKey
+         in withPerfEvent perfLogPath "endpoint.register" [registrationId] $
+              runWBPSWith wbpsScheme (Registration.register userWalletPublicKey)
     , demonstrate = \registrationId tx ->
-        runWBPSWith wbpsScheme (Demonstration.demonstrate registrationId tx)
-          <&> mapDemonstrateOutput
+        withPerfEventFromResult
+          perfLogPath
+          "endpoint.demonstrate"
+          [registrationId]
+          (\(sessionId, _) -> [sessionId])
+          ( runWBPSWith wbpsScheme (Demonstration.demonstrate registrationId tx)
+              <&> mapDemonstrateOutput
+          )
     , prove = \sessionId bigR ->
-        runWBPSWith wbpsScheme (Proving.prove sessionId bigR)
-          <&> mapProveOutput
+        withPerfEvent perfLogPath "endpoint.prove" [sessionId] $
+          runWBPSWith wbpsScheme (Proving.prove sessionId bigR)
+            <&> mapProveOutput
     , submit = \sessionId submitTx' signature ->
-        runWBPSWith wbpsScheme (Submitting.submit (liftSubmitTx submitTx') sessionId signature)
+        withPerfEvent perfLogPath "endpoint.submit" [sessionId] $
+          runWBPSWith wbpsScheme (Submitting.submit (liftSubmitTx submitTx') sessionId signature)
     , loadRegisteredMaybe = runWBPSWith wbpsScheme . Registration.loadRegisteredMaybe
     , loadAllRegistered = runWBPSWith wbpsScheme Registration.loadAllRegistered
     , loadSession = runWBPSWith wbpsScheme . SessionFetch.loadExistingSession

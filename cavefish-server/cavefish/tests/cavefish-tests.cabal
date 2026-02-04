@@ -94,9 +94,11 @@ test-suite test
     , hspec
     , http-client
     , path
+    , path-io
     , plutus-ledger-api
     , plutus-script-utils
     , servant-client
     , servant-server
+    , text
     , warp
     , wbps

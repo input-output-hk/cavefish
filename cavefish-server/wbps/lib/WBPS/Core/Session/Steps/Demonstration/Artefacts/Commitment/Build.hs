@@ -41,6 +41,7 @@ import WBPS.Core.Failure (
   WBPSFailure,
   toWBPSFailure,
  )
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Registration.Persistence.FileScheme.Directories qualified as Directory
 import WBPS.Core.Registration.RegistrationId (RegistrationId)
@@ -61,6 +62,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Setup (buildCommitment),
   buildCommitmentInternals,
   demonstration,
+  getPerformanceLogFilepath,
  )
 import WBPS.Core.Setup.Circuit.FileScheme qualified as Filescheme
 import WBPS.Core.Setup.Circuit.FileScheme qualified as Setup (Setup (buildCommitment))
@@ -76,7 +78,7 @@ build registrationId input = do
   randSuffix <- liftIO (encodeHex <$> getRandomBytes 16)
   let tmpPrefix = "build-commitment-tmp-" <> T.unpack randSuffix <> "-"
   tmpRoot <- createTempDir accountDirectory tmpPrefix
-  Output {maskedChunks} <- toWBPSFailure =<< runBuildCommitment def tmpRoot input
+  Output {maskedChunks} <- toWBPSFailure =<< runBuildCommitment registrationId def tmpRoot input
   let commitment@Commitment {id = commitmentId} = mkCommitment (CommitmentPayload maskedChunks)
   sessionDirectory <- deriveSessionDirectoryFrom (SessionId registrationId commitmentId)
   ensureDir sessionDirectory
@@ -114,11 +116,12 @@ instance Aeson.FromJSON WitnessValues where
 
 runBuildCommitment ::
   (MonadIO m, MonadReader FileScheme m) =>
+  RegistrationId ->
   Context ->
   Path Abs Dir ->
   Input ->
   m (Either String Output)
-runBuildCommitment params tmpRoot Input {ekPowRho = AffinePoint {x, y}, ..} = do
+runBuildCommitment registrationId params tmpRoot Input {ekPowRho = AffinePoint {x, y}, ..} = do
   scheme <- ask
   setup <- asks (Setup.buildCommitment . setup)
   Filescheme.BuildCommitmentInternals {input, output, statementOutput} <- compileAndScheme setup
@@ -132,14 +135,25 @@ runBuildCommitment params tmpRoot Input {ekPowRho = AffinePoint {x, y}, ..} = do
   let inputPath = tmpRoot </> input
       statementPath = tmpRoot </> statementOutput
       shellLogsFilepath = BL8.pack $ Path.toFilePath (tmpRoot </> (shellLogs . account $ scheme))
+  perfLogPath <- getPerformanceLogFilepath
   writeTo inputPath inputJson
   witnessProc <- getGenerateBuildCommitmentWitnessProcess tmpRoot
   liftIO $
-    witnessProc
-      &!> StdOut
-      &> Append shellLogsFilepath
-      >> exportStatementAsJSON tmpRoot output statementOutput
-        &!> StdOut
+    withPerfEventIO
+      perfLogPath
+      "snarkjs.build.commitment"
+      [registrationId]
+      ( witnessProc
+          &!> StdOut
+          &> Append shellLogsFilepath
+      )
+      >> withPerfEventIO
+        perfLogPath
+        "snarkjs.export.statement.json"
+        [registrationId]
+        ( exportStatementAsJSON tmpRoot output statementOutput
+            &!> StdOut
+        )
   parseOutputs params setup statementPath
 
 exportStatementAsJSON :: Path Abs Dir -> Path Rel File -> Path Rel File -> Proc ()

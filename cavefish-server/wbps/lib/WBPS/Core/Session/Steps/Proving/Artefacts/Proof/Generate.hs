@@ -14,6 +14,7 @@ import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
 import WBPS.Adapter.Monad.Control (whenNothingThrow)
 import WBPS.Adapter.Path (readFrom)
 import WBPS.Core.Failure (WBPSFailure (SessionProofNotFound))
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Persistence.FileScheme (deriveAccountDirectoryFrom)
 import WBPS.Core.Session.Persistence.FileScheme (deriveExistingSessionDirectoryFrom)
 import WBPS.Core.Session.SessionId (SessionId (SessionId, registrationId))
@@ -26,6 +27,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Registration (Registration, provingKey),
   Session (Session, proving),
   WitnessGeneration (WitnessGeneration, output),
+  getPerformanceLogFilepath,
   getShellLogsFilepath,
  )
 import WBPS.Core.Setup.Circuit.FileScheme qualified as FileScheme
@@ -50,18 +52,24 @@ generateProof sessionId@SessionId {registrationId} = do
     } <-
     asks FileScheme.account
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
+  perfLogPath <- getPerformanceLogFilepath
   let provedDirectory = sessionDirectory </> [reldir|proved|]
   let provedWitnessDirectory = provedDirectory </> [reldir|witness|]
   liftIO $
-    Snarkjs.generateProof
-      Snarkjs.ProveScheme
-        { provingKey = toFilePath (accountDirectory </> [reldir|registered|] </> provingKey)
-        , witness = toFilePath (provedWitnessDirectory </> witnessOutput)
-        , proofOutput = toFilePath (provedDirectory </> proofOutput)
-        , statementOutput = toFilePath (provedDirectory </> statementOutput)
-        }
-      &!> StdOut
-      &> Append shellLogsFilepath
+    withPerfEventIO
+      perfLogPath
+      "snarkjs.generate.proof"
+      [sessionId]
+      ( Snarkjs.generateProof
+          Snarkjs.ProveScheme
+            { provingKey = toFilePath (accountDirectory </> [reldir|registered|] </> provingKey)
+            , witness = toFilePath (provedWitnessDirectory </> witnessOutput)
+            , proofOutput = toFilePath (provedDirectory </> proofOutput)
+            , statementOutput = toFilePath (provedDirectory </> statementOutput)
+            }
+          &!> StdOut
+          &> Append shellLogsFilepath
+      )
   Proof
     <$> ( readFrom (provedDirectory </> proofOutput)
             >>= whenNothingThrow [SessionProofNotFound sessionId]

@@ -2,11 +2,13 @@
 
 module WBPS.Core.Session.Steps.BlindSigning.VerifyProof (
   assertProofIsValid,
+  assertProofIsValidWithTags,
 ) where
 
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader (MonadReader)
 import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Char (isAlphaNum, isSpace, toLower)
 import Path (relfile, toFilePath, (</>))
@@ -15,36 +17,49 @@ import Shh (Stream (StdOut), captureTrim, (&!>), (|>))
 import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure (ProofVerificationFailed))
+import WBPS.Core.Performance (Taggable, withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (
   PublicVerificationContextAsJSON,
  )
 import WBPS.Core.Session.Steps.BlindSigning.ThetaStatement (ThetaStatement)
 import WBPS.Core.Session.Steps.Proving.Artefacts.Proof (Proof)
+import WBPS.Core.Setup.Circuit.FileScheme (FileScheme, getPerformanceLogFilepath)
 
 assertProofIsValid ::
-  (MonadIO m, MonadError [WBPSFailure] m) =>
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m) =>
   PublicVerificationContextAsJSON ->
   ThetaStatement ->
   Proof ->
   m Proof
-assertProofIsValid verificationContextAsJSON statement proof = do
+assertProofIsValid = assertProofIsValidWithTags ()
+
+assertProofIsValidWithTags ::
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m, Taggable tags) =>
+  tags ->
+  PublicVerificationContextAsJSON ->
+  ThetaStatement ->
+  Proof ->
+  m Proof
+assertProofIsValidWithTags perfTags verificationContextAsJSON statement proof = do
+  perfLogPath <- getPerformanceLogFilepath
   output <-
     liftIO $
-      withSystemTempDir "wbps-verify-proof-" $ \tmpDir -> do
-        let verificationKeyPath = tmpDir </> [relfile|verification_key.json|]
-            statementPath = tmpDir </> [relfile|statement.json|]
-            proofPath = tmpDir </> [relfile|proof.json|]
-        writeTo verificationKeyPath verificationContextAsJSON
-        writeTo statementPath statement
-        writeTo proofPath proof
-        Snarkjs.verify
-          Snarkjs.VerifyScheme
-            { verificationKey = toFilePath verificationKeyPath
-            , statement = toFilePath statementPath
-            , proof = toFilePath proofPath
-            }
-          &!> StdOut
-          |> captureTrim
+      withPerfEventIO perfLogPath "snarkjs.verify" perfTags $
+        withSystemTempDir "wbps-verify-proof-" $ \tmpDir -> do
+          let verificationKeyPath = tmpDir </> [relfile|verification_key.json|]
+              statementPath = tmpDir </> [relfile|statement.json|]
+              proofPath = tmpDir </> [relfile|proof.json|]
+          writeTo verificationKeyPath verificationContextAsJSON
+          writeTo statementPath statement
+          writeTo proofPath proof
+          Snarkjs.verify
+            Snarkjs.VerifyScheme
+              { verificationKey = toFilePath verificationKeyPath
+              , statement = toFilePath statementPath
+              , proof = toFilePath proofPath
+              }
+            &!> StdOut
+            |> captureTrim
   unless (isVerificationOk output) $
     throwError [ProofVerificationFailed (verificationFailedMessage output)]
   pure proof

@@ -19,6 +19,7 @@ import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
 import WBPS.Adapter.Math.AffinePoint qualified as AffinePoint
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure)
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup qualified as Groth16
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 qualified as Ed25519
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
@@ -50,6 +51,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Setup (Setup, witness),
   WitnessGeneration (WitnessGeneration, input, output),
   WitnessGenerationSetup (WitnessGenerationSetup, wasm),
+  getPerformanceLogFilepath,
   getShellLogsFilepath,
  )
 
@@ -102,15 +104,21 @@ generate
       (prepareInputs registered commitmentDemonstrated bigR challenge)
 
     shellLogsFilepath <- getShellLogsFilepath accountDirectory
+    perfLogPath <- getPerformanceLogFilepath
     liftIO $
-      Snarkjs.generateWitness
-        Snarkjs.WitnessScheme
-          { wasm = toFilePath wasm
-          , input = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> input)
-          , witnessOutput = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> output)
-          }
-        &!> StdOut
-        &> Append shellLogsFilepath
+      withPerfEventIO
+        perfLogPath
+        "snarkjs.generate.witness"
+        [sessionId]
+        ( Snarkjs.generateWitness
+            Snarkjs.WitnessScheme
+              { wasm = toFilePath wasm
+              , input = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> input)
+              , witnessOutput = toFilePath (sessionDirectory </> [reldir|proved|] </> [reldir|witness|] </> output)
+              }
+            &!> StdOut
+            &> Append shellLogsFilepath
+        )
 
 prepareInputs ::
   Registered ->

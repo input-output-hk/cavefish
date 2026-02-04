@@ -16,6 +16,7 @@ import Path.IO (ensureDir)
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure (AccountAlreadyRegistered))
+import WBPS.Core.Performance (withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (UserWalletPublicKey)
 import WBPS.Core.Registration.Artefacts.Keys.ElGamal qualified as ElGamal
 import WBPS.Core.Registration.FetchAccounts (loadExistingRegistered, loadRegisteredMaybe)
@@ -28,6 +29,7 @@ import WBPS.Core.Setup.Circuit.FileScheme (
   Account (Account, registration),
   FileScheme (FileScheme, account),
   Registration (Registration, encryptionKeys),
+  getPerformanceLogFilepath,
   getShellLogsFilepath,
  )
 
@@ -41,21 +43,36 @@ register userWalletPublicKey = do
     >>= \case
       Just Registered {registrationId = existingRegistrationId} -> throwError [AccountAlreadyRegistered existingRegistrationId]
       Nothing -> do
-        register' =<< deriveAccountDirectoryFrom registrationId
+        register' registrationId =<< deriveAccountDirectoryFrom registrationId
         loadExistingRegistered registrationId
 
 register' ::
   (MonadIO m, MonadReader FileScheme m) =>
+  RegistrationId ->
   Directory.Account ->
   m ()
-register' accountDirectory = do
+register' registrationId accountDirectory = do
   FileScheme {account = Account {registration = Registration {encryptionKeys}}} <- ask
   ensureDir accountDirectory
   ElGamal.generateKeyPair >>= writeTo (accountDirectory </> [reldir|registered|] </> encryptionKeys)
   generateProvingKeyProcess <- getGenerateProvingKeyProcess accountDirectory
   generateVerificationKeyProcess <- getGenerateVerificationKeyProcess accountDirectory
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
+  perfLogPath <- getPerformanceLogFilepath
   liftIO $
-    (generateProvingKeyProcess >> generateVerificationKeyProcess)
-      &!> StdOut
-      &> Append shellLogsFilepath
+    withPerfEventIO
+      perfLogPath
+      "snarkjs.generate.proving.key"
+      [registrationId]
+      ( generateProvingKeyProcess
+          &!> StdOut
+          &> Append shellLogsFilepath
+      )
+      >> withPerfEventIO
+        perfLogPath
+        "snarkjs.generate.public.verification.context"
+        [registrationId]
+        ( generateVerificationKeyProcess
+            &!> StdOut
+            &> Append shellLogsFilepath
+        )
