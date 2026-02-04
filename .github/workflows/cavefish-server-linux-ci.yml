@@ -15,12 +15,13 @@ on:
 
 jobs:
   build:
-    name: GHC ${{ matrix.ghc-version }} on ${{ matrix.os }}
+    name: GHC ${{ matrix.ghc-version }} on ${{ matrix.os }} (lfs=${{ matrix.lfs }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
         ghc-version: ['9.6.6']
+        lfs: [true]
       fail-fast: false
 
     env:
@@ -40,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: false
+          lfs: ${{ matrix.lfs }}
           fetch-depth: 0
 
       - name: Free up disk space
@@ -103,7 +104,38 @@ jobs:
         working-directory: ./wbps
         run: make deps-circomlib
 
+      - name: Validate LFS setup artifacts
+        if: ${{ matrix.lfs }}
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE"
+          SETUP="$ROOT/cavefish-server/wbps/setup"
+          is_lfs_pointer() {
+            local f="$1"
+            [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
+          }
+
+          for f in \
+            "$SETUP/commitment/BuildCommitment.r1cs" \
+            "$SETUP/commitment/BuildCommitment.sym" \
+            "$SETUP/commitment/BuildCommitment_js/BuildCommitment.wasm" \
+            "$SETUP/relation/relation.r1cs" \
+            "$SETUP/relation/relation.sym" \
+            "$SETUP/relation/relation_js/relation.wasm" \
+            "$SETUP/powersOfTauPrepared.ptau"
+          do
+            if [ ! -f "$f" ]; then
+              echo "Missing LFS artifact: $f"
+              exit 1
+            fi
+            if is_lfs_pointer "$f"; then
+              echo "LFS pointer detected (download failed?): $f"
+              exit 1
+            fi
+          done
+
       - name: Generate WBPS setup artifacts (no LFS)
+        if: ${{ !matrix.lfs }}
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
