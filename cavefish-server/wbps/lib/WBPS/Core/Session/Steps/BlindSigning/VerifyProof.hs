@@ -2,6 +2,7 @@
 
 module WBPS.Core.Session.Steps.BlindSigning.VerifyProof (
   assertProofIsValid,
+  assertProofIsValidWithTags,
 ) where
 
 import Control.Monad (unless)
@@ -10,14 +11,13 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader)
 import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Char (isAlphaNum, isSpace, toLower)
-import Data.Text qualified as Text
 import Path (relfile, toFilePath, (</>))
 import Path.IO (withSystemTempDir)
 import Shh (Stream (StdOut), captureTrim, (&!>), (|>))
 import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
 import WBPS.Adapter.Path (writeTo)
 import WBPS.Core.Failure (WBPSFailure (ProofVerificationFailed))
-import WBPS.Core.Performance (withPerfEventIO)
+import WBPS.Core.Performance (Taggable, withPerfEventIO)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (
   PublicVerificationContextAsJSON,
  )
@@ -31,11 +31,20 @@ assertProofIsValid ::
   ThetaStatement ->
   Proof ->
   m Proof
-assertProofIsValid verificationContextAsJSON statement proof = do
+assertProofIsValid = assertProofIsValidWithTags ()
+
+assertProofIsValidWithTags ::
+  (MonadIO m, MonadReader FileScheme m, MonadError [WBPSFailure] m, Taggable tags) =>
+  tags ->
+  PublicVerificationContextAsJSON ->
+  ThetaStatement ->
+  Proof ->
+  m Proof
+assertProofIsValidWithTags perfTags verificationContextAsJSON statement proof = do
   perfLogPath <- getPerformanceLogFilepath
   output <-
     liftIO $
-      withPerfEventIO perfLogPath (Text.pack "snarkjs.verify") mempty $
+      withPerfEventIO perfLogPath "snarkjs.verify" perfTags $
         withSystemTempDir "wbps-verify-proof-" $ \tmpDir -> do
           let verificationKeyPath = tmpDir </> [relfile|verification_key.json|]
               statementPath = tmpDir </> [relfile|statement.json|]

@@ -10,9 +10,7 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ask)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Path (File, Path, reldir, toFilePath, (</>))
@@ -107,16 +105,11 @@ generate
 
     shellLogsFilepath <- getShellLogsFilepath accountDirectory
     perfLogPath <- getPerformanceLogFilepath
-    let tags =
-          Map.fromList
-            [ (Text.pack "sessionId", Text.pack (show sessionId))
-            , (Text.pack "registrationId", Text.pack (show registrationId))
-            ]
     liftIO $
       withPerfEventIO
         perfLogPath
-        (Text.pack "snarkjs.generate.witness")
-        tags
+        "snarkjs.generate.witness"
+        [sessionId]
         ( Snarkjs.generateWitness
             Snarkjs.WitnessScheme
               { wasm = toFilePath wasm

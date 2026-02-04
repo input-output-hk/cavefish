@@ -20,7 +20,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Default (Default (def))
 import Data.List (sort)
-import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
@@ -137,14 +136,13 @@ runBuildCommitment registrationId params tmpRoot Input {ekPowRho = AffinePoint {
       statementPath = tmpRoot </> statementOutput
       shellLogsFilepath = BL8.pack $ Path.toFilePath (tmpRoot </> (shellLogs . account $ scheme))
   perfLogPath <- getPerformanceLogFilepath
-  let tags = Map.fromList [("registrationId", T.pack (show registrationId))]
   writeTo inputPath inputJson
   witnessProc <- getGenerateBuildCommitmentWitnessProcess tmpRoot
   liftIO $
     withPerfEventIO
       perfLogPath
       "snarkjs.build.commitment"
-      tags
+      [registrationId]
       ( witnessProc
           &!> StdOut
           &> Append shellLogsFilepath
@@ -152,7 +150,7 @@ runBuildCommitment registrationId params tmpRoot Input {ekPowRho = AffinePoint {
       >> withPerfEventIO
         perfLogPath
         "snarkjs.export.statement.json"
-        tags
+        [registrationId]
         ( exportStatementAsJSON tmpRoot output statementOutput
             &!> StdOut
         )

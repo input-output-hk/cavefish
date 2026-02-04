@@ -11,8 +11,6 @@ module WBPS.Core.Registration.Register (
 import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ask)
-import Data.Map.Strict qualified as Map
-import Data.Text qualified as Text
 import Path (reldir, (</>))
 import Path.IO (ensureDir)
 import Shh (Stream (Append, StdOut), (&!>), (&>))
@@ -61,20 +59,19 @@ register' registrationId accountDirectory = do
   generateVerificationKeyProcess <- getGenerateVerificationKeyProcess accountDirectory
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
   perfLogPath <- getPerformanceLogFilepath
-  let tags = Map.fromList [(Text.pack "registrationId", Text.pack (show registrationId))]
   liftIO $
     withPerfEventIO
       perfLogPath
-      (Text.pack "snarkjs.generate.proving.key")
-      tags
+      "snarkjs.generate.proving.key"
+      [registrationId]
       ( generateProvingKeyProcess
           &!> StdOut
           &> Append shellLogsFilepath
       )
       >> withPerfEventIO
         perfLogPath
-        (Text.pack "snarkjs.generate.public.verification.context")
-        tags
+        "snarkjs.generate.public.verification.context"
+        [registrationId]
         ( generateVerificationKeyProcess
             &!> StdOut
             &> Append shellLogsFilepath

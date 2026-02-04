@@ -8,8 +8,6 @@ import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.Reader.Class (asks)
-import Data.Map.Strict qualified as Map
-import Data.Text qualified as Text
 import Path (reldir, toFilePath, (</>))
 import Shh (Stream (Append, StdOut), (&!>), (&>))
 import WBPS.Adapter.CLI.Wrapped.Snarkjs qualified as Snarkjs
@@ -55,18 +53,13 @@ generateProof sessionId@SessionId {registrationId} = do
     asks FileScheme.account
   shellLogsFilepath <- getShellLogsFilepath accountDirectory
   perfLogPath <- getPerformanceLogFilepath
-  let tags =
-        Map.fromList
-          [ (Text.pack "sessionId", Text.pack (show sessionId))
-          , (Text.pack "registrationId", Text.pack (show registrationId))
-          ]
   let provedDirectory = sessionDirectory </> [reldir|proved|]
   let provedWitnessDirectory = provedDirectory </> [reldir|witness|]
   liftIO $
     withPerfEventIO
       perfLogPath
-      (Text.pack "snarkjs.generate.proof")
-      tags
+      "snarkjs.generate.proof"
+      [sessionId]
       ( Snarkjs.generateProof
           Snarkjs.ProveScheme
             { provingKey = toFilePath (accountDirectory </> [reldir|registered|] </> provingKey)

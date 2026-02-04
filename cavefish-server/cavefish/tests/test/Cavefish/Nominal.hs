@@ -28,6 +28,7 @@ import Cavefish.Endpoints.Write.Session.Demonstrate qualified as Demonstrate
 import Cavefish.Endpoints.Write.Session.Prove qualified as Prove
 import Cavefish.Endpoints.Write.Session.Submit qualified as Submit
 import Cavefish.Services.TxBuilding (TxStatus (TxStatusSubmitted))
+import Control.Monad (forM_)
 import Data.List.NonEmpty qualified as NE
 import Data.Text.IO qualified as TIO
 import Intent.Example.DSL (AddressW (AddressW), IntentDSL (AndExpsW, PayToW, SpendFromW), satisfies)
@@ -73,40 +74,43 @@ spec = do
                             ]
                         )
                     toAddress = AddressW . unPaymentAddess . paymentAddress
+                    sessionCount = 3
                 Register.Outputs {registrationId, publicVerificationContext} <- register . Register.Inputs . publicKey $ alice
 
-                Demonstrate.Outputs {sessionId, commitment = commitment@Commitment {payload}, txAbs} <-
-                  demonstrate
-                    . Demonstrate.Inputs registrationId
-                    $ intent
+                forM_ [1 .. sessionCount] $ \_ -> do
+                  Demonstrate.Outputs {sessionId, commitment = commitment@Commitment {payload}, txAbs} <-
+                    demonstrate
+                      . Demonstrate.Inputs registrationId
+                      $ intent
 
-                satisfies intent txAbs `shouldBe` True
+                  satisfies intent txAbs `shouldBe` True
 
-                (r, bigR) <- R.generateKeyTuple
+                  (r, bigR) <- R.generateKeyTuple
 
-                Prove.Outputs {challenge, proof} <-
-                  prove
-                    Prove.Inputs
-                      { sessionId
-                      , bigR = bigR
-                      }
+                  Prove.Outputs {challenge, proof} <-
+                    prove
+                      Prove.Inputs
+                        { sessionId
+                        , bigR = bigR
+                        }
 
-                assertProofIsValid
-                  publicVerificationContext
-                  (rebuildThetaStatement (publicKey alice) bigR challenge payload (PublicMessage txAbs))
-                  proof
+                  assertProofIsValid
+                    sessionId
+                    publicVerificationContext
+                    (rebuildThetaStatement (publicKey alice) bigR challenge payload (PublicMessage txAbs))
+                    proof
 
-                signature <- signBlindly (keyPair alice) r challenge
+                  signature <- signBlindly (keyPair alice) r challenge
 
-                Submit.Outputs {txId} <-
-                  submit
-                    Submit.Inputs
-                      { sessionId
-                      , signature
-                      }
+                  Submit.Outputs {txId} <-
+                    submit
+                      Submit.Inputs
+                        { sessionId
+                        , signature
+                        }
 
-                FetchTxStatus.Outputs {status} <- fetchTxStatus . FetchTxStatus.Inputs $ txId
-                status `shouldBe` TxStatusSubmitted
+                  FetchTxStatus.Outputs {status} <- fetchTxStatus . FetchTxStatus.Inputs $ txId
+                  status `shouldBe` TxStatusSubmitted
 
                 report <- writePerformanceReport performanceLogPath
                 TIO.putStrLn report

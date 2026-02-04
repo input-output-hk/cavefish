@@ -35,6 +35,7 @@ import Sp.Server (Cavefish, mkServer)
 import Test.Hspec (expectationFailure)
 import WBPS.Core.Registration.Artefacts.Groth16.Setup (PublicVerificationContextAsJSON)
 import WBPS.Core.Registration.Artefacts.Keys.Ed25519 (KeyPair, Wallet (Wallet, paymentAddress), generateWallet)
+import WBPS.Core.Session.SessionId (SessionId)
 import WBPS.Core.Session.Steps.BlindSigning.BlindSignature (BlindSignature, sign)
 import WBPS.Core.Session.Steps.BlindSigning.ThetaStatement (ThetaStatement)
 import WBPS.Core.Session.Steps.BlindSigning.VerifyProof qualified as VerifyProof
@@ -76,7 +77,7 @@ getServiceProviderAPI fee port = do
 
 data UserToolkitAPI
   = UserToolkitAPI
-  { assertProofIsValid :: PublicVerificationContextAsJSON -> ThetaStatement -> Proof -> IO ()
+  { assertProofIsValid :: SessionId -> PublicVerificationContextAsJSON -> ThetaStatement -> Proof -> IO ()
   , signBlindly :: KeyPair -> RSecret -> Challenge -> IO BlindSignature
   }
 
@@ -132,8 +133,15 @@ setupCavefish folderLabel actions = do
   let servicefee = ServiceFee {amount = 10_000_000, paidTo = paymentAddress}
       userToolkit =
         UserToolkitAPI
-          { assertProofIsValid = \publicVerificationContext statement proof ->
-              runWBPS wbpsScheme (VerifyProof.assertProofIsValid publicVerificationContext statement proof)
+          { assertProofIsValid = \sessionId publicVerificationContext statement proof ->
+              runWBPS
+                wbpsScheme
+                ( VerifyProof.assertProofIsValidWithTags
+                    [sessionId]
+                    publicVerificationContext
+                    statement
+                    proof
+                )
                 >>= \case
                   Left err ->
                     expectationFailure ("Proof verification failed: " <> show err)

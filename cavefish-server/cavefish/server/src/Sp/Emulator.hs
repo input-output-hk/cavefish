@@ -52,7 +52,6 @@ import Data.ByteString.Lazy.Char8 qualified as BL8 (pack)
 import Data.Default (Default (def))
 import Data.Functor ((<&>))
 import Data.Map.Strict qualified as Map
-import Data.Text qualified as Text
 import Intent.Example.DSL (IntentDSL, toCanonicalIntent)
 import Intent.Example.TxBuilder (buildTx)
 import Ledger.Address qualified as LedgerAddress
@@ -71,7 +70,6 @@ import WBPS.Core.Registration.FetchAccounts qualified as Registration
 import WBPS.Core.Registration.Register qualified as Registration
 import WBPS.Core.Registration.RegistrationId (RegistrationId (RegistrationId))
 import WBPS.Core.Session.FetchSession qualified as SessionFetch
-import WBPS.Core.Session.SessionId (SessionId (SessionId, registrationId))
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx (UnsignedTx)
 import WBPS.Core.Session.Steps.Demonstration.Artefacts.Cardano.UnsignedTx qualified as UnsignedTx
 import WBPS.Core.Session.Steps.Demonstration.Demonstrate qualified as Demonstration
@@ -108,9 +106,9 @@ txBuildingServiceInstance perfLogPath mockChainStore serviceProviderFee =
     , build =
         withPerfEventFromResult
           perfLogPath
-          (Text.pack "build.transaction")
-          mempty
-          (\unsignedTx -> Map.fromList [(Text.pack "tx_body_bytes", Text.pack (show (UnsignedTx.txBodyMapByteLength unsignedTx)))])
+          "build.transaction"
+          ()
+          (\unsignedTx -> [("tx_body_bytes" :: String, show (UnsignedTx.txBodyMapByteLength unsignedTx))])
           . buildWithCooked mockChainStore serviceProviderFee
     , submit = submitTx
     , txStatus = getTxStatus
@@ -130,31 +128,24 @@ wbpsServiceInstance perfLogPath wbpsScheme =
   WBPS
     { register = \userWalletPublicKey ->
         let registrationId = RegistrationId userWalletPublicKey
-            tags = Map.fromList [(Text.pack "registrationId", Text.pack (show registrationId))]
-         in withPerfEvent perfLogPath (Text.pack "endpoint.register") tags $
+         in withPerfEvent perfLogPath "endpoint.register" [registrationId] $
               runWBPSWith wbpsScheme (Registration.register userWalletPublicKey)
     , demonstrate = \registrationId tx ->
-        let tags = Map.fromList [(Text.pack "registrationId", Text.pack (show registrationId))]
-         in withPerfEvent perfLogPath (Text.pack "endpoint.demonstrate") tags $
-              runWBPSWith wbpsScheme (Demonstration.demonstrate registrationId tx)
-                <&> mapDemonstrateOutput
-    , prove = \sessionId@SessionId {registrationId} bigR ->
-        let tags =
-              Map.fromList
-                [ (Text.pack "sessionId", Text.pack (show sessionId))
-                , (Text.pack "registrationId", Text.pack (show registrationId))
-                ]
-         in withPerfEvent perfLogPath (Text.pack "endpoint.prove") tags $
-              runWBPSWith wbpsScheme (Proving.prove sessionId bigR)
-                <&> mapProveOutput
-    , submit = \sessionId@SessionId {registrationId} submitTx' signature ->
-        let tags =
-              Map.fromList
-                [ (Text.pack "sessionId", Text.pack (show sessionId))
-                , (Text.pack "registrationId", Text.pack (show registrationId))
-                ]
-         in withPerfEvent perfLogPath (Text.pack "endpoint.submit") tags $
-              runWBPSWith wbpsScheme (Submitting.submit (liftSubmitTx submitTx') sessionId signature)
+        withPerfEventFromResult
+          perfLogPath
+          "endpoint.demonstrate"
+          [registrationId]
+          (\(sessionId, _) -> [sessionId])
+          ( runWBPSWith wbpsScheme (Demonstration.demonstrate registrationId tx)
+              <&> mapDemonstrateOutput
+          )
+    , prove = \sessionId bigR ->
+        withPerfEvent perfLogPath "endpoint.prove" [sessionId] $
+          runWBPSWith wbpsScheme (Proving.prove sessionId bigR)
+            <&> mapProveOutput
+    , submit = \sessionId submitTx' signature ->
+        withPerfEvent perfLogPath "endpoint.submit" [sessionId] $
+          runWBPSWith wbpsScheme (Submitting.submit (liftSubmitTx submitTx') sessionId signature)
     , loadRegisteredMaybe = runWBPSWith wbpsScheme . Registration.loadRegisteredMaybe
     , loadAllRegistered = runWBPSWith wbpsScheme Registration.loadAllRegistered
     , loadSession = runWBPSWith wbpsScheme . SessionFetch.loadExistingSession

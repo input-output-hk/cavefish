@@ -5,6 +5,7 @@
 module WBPS.Core.Performance (
   PerfEvent (..),
   PerfSummary (..),
+  Taggable (..),
   PerfTags,
   appendPerfEvent,
   withPerfEvent,
@@ -34,15 +35,40 @@ import Path (Abs, File, Path, parent, relfile, toFilePath, (</>))
 import Path.IO (doesFileExist, ensureDir)
 import System.Clock qualified as Clock
 import Text.Printf (printf)
+import WBPS.Core.Registration.RegistrationId (RegistrationId)
+import WBPS.Core.Session.SessionId (SessionId (SessionId, registrationId))
 
-type PerfTags = Map Text Text
+type PerfTags = [(String, String)]
+
+type PerfTagMap = Map Text Text
+
+class Taggable a where
+  toTags :: a -> PerfTags
+
+instance Taggable () where
+  toTags _ = []
+
+instance Taggable (String, String) where
+  toTags tag = [tag]
+
+instance Taggable RegistrationId where
+  toTags registrationId = [("registrationId", show registrationId)]
+
+instance Taggable SessionId where
+  toTags sessionId@SessionId {registrationId = registrationId} =
+    [ ("sessionId", show sessionId)
+    , ("registrationId", show registrationId)
+    ]
+
+instance Taggable a => Taggable [a] where
+  toTags = concatMap toTags
 
 data PerfEvent = PerfEvent
   { label :: Text
   , startedAt :: UTCTime
   , endedAt :: UTCTime
   , durationMs :: Double
-  , tags :: PerfTags
+  , tags :: PerfTagMap
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -60,7 +86,7 @@ appendPerfEvent path event = do
   ensureDir (parent path)
   BL.appendFile (toFilePath path) (encode event <> "\n")
 
-withPerfEventIO :: Path Abs File -> Text -> PerfTags -> IO a -> IO a
+withPerfEventIO :: Taggable tags => Path Abs File -> String -> tags -> IO a -> IO a
 withPerfEventIO logPath label tags action = do
   startedAt <- getCurrentTime
   startedMono <- Clock.getTime Clock.Monotonic
@@ -68,10 +94,12 @@ withPerfEventIO logPath label tags action = do
   endedAt <- getCurrentTime
   endedMono <- Clock.getTime Clock.Monotonic
   let durationMs = toMilliseconds (endedMono - startedMono)
-  appendPerfEvent logPath PerfEvent {..}
+      labelText = Text.pack label
+      tagMap = tagMapFromList (toTags tags)
+  appendPerfEvent logPath PerfEvent {label = labelText, tags = tagMap, ..}
   pure result
 
-withPerfEvent :: MonadIO m => Path Abs File -> Text -> PerfTags -> m a -> m a
+withPerfEvent :: (MonadIO m, Taggable tags) => Path Abs File -> String -> tags -> m a -> m a
 withPerfEvent logPath label tags action = do
   startedAt <- liftIO getCurrentTime
   startedMono <- liftIO $ Clock.getTime Clock.Monotonic
@@ -79,10 +107,19 @@ withPerfEvent logPath label tags action = do
   endedAt <- liftIO getCurrentTime
   endedMono <- liftIO $ Clock.getTime Clock.Monotonic
   let durationMs = toMilliseconds (endedMono - startedMono)
-  liftIO $ appendPerfEvent logPath PerfEvent {..}
+      labelText = Text.pack label
+      tagMap = tagMapFromList (toTags tags)
+  liftIO $ appendPerfEvent logPath PerfEvent {label = labelText, tags = tagMap, ..}
   pure result
 
-withPerfEventFromResult :: MonadIO m => Path Abs File -> Text -> PerfTags -> (a -> PerfTags) -> m a -> m a
+withPerfEventFromResult ::
+  (MonadIO m, Taggable baseTags, Taggable extraTags) =>
+  Path Abs File ->
+  String ->
+  baseTags ->
+  (a -> extraTags) ->
+  m a ->
+  m a
 withPerfEventFromResult logPath label baseTags mkTags action = do
   startedAt <- liftIO getCurrentTime
   startedMono <- liftIO $ Clock.getTime Clock.Monotonic
@@ -90,9 +127,13 @@ withPerfEventFromResult logPath label baseTags mkTags action = do
   endedAt <- liftIO getCurrentTime
   endedMono <- liftIO $ Clock.getTime Clock.Monotonic
   let durationMs = toMilliseconds (endedMono - startedMono)
-      tags = baseTags `Map.union` mkTags result
-  liftIO $ appendPerfEvent logPath PerfEvent {..}
+      labelText = Text.pack label
+      tagMap = tagMapFromList (toTags baseTags) `Map.union` tagMapFromList (toTags (mkTags result))
+  liftIO $ appendPerfEvent logPath PerfEvent {label = labelText, tags = tagMap, ..}
   pure result
+
+tagMapFromList :: PerfTags -> PerfTagMap
+tagMapFromList = Map.fromList . map (\(key, value) -> (Text.pack key, Text.pack value))
 
 readPerfEvents :: Path Abs File -> IO [PerfEvent]
 readPerfEvents path = do
@@ -126,25 +167,24 @@ renderPerfReport events =
             "Total recorded time: " <> Text.pack (printf "%.2f" totalMs) <> " ms"
           tableHeader =
             printf
-              "%-40s %5s %10s %10s %10s %10s %7s"
+              "%-50s %5s %10s %10s %10s %10s"
               ("label" :: String)
               ("count" :: String)
-              ("total_ms" :: String)
               ("avg_ms" :: String)
               ("min_ms" :: String)
               ("max_ms" :: String)
-              ("%total" :: String)
+              ("delta_ms" :: String)
           reportLines =
             [ header
             , windowLine
             , totalsLine
             , ""
             ]
-              <> renderSummarySection "Overall summary:" totalMs events tableHeader
+              <> renderSummarySection "Overall summary:" events tableHeader
               <> [""]
               <> renderAccountSections events tableHeader
               <> [""]
-              <> renderUnattributedSection events tableHeader
+              <> renderUnattributedSection (singleAccountWithSessions events) events tableHeader
               <> [""]
               <> renderSlowSection events
        in Text.unlines reportLines
@@ -182,22 +222,19 @@ mergeSummary left right =
     , maxMs = max (maxMs left) (maxMs right)
     }
 
-formatSummaryWithPct :: Double -> PerfSummary -> String
-formatSummaryWithPct totalAllMs PerfSummary {label, count, totalMs, minMs, maxMs} =
+formatSummaryRow :: PerfSummary -> String
+formatSummaryRow PerfSummary {label, count, totalMs, minMs, maxMs} =
   let avgMs = totalMs / fromIntegral count
-      pct =
-        if totalAllMs <= 0
-          then 0
-          else (totalMs / totalAllMs) * 100
+      deltaMs = maxMs - minMs
+      displayLabel = truncateString 50 (Text.unpack label)
    in printf
-        "%-40s %5d %10.2f %10.2f %10.2f %10.2f %6.1f"
-        (Text.unpack label)
+        "%-50s %5d %10.2f %10.2f %10.2f %10.2f"
+        displayLabel
         count
-        totalMs
         avgMs
         minMs
         maxMs
-        pct
+        deltaMs
 
 formatSlowEvent :: PerfEvent -> String
 formatSlowEvent PerfEvent {label, durationMs, tags} =
@@ -207,7 +244,7 @@ formatSlowEvent PerfEvent {label, durationMs, tags} =
     durationMs
     (truncateString 80 (Text.unpack (formatTags tags)))
 
-formatTags :: PerfTags -> Text
+formatTags :: PerfTagMap -> Text
 formatTags tagMap
   | Map.null tagMap = Text.pack "-"
   | otherwise =
@@ -251,8 +288,8 @@ registrationLabels =
     , "snarkjs.generate.public.verification.context"
     ]
 
-renderSummarySection :: Text -> Double -> [PerfEvent] -> String -> [Text]
-renderSummarySection title totalAllMs events tableHeader =
+renderSummarySection :: Text -> [PerfEvent] -> String -> [Text]
+renderSummarySection title events tableHeader =
   if null events
     then [title, Text.pack "  (no events)"]
     else
@@ -266,20 +303,20 @@ renderSummarySection title totalAllMs events tableHeader =
             partition
               (\PerfSummary {label} -> "endpoint." `Text.isPrefixOf` label)
               summaries
-          endpointRows = map (formatSummaryWithPct totalAllMs) (sortByAvg endpointSummaries)
-          otherRows = map (formatSummaryWithPct totalAllMs) (sortByAvg otherSummaries)
+          endpointRows = map formatSummaryRow (sortByAvg endpointSummaries)
+          otherRows = map formatSummaryRow (sortByAvg otherSummaries)
           endpointSection =
             if null endpointRows
               then []
               else
-                [Text.pack "  Endpoints:", Text.pack tableHeader]
-                  <> map (Text.pack . ("  " <>)) endpointRows
+                [Text.pack "  Endpoints:", Text.pack ("    " <> tableHeader)]
+                  <> map (Text.pack . ("    " <>)) endpointRows
           otherSection =
             if null otherRows
               then []
               else
-                [Text.pack "  Other:", Text.pack tableHeader]
-                  <> map (Text.pack . ("  " <>)) otherRows
+                [Text.pack "  Other:", Text.pack ("    " <> tableHeader)]
+                  <> map (Text.pack . ("    " <>)) otherRows
        in [title] <> endpointSection <> otherSection
 
 renderAccountSections :: [PerfEvent] -> String -> [Text]
@@ -307,13 +344,23 @@ renderAccountSection _tableHeader unattributed singleSessionAttribution (registr
           then filter (\PerfEvent {label = eventLabel} -> eventLabel `elem` singleSessionAttributableLabels) unattributed
           else []
       sessions = groupByTag sessionTagKey sessionEvents
-      sessionList = Map.toAscList (attachTxBuild sessions txBuildUnattributed)
+      sessionsWithTx = attachTxBuild sessions txBuildUnattributed
+      sessionsWithOrphans =
+        if Map.null sessionsWithTx
+          then sessionsWithTx
+          else attachBySessionStart sessionsWithTx (preSessionEvents <> verifyEvents)
+      sessionList = Map.toAscList sessionsWithOrphans
       (sessionListWithPre, unscopedPre) =
-        if length sessionList == 1
-          then
-            let (sid, evs) = head sessionList
-             in ([(sid, evs <> preSessionEvents <> verifyEvents <> attributableUnattributed)], [])
-          else (sessionList, preSessionEvents <> verifyEvents)
+        if null sessionList
+          then (sessionList, preSessionEvents <> verifyEvents)
+          else
+            let sessionList' =
+                  if length sessionList == 1 && not (null attributableUnattributed)
+                    then
+                      let (sid, evs) = head sessionList
+                       in [(sid, evs <> attributableUnattributed)]
+                    else sessionList
+             in (sessionList', [])
       sessionSections = concatMap renderSessionFlow sessionListWithPre
       unscopedSection =
         if null unscopedPre
@@ -367,15 +414,12 @@ renderUnscopedLifecycle events =
       ]
         <> concatMap (\(title, labels) -> renderFlowStep (Text.pack "    " <> title) labels events total) steps
 
-renderUnattributedSection :: [PerfEvent] -> String -> [Text]
-renderUnattributedSection events tableHeader =
+renderUnattributedSection :: Bool -> [PerfEvent] -> String -> [Text]
+renderUnattributedSection filterAttributable events tableHeader =
   let unattributedAll =
         filter (\ev -> not (hasTag registrationTagKey ev) && not (hasTag sessionTagKey ev)) events
-      sessionCount = length (groupByTag sessionTagKey events)
-      accountCount = Map.size (groupByTag registrationTagKey events)
-      singleSessionAttribution = sessionCount == 1 && accountCount == 1
       unattributed =
-        if singleSessionAttribution
+        if filterAttributable
           then filter (\PerfEvent {label = eventLabel} -> eventLabel `notElem` singleSessionAttributableLabels) unattributedAll
           else unattributedAll
    in if null unattributed
@@ -383,7 +427,13 @@ renderUnattributedSection events tableHeader =
         else
           [ "Unattributed events (no registrationId/sessionId tags):"
           ]
-            <> renderSummarySection (Text.pack "  Summary:") (sumDuration unattributed) unattributed tableHeader
+            <> renderSummarySection (Text.pack "  Summary:") unattributed tableHeader
+
+singleAccountWithSessions :: [PerfEvent] -> Bool
+singleAccountWithSessions events =
+  let accountCount = Map.size (groupByTag registrationTagKey events)
+      sessionCount = Map.size (groupByTag sessionTagKey events)
+   in accountCount == 1 && sessionCount >= 1
 
 renderSlowSection :: [PerfEvent] -> [Text]
 renderSlowSection events =
@@ -414,7 +464,8 @@ isPreSessionEvent PerfEvent {label = eventLabel, tags} =
     && eventLabel `elem` demonstrateStepLabels
 
 isVerifyEvent :: PerfEvent -> Bool
-isVerifyEvent PerfEvent {label = eventLabel} = eventLabel `elem` verifyStepLabels
+isVerifyEvent PerfEvent {label = eventLabel, tags} =
+  eventLabel `elem` verifyStepLabels && not (Map.member sessionTagKey tags)
 
 isTxBuildUnattributed :: PerfEvent -> Bool
 isTxBuildUnattributed PerfEvent {label = eventLabel, tags} =
@@ -525,7 +576,7 @@ renderFlowStep title labels events totalAll =
                             ( "      - "
                                 <> Text.unpack displayLabel
                                 <> ": "
-                                <> printf "%.2f" (summary.totalMs)
+                                <> printf "%.2f" summary.totalMs
                                 <> " ms ("
                                 <> printf "%.1f" pct
                                 <> "%)"
@@ -534,17 +585,16 @@ renderFlowStep title labels events totalAll =
                   )
                   filteredDetails
               remainingLine =
-                if remainingMs <= 0.001 || null filteredDetails
-                  then []
-                  else
-                    [ Text.pack
-                        ( "      - remaining: "
-                            <> printf "%.2f" remainingMs
-                            <> " ms ("
-                            <> printf "%.1f" (percentWithinStepBase percentBase remainingMs)
-                            <> "%)"
-                        )
-                    ]
+                ( [ Text.pack
+                      ( "      - remaining: "
+                          <> printf "%.2f" remainingMs
+                          <> " ms ("
+                          <> printf "%.1f" (percentWithinStepBase percentBase remainingMs)
+                          <> "%)"
+                      )
+                  | not (remainingMs <= 0.001 || null filteredDetails)
+                  ]
+                )
            in headerLine : filteredLines <> remainingLine
 
 attachTxBuild :: Map Text [PerfEvent] -> [PerfEvent] -> Map Text [PerfEvent]
@@ -561,6 +611,25 @@ attachTxBuild sessions txBuildEvents =
         (\acc ((sessionId, _), buildEvent) -> Map.insertWith (<>) sessionId [buildEvent] acc)
         sessions
         assignments
+
+attachBySessionStart :: Map Text [PerfEvent] -> [PerfEvent] -> Map Text [PerfEvent]
+attachBySessionStart sessions events =
+  case sortOn snd [(sessionId, earliestStart evs) | (sessionId, evs) <- Map.toAscList sessions, not (null evs)] of
+    [] -> sessions
+    sessionStarts ->
+      let sortedEvents = sortOn startedAt events
+          (firstSessionId, firstStart) = head sessionStarts
+          restSessions = tail sessionStarts
+          go _ _ acc [] = acc
+          go currentSession rest acc (event : remaining) =
+            let (currentSession', rest') = advanceSession currentSession rest event
+                acc' = Map.insertWith (<>) (fst currentSession') [event] acc
+             in go currentSession' rest' acc' remaining
+          advanceSession currentSession [] _ = (currentSession, [])
+          advanceSession currentSession next@(nextSession@(_, nextStart) : remaining) event
+            | startedAt event >= nextStart = advanceSession nextSession remaining event
+            | otherwise = (currentSession, next)
+       in go (firstSessionId, firstStart) restSessions sessions sortedEvents
 
 earliestStart :: [PerfEvent] -> UTCTime
 earliestStart events = minimum (map startedAt events)
