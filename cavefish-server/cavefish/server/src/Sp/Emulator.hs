@@ -108,7 +108,7 @@ txBuildingServiceInstance perfLogPath mockChainStore serviceProviderFee =
     , build =
         withPerfEventFromResult
           perfLogPath
-          (Text.pack "tx.build")
+          (Text.pack "build.transaction")
           mempty
           (\unsignedTx -> Map.fromList [(Text.pack "tx_body_bytes", Text.pack (show (UnsignedTx.txBodyMapByteLength unsignedTx)))])
           . buildWithCooked mockChainStore serviceProviderFee

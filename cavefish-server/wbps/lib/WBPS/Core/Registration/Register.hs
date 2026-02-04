@@ -65,7 +65,7 @@ register' registrationId accountDirectory = do
   liftIO $
     withPerfEventIO
       perfLogPath
-      (Text.pack "snarkjs.proving.key")
+      (Text.pack "snarkjs.generate.proving.key")
       tags
       ( generateProvingKeyProcess
           &!> StdOut
@@ -73,7 +73,7 @@ register' registrationId accountDirectory = do
       )
       >> withPerfEventIO
         perfLogPath
-        (Text.pack "snarkjs.public.verification.context")
+        (Text.pack "snarkjs.generate.public.verification.context")
         tags
         ( generateVerificationKeyProcess
             &!> StdOut

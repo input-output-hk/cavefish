@@ -143,7 +143,7 @@ runBuildCommitment registrationId params tmpRoot Input {ekPowRho = AffinePoint {
   liftIO $
     withPerfEventIO
       perfLogPath
-      "snarkjs.buildCommitment"
+      "snarkjs.build.commitment"
       tags
       ( witnessProc
           &!> StdOut

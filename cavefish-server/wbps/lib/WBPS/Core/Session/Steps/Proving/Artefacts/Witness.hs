@@ -115,7 +115,7 @@ generate
     liftIO $
       withPerfEventIO
         perfLogPath
-        (Text.pack "snarkjs.witness")
+        (Text.pack "snarkjs.generate.witness")
         tags
         ( Snarkjs.generateWitness
             Snarkjs.WitnessScheme

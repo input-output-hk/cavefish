@@ -65,7 +65,7 @@ generateProof sessionId@SessionId {registrationId} = do
   liftIO $
     withPerfEventIO
       perfLogPath
-      (Text.pack "snarkjs.proof")
+      (Text.pack "snarkjs.generate.proof")
       tags
       ( Snarkjs.generateProof
           Snarkjs.ProveScheme

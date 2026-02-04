@@ -247,8 +247,8 @@ registrationLabels =
   map
     Text.pack
     [ "endpoint.register"
-    , "snarkjs.proving.key"
-    , "snarkjs.public.verification.context"
+    , "snarkjs.generate.proving.key"
+    , "snarkjs.generate.public.verification.context"
     ]
 
 renderSummarySection :: Text -> Double -> [PerfEvent] -> String -> [Text]
@@ -418,7 +418,7 @@ isVerifyEvent PerfEvent {label = eventLabel} = eventLabel `elem` verifyStepLabel
 
 isTxBuildUnattributed :: PerfEvent -> Bool
 isTxBuildUnattributed PerfEvent {label = eventLabel, tags} =
-  eventLabel == Text.pack "tx.build"
+  eventLabel == Text.pack "build.transaction"
     && not (Map.member registrationTagKey tags)
     && not (Map.member sessionTagKey tags)
 
@@ -433,15 +433,15 @@ truncateText limit value
 
 registrationStepLabels :: [Text]
 registrationStepLabels =
-  map Text.pack ["endpoint.register", "snarkjs.proving.key", "snarkjs.public.verification.context"]
+  map Text.pack ["endpoint.register", "snarkjs.generate.proving.key", "snarkjs.generate.public.verification.context"]
 
 demonstrateStepLabels :: [Text]
 demonstrateStepLabels =
   map
     Text.pack
     [ "endpoint.demonstrate"
-    , "tx.build"
-    , "snarkjs.buildCommitment"
+    , "build.transaction"
+    , "snarkjs.build.commitment"
     , "snarkjs.export.statement.json"
     ]
 
@@ -450,8 +450,8 @@ proveStepLabels =
   map
     Text.pack
     [ "endpoint.prove"
-    , "snarkjs.witness"
-    , "snarkjs.proof"
+    , "snarkjs.generate.witness"
+    , "snarkjs.generate.proof"
     ]
 
 submitStepLabels :: [Text]
@@ -514,7 +514,7 @@ renderFlowStep title labels events totalAll =
                       let extra =
                             case Map.lookup (summary.label) eventMap of
                               Just PerfEvent {tags}
-                                | summary.label == Text.pack "tx.build" ->
+                                | summary.label == Text.pack "build.transaction" ->
                                     case Map.lookup txBodyBytesTagKey tags of
                                       Just bytes -> " (bytes=" <> Text.unpack bytes <> ")"
                                       Nothing -> ""
@@ -567,7 +567,7 @@ earliestStart events = minimum (map startedAt events)
 
 singleSessionAttributableLabels :: [Text]
 singleSessionAttributableLabels =
-  [ Text.pack "tx.build"
+  [ Text.pack "build.transaction"
   , Text.pack "tx.submit"
   , Text.pack "snarkjs.verify"
   ]
