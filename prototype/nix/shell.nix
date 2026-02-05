@@ -155,8 +155,8 @@ let
 
       # Make repo-local tooling available in the shell (including babyjubjub-keygen).
       repo_root=$PWD
-      if [ -d "$repo_root/cavefish-server" ]; then
-        repo_root="$repo_root/cavefish-server"
+      if [ -d "$repo_root/prototype" ]; then
+        repo_root="$repo_root/prototype"
       fi
 
       export WBPS_TEST_INPUT_ROOT="$repo_root/packages/wbps/setup"

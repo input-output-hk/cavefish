@@ -2,7 +2,7 @@
   description = "Cavefish monorepo";
 
   inputs = {
-    cavefish-server.url = "path:./cavefish-server";
+    cavefish-server.url = "path:./prototype";
   };
 
   outputs =

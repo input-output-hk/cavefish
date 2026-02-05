@@ -46,9 +46,9 @@ To get started with Cavefish, clone the repository and explore the prototypes or
    Follow instructions in `paper/README.md` to compile LaTeX sources and generate a timestamped PDF in `publication/`.
 
 4. **Run the Haskell SP Prototype**:
-   The `cavefish-server/` directory contains a Haskell-based prototype of the Service Provider. Install Haskell (via GHC or Stack), then:
+   The `prototype/` directory contains a Haskell-based prototype of the Service Provider. Install Haskell (via GHC or Stack), then:
    ```bash
-   cd cavefish-server
+   cd prototype
    stack build
    stack exec cavefish-server
    ```
@@ -61,7 +61,7 @@ Prerequisites: Node.js (for tooling), Circom and SnarkJS (for circuits), LaTeX (
 ### Repository Structure
 ```
 cavefish/
-├─ cavefish-server/    # Haskell prototype of SP, Service Provider
+├─ prototype/    # Haskell prototype of SP, Service Provider
 ├─ paper/              # LaTeX sources for the academic paper
 ├─ publication/        # Timestamped PDF builds of the paper
 ├─ zk-wbps/            # Circom circuits, tooling, and Makefile for the WBPS prototype
@@ -133,7 +133,7 @@ We encourage contributions! This project follows standard GitHub workflows.
 2. Install prerequisites: Haskell (Stack), Node.js, Circom, SnarkJS, LaTeX.
 3. Build/test locally (see Getting Started).
 4. For circuits: Add/modify in `zk-wbps/circuits/`; test with `make`.
-5. For server: Modify in `cavefish-server/`; use Stack for building.
+5. For server: Modify in `prototype/`; use Stack for building.
 
 ### Submitting Changes
 - Preferred process: Open an issue first to discuss (e.g., for major changes like new features).

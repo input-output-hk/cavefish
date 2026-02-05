@@ -1,4 +1,4 @@
-cavefish-server/packages/wbps/setup/**/*.ptau filter=lfs diff=lfs merge=lfs -text
-cavefish-server/packages/wbps/setup/**/*.r1cs filter=lfs diff=lfs merge=lfs -text
-cavefish-server/packages/wbps/setup/**/*.sym filter=lfs diff=lfs merge=lfs -text
-cavefish-server/packages/wbps/setup/**/*.wasm filter=lfs diff=lfs merge=lfs -text
+prototype/packages/wbps/setup/**/*.ptau filter=lfs diff=lfs merge=lfs -text
+prototype/packages/wbps/setup/**/*.r1cs filter=lfs diff=lfs merge=lfs -text
+prototype/packages/wbps/setup/**/*.sym filter=lfs diff=lfs merge=lfs -text
+prototype/packages/wbps/setup/**/*.wasm filter=lfs diff=lfs merge=lfs -text

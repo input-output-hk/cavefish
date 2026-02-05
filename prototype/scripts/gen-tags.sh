@@ -19,7 +19,7 @@ clean_all() {
 
 # --- helpers ---------------------------------------------------------------
 
-proj_name=$(awk 'tolower($1)=="name:"{print $2; exit}' *.cabal 2>/dev/null || true)
+proj_name=$(awk 'tolower($1)=="name:"{print $2; exit}' ./*.cabal 2>/dev/null || true)
 
 collect_dist_src_roots() {
   find dist-newstyle -type f -path "*/src/*/*.cabal" -print0 2>/dev/null |
@@ -144,13 +144,14 @@ echo "[4/4] Hackage sources (from plan.json)"
 cabal v2-update >/dev/null 2>&1 || true
 
 # Unique list "pkg ver"
-mapfile -t plan_lines < <(parse_plan_json | awk 'NF==2{print $1" "$2}' | sort -u)
 
 EXCLUDE_RE='^(ghc($|-)|ghc-.*|ghc-prim|rts)$'
 MAX_JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 fetch_pkg() {
-  local pkg="$1" ver="$2" dest="${HACKAGE_ROOT}/${pkg}-${ver}" lock="${HACKAGE_ROOT}/.locks/${pkg}-${ver}.lock"
+  local pkg="$1" ver="$2"
+  local dest="${HACKAGE_ROOT}/${pkg}-${ver}"
+  local lock="${HACKAGE_ROOT}/.locks/${pkg}-${ver}.lock"
 
   [[ "$pkg" =~ $EXCLUDE_RE ]] && return 0
   [ -n "$proj_name" ] && [ "$pkg" = "$proj_name" ] && return 0

@@ -13,7 +13,7 @@ rec {
           name = builtins.replaceStrings [ ":" ] [ separator ] name';
         in
         if lib.isDerivation value || lib.typeOf value != "set" then
-          [ { inherit name value; } ]
+          [{ inherit name value; }]
         else
           lib.concatLists (lib.mapAttrsToList (recurse name) value);
     in

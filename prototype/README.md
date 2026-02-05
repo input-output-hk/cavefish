@@ -12,11 +12,11 @@ Ensure you have:
 - Install [Git Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), LFS.
 
 ### 2. Setting Up the Environment
-The following commands will clone the project with LFS support, `cd` to cavefish-server project, and invoke the `nix develop` shell:
+The following commands will clone the project with LFS support, `cd` to prototype project, and invoke the `nix develop` shell:
 
 ``` bash
 git lfs clone git@github.com:input-output-hk/innovation-cavefish.git
-cd cavefish-server
+cd prototype
 nix develop
 ```
 All required tools, including `fast-tags`, `cabal`, and `git lfs`, are provided in the project’s Nix environment.

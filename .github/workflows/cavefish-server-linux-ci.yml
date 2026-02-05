@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "master", "release/**" ]
     paths:
-      - 'cavefish-server/**'
+      - 'prototype/**'
       - '.github/workflows/cavefish-server-linux-ci.yml'
 
   pull_request:
     branches: [ "**" ]
     paths:
-      - 'cavefish-server/**'
+      - 'prototype/**'
       - '.github/workflows/cavefish-server-linux-ci.yml'
 
 jobs:
@@ -29,8 +29,8 @@ jobs:
       CABAL_CACHE_VERSION: "2026-01-15"
       SECP256K1_REF: ac83be33d0956faf6b7f61a60ab524ef7d6a473a
       SECP_CACHE_VERSION: "2022-12-30"
-      WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/cavefish-server/packages/wbps/setup
-      WBPS_TEST_OUTPUT_ROOT: ${{ github.workspace }}/cavefish-server/output/tests
+      WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/prototype/packages/wbps/setup
+      WBPS_TEST_OUTPUT_ROOT: ${{ github.workspace }}/prototype/output/tests
       CIRCOM_REV: "2eaaa6dface934356972b34cab64b25d382e59de"
       SNARKJS_VERSION: "0.7.6"
 
@@ -88,10 +88,10 @@ jobs:
 
       - name: Build babyjubjub-keygen (native) and add to PATH
         run: |
-          DEST="$GITHUB_WORKSPACE/cavefish-server/packages/wbps/inputs/babyjubjub-keygen"
+          DEST="$GITHUB_WORKSPACE/prototype/packages/wbps/inputs/babyjubjub-keygen"
           echo "Building babyjubjub-keygen for $(uname -m) -> $DEST"
           DEST="$DEST" bash "$GITHUB_WORKSPACE/zk-wbps/tooling/gen_babyjubjub_keys.sh"
-          echo "$GITHUB_WORKSPACE/cavefish-server/packages/wbps/inputs" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/prototype/packages/wbps/inputs" >> "$GITHUB_PATH"
 
       - name: Install circom & snarkjs
         run: |
@@ -109,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
-          SETUP="$ROOT/cavefish-server/packages/wbps/setup"
+          SETUP="$ROOT/prototype/packages/wbps/setup"
           is_lfs_pointer() {
             local f="$1"
             [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
@@ -139,7 +139,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
-          SETUP="$ROOT/cavefish-server/packages/wbps/setup"
+          SETUP="$ROOT/prototype/packages/wbps/setup"
           mkdir -p "$SETUP/commitment" "$SETUP/relation"
 
           is_lfs_pointer() {
@@ -222,7 +222,7 @@ jobs:
           EOF
 
       - name: Cabal update
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         run: cabal update
 
         # We create a dependencies.txt file that can be used to index the cabal
@@ -232,7 +232,7 @@ jobs:
         # Cabal files which was already present somewhere else would result in a
         # diferent plan, even though the set of dependencies is the same.
       - name: Record dependencies to be used as cache keys
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         id: record-deps
         run: |
           cabal build all --enable-tests --dry-run --minimize-conflict-set
@@ -266,11 +266,11 @@ jobs:
           cabal path --installdir >> "$GITHUB_PATH"
 
       - name: Check workflow test matrix
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         run: cabal build all --dry-run
 
       - name: Build dependencies
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         id: build-dependencies
         run: cabal build all --only-dependencies
 
@@ -286,9 +286,9 @@ jobs:
           key:  ${{ steps.restore-cabal-cache.outputs.cache-primary-key }}
 
       - name: Build
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         run: cabal build all
 
       - name: Test
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
         run: cabal test all

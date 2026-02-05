@@ -58,9 +58,9 @@ CONFIG=$NODE_CONFIG_DIR/$NETWORK/config.json
 # Run Cardano Node using the options that you set using variables
 #
 cardano-node run \
-    --topology ${TOPOLOGY} \
-    --database-path ${DB_PATH} \
-    --socket-path ${SOCKET_PATH} \
-    --host-addr ${HOSTADDR} \
-    --port ${PORT} \
-    --config ${CONFIG}
+    --topology "$TOPOLOGY" \
+    --database-path "$DB_PATH" \
+    --socket-path "$SOCKET_PATH" \
+    --host-addr "$HOSTADDR" \
+    --port "$PORT" \
+    --config "$CONFIG"
