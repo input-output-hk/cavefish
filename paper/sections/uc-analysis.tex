@@ -1,0 +1,529 @@
+\section{Universal Composability Security Analysis}
+\label{sec:uc-security}
+
+In this section, we provide a rigorous treatment of Cavefish's security using the Universal 
+Composability (UC) framework~\cite{canetti2001universally}. We define an ideal functionality 
+$\Ideal$ (i.e. the functionality of a \emph{trusted third party} denoted $\Ideal$) that captures 
+the security properties a light client transaction 
+construction protocol should achieve, describe the real protocol $\Real$, and prove 
+that $\Real$ UC-realizes $\Ideal$.
+
+The UC framework provides strong composability guarantees: a protocol proven secure in UC remains 
+secure when used as a component in larger systems. This is particularly important for Cavefish, 
+which is designed to be integrated into wallets, DApps, and payment channel systems.
+
+\subsection{The Ideal Functionality $\Ideal$}
+\label{sec:ideal-functionality}
+
+We define an ideal functionality that captures the security properties a light client transaction 
+construction protocol should achieve. The functionality models a trusted third party that mediates 
+between a light client (LC) and service provider (SP), ensuring protocol correctness while 
+explicitly specifying what information leaks to an adversary and what happens when parties are 
+compromised.
+
+\subsubsection{Communication Model}
+
+The functionality operates in the $\mathcal{F}_{\fun{SEC}}$-hybrid model, where 
+$\mathcal{F}_{\fun{SEC}}$ provides secure authenticated channels. All communication between honest 
+LC and SP is delivered via $\mathcal{F}_{\fun{SEC}}$, which ensures:
+\begin{itemize}
+  \item \textbf{Confidentiality:} Network adversaries cannot read message contents.
+  \item \textbf{Integrity:} Network adversaries cannot modify messages in transit.
+  \item \textbf{Authentication:} Parties can verify each other's identity.
+  \item \textbf{Timing control:} The adversary $\A$ controls message delivery timing but cannot 
+        drop messages indefinitely.
+\end{itemize}
+
+In the real world, this is instantiated by TLS/HTTPS connections. When a party is corrupted, its 
+communication channel is controlled by $\A$.
+
+\subsubsection{Security Guarantees}
+
+\paragraph{For Honest Parties.}
+When both parties are honest, $\Ideal$ ensures:
+\begin{itemize}
+  \item \textbf{Intent satisfaction:} The LC only produces signatures on transactions that satisfy 
+        its intent specification $\var{int}_{\fun{post}}$.
+  \item \textbf{Weak blindness:} Transaction details (specific UTxO inputs, SP compensation amount) 
+        remain private from network adversaries until the LC approves. After approval, the full 
+        transaction is revealed, modeling our ``private until posted'' security notion.
+  \item \textbf{Atomic compensation:} The SP's fee is cryptographically bound to the transaction; 
+        the LC cannot obtain the transaction while removing the fee.
+\end{itemize}
+
+When one party is honest and the other corrupted, the honest party is protected: an honest LC will 
+not sign invalid transactions even against a malicious SP, and an honest SP will construct correct 
+transactions even if the LC is compromised (though a compromised LC controlled by $\A$ may approve 
+invalid transactions).
+
+\paragraph{Corruption Model.}
+The functionality explicitly models party corruption: when the adversary $\A$ corrupts a party 
+$P \in \{\text{LC}, \text{SP}\}$, the functionality reveals $P$'s complete internal state to $\A$ 
+and accepts future inputs from $\A$ on behalf of $P$. This captures realistic attacks where an 
+adversary gains control of a party (e.g., via malware, physical access, or coercion). A corrupted 
+party provides no security guarantees---the adversary controlling it can access all its data and 
+make it deviate arbitrarily from the protocol.
+
+\paragraph{Information Leakage.}
+The functionality specifies what information is observable to a network adversary even when parties 
+are honest and communicate over secure channels: message sizes, timing, and metadata. This models 
+realistic side-channel information that cannot be hidden even with encryption. Critically, the LC 
+\emph{never} learns the full transaction $\tx$, even when corrupted---it only receives the abstract 
+view $\TxAbs$. The full transaction is revealed to $\A$ only via the 
+$(\fun{leaked}$-$\fun{approval}, \var{sid}, \tx, \sigma)$ message after the LC approves, reflecting 
+our weak blindness property.
+
+\subsubsection{Functionality STATE}
+
+The functionality maintains the following state:
+
+\begin{align*}
+  \var{sessions} &: \type{SessionId} \to 
+    (\type{Intent} \times \pubkey \times \Tx^? \times \type{Status}) \\
+  \var{corrupted} &: \mathcal{P}( \{ \text{LC}, \text{SP} \} )
+\end{align*}
+
+\noindent where:
+\begin{itemize}
+  \item $\var{sessions}[\var{sid}]$ maps each session identifier to the intent specification, public 
+        key, optional transaction (if constructed), and current protocol status.
+  \item $\var{corrupted}$ tracks which parties have been corrupted by $\A$.
+  \item $\type{Status} \in \{\fun{awaiting\_tx}, \fun{awaiting\_decision}, \fun{completed}, 
+        \fun{aborted}\}$ indicates the protocol phase.
+\end{itemize}
+
+Initially: $\var{sessions} := \emptyset$ and $\var{corrupted} := \emptyset$.
+
+\subsubsection{Functionality Interface}
+
+The following messages are all to and from the trusted third party. 
+
+\begin{table}[t]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{From/To} & \textbf{Messages} \\
+\midrule
+\multicolumn{2}{c}{\textit{Honest Party Interface}} \\
+\midrule
+From LC & $(\fun{submit}, \var{sid}, \var{int}_{\fun{post}}, \var{vk}_c)$ \\
+        & $(\fun{approve}, \var{sid}) \mid (\fun{cantbuildtx}, \var{sid})$ \\
+        & $(\fun{provide\text{-}signature}, \var{sid}, \sigma)$ \\
+From SP & $(\fun{propose}, \var{sid}, \tx)$ \\
+        & $(\fun{approve\text{-}release}, \var{sid})$ \\
+To LC   & $(\fun{abstract\text{-}tx}, \var{sid}, \TxAbs) \mid (\fun{nointentmatch}, \var{sid})$ \\
+        & $(\fun{release\text{-}tx}, \var{sid}, \tx)$ \\
+To SP   & $(\fun{intent}, \var{sid}, \var{int}_{\fun{post}}, \var{vk}_c)$ \\
+        & $(\fun{signature}, \var{sid}, \sigma) \mid (\fun{no\text{-}signature}, \var{sid})$ \\
+        & $(\fun{nointentmatch}, \var{sid})$ \\
+        & $(\fun{signature}, \var{sid}, \sigma)$ \\
+\midrule
+\multicolumn{2}{c}{\textit{Adversary Interface}} \\
+\midrule
+From $\A$ & $(\fun{corrupt}, P)$ where $P \in \{\text{LC}, \text{SP}\}$ \\
+          & $(\fun{deliver}, \var{sid})$ \\
+          & $(\fun{return\text{-}sig}, \var{sid})$ \\
+          & $(\fun{return\text{-}tx}, \var{sid})$ \\
+          & $(\fun{deliver}, \var{sid})$ \\
+To $\A$   & $(\fun{leaked\text{-}submit}, \var{sid}, |\var{int}_{\fun{post}}|, |\var{vk}_c|)$ \\
+          & $(\fun{leaked\text{-}proposal}, \var{sid}, |\tx|, |\TxAbs|)$ \\
+          & $(\fun{leaked\text{-}approval}, \var{sid}, \tx, \sigma)$ \\
+          & $(\fun{leaked\text{-}rejection}, \var{sid})$ \\
+          & $(\fun{corrupted\text{-}state}, P, \var{state}_P)$ \\
+          & $(\fun{leaked\text{-}sig}, \var{sid}, \sigma)$ \\
+          & $(request\text{-}sig)$ \\
+          & $(\fun{leaked\text{-}tx}, \var{sid})$ \\
+\bottomrule
+\end{tabular}
+\caption{Interface of ideal functionality $\Ideal$. }
+\label{tab:functionality-interface}
+\end{table}
+
+The message 
+$(\fun{leaked\text{-}approval}, \var{sid}, \tx, \sigma)$ models weak blindness: full transaction 
+details are revealed to $\A$ only after LC approves. This is the \emph{only} point at which full 
+$\tx$ becomes known to $\A$ (assuming both parties were initially honest).
+The complete interface is shown in Table~\ref{tab:functionality-interface}. We describe each phase 
+in detail below.
+
+\paragraph{Abort Semantics.}
+When the functionality description states ``Halt'':
+\begin{itemize}
+  \item IF in response to an invalid message (wrong session ID, wrong state): The message is ignored 
+        silently. No output is sent to any party. The functionality remains responsive to other 
+        messages.
+  \item IF in response to a failed check (e.g., transaction doesn't satisfy intent): Appropriate 
+        rejection messages are sent to relevant parties, the session is marked as $\fun{aborted}$, 
+        and no further processing occurs for that session.
+\end{itemize}
+
+TODO : How does this show up as the environment output?! 1? 0? I dont understand.
+
+\subsubsection{Functionality Description}
+
+\begin{algorithm}[H]
+  \caption{Phase 1: Intent Submission}
+  \begin{algorithmic}[1] 
+    \UPON{receiving $(\fun{submit}, \var{sid}, \var{int}_{\fun{post}}, \var{vk}_c)$ from LC:}
+      \IF {$\var{sid} \in \fun{dom}(\var{sessions})$}
+        \STATE Halt {COMMENT Session already exists}
+      \ENDIF
+      \STATE $\var{sessions}[\var{sid}] \gets (\var{int}_{\fun{post}}, \var{vk}_c, \bot, 
+              \fun{awaiting\_tx})$
+      \STATE Send $(\fun{leaked\text{-}submit}, \var{sid}, |\var{int}_{\fun{post}}|, |\var{vk}_c|)$ 
+              to $\A$
+      \STATE \COMMENT{Models network-observable metadata: message sizes and timing}
+      \UPON{receiving $(\fun{deliver}, \var{sid})$ from $\A$:}
+        \STATE Send $(\fun{intent}, \var{sid}, \var{int}_{\fun{post}}, \var{vk}_c)$ to SP 
+    \ENDUPON 
+    \ENDUPON
+  \end{algorithmic}
+\end{algorithm}
+
+\noindent\textit{Description:} This phase models intent submission. The LC specifies what it wants 
+to accomplish ($\var{int}_{\fun{post}}$) and provides its public key ($\var{vk}_c$) for UTxO 
+discovery. The functionality leaks only metadata (message sizes) to model what a network adversary 
+observing encrypted TLS traffic could learn. The adversary controls delivery timing via the 
+$(\fun{deliver}, \var{sid})$ message, modeling network delays.
+
+\begin{algorithm}[H]
+  \caption{Phase 2: Transaction Proposal and Verification}
+  \begin{algorithmic}[1] 
+  \UPON{receiving $(\fun{propose}, \var{sid}, \tx)$ from SP:}
+    \IF{$\var{sid} \notin \fun{dom}(\var{sessions})$}
+      \STATE Halt \COMMENT{Invalid session ID}
+    \ENDIF
+    \STATE Let $(\var{int}_{\fun{post}}, \var{vk}_c, \_, \var{status}) \gets \var{sessions}[
+           \var{sid}]$
+    \IF{$\var{status} \neq \fun{awaiting\_tx}$}
+      \STATE Halt \COMMENT{Wrong protocol phase}
+    \ENDIF
+    \STATE Compute $\TxAbs \gets \fun{mkAbs}(\tx)$ 
+    \STATE \COMMENT{Abstract view hides: inputs, first output value, aux field}
+    \IF{$\chkSpec{\var{int}_{\fun{post}}}(\TxAbs) \neq \true$}
+      \STATE \COMMENT{Transaction doesn't satisfy intent specification}
+      \STATE $\var{sessions}[\var{sid}].\var{status} \gets \fun{aborted}$
+      \STATE Send $(\fun{nointentmatch}, \var{sid})$ to SP
+      \STATE Send $(\fun{nointentmatch}, \var{sid})$ to LC
+      \STATE Send $(\fun{leaked\text{-}rejection}, \var{sid})$ to $\A$
+      \STATE Halt
+    \ENDIF
+    \STATE $\var{sessions}[\var{sid}] \gets (\var{int}_{\fun{post}}, \var{vk}_c, \tx, 
+           \fun{awaiting\_decision})$
+    \STATE Send $(\fun{leaked\text{-}proposal}, \var{sid}, |\tx|, |\TxAbs|)$ to $\A$
+    \STATE \COMMENT{Leaks sizes but not contents (due to secure channels)}
+    \UPON{receiving $(\fun{deliver}, \var{sid})$ from $\A$:}
+      \STATE Send $(\fun{abstract\text{-}tx}, \var{sid}, \TxAbs)$ to LC
+      \STATE \COMMENT{LC receives ONLY abstract view, never full $\tx$} 
+    \ENDUPON  
+  \ENDUPON
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textit{Description:} This phase models transaction verification. The functionality ensures 
+that only transactions satisfying the intent specification are presented to the LC. The LC receives 
+only an abstract view $\TxAbs = \fun{mkAbs}(\tx)$ which hides: (i) input UTxO references, (ii) the 
+first output value (containing change and SP compensation), and (iii) the auxiliary data field. This 
+is the core of the protocol's safety guarantee: even a malicious SP cannot trick an honest LC into 
+signing an invalid transaction, as $\chkSpec{\var{int}_{\fun{post}}}$ is enforced by the trusted 
+functionality.
+
+\begin{algorithm}[H]
+  \caption{Phase 3: Signing Decision}
+  \begin{algorithmic}[1] 
+
+    \UPON{receiving $(\fun{approve}, \var{sid})$ from LC}
+      \IF{$\var{sid} \notin \fun{dom}(\var{sessions})$ or 
+          $\var{sessions}[\var{sid}].\var{status} \neq \fun{awaiting\_decision}$}
+        \STATE Halt
+      \ENDIF
+      \STATE Let $(\var{int}_{\fun{post}}, \var{vk}_c, \tx, \_) \gets \var{sessions}[\var{sid}]$
+      
+      \STATE \COMMENT{Generate signature (honest LC) or receive it (corrupted LC)}
+      \IF{$\text{LC} \in \var{corrupted}$}
+        \STATE \COMMENT{Corrupted LC must provide signature}
+        Send $(request\text{-}sig)$ to $\A$
+        \UPON{receiving $(\fun{provide\text{-}signature}, \var{sid}, \sigma)$ from LC (or from $\A$)}
+            \IF{$\var{sid} \notin \fun{dom}(\var{sessions})$ or 
+                $\var{sessions}[\var{sid}].\var{status} \neq \fun{awaiting\_sig}$}
+              \STATE Halt
+            \ENDIF            
+            \STATE Send $(\fun{signature}, \var{sid}, \sigma)$ to SP
+        \ENDUPON
+      \ELSE
+        \STATE \COMMENT{Honest LC: $\mathcal{F}$ produces valid signature abstractly}
+        \STATE Generate $\sigma$ such that $\SDS.\Ver(\var{vk}_c, \tx, \sigma) = \true$
+      \ENDIF
+      
+      \STATE \COMMENT{is this the right time to complete? do we need more states?}
+      \STATE $\var{sessions}[\var{sid}].\var{status} \gets \fun{completed}$
+      
+      \STATE \COMMENT{Release signature first to A then to SP for verification}
+      \STATE Send $(\fun{leaked\text{-}sig}, \var{sid}, \sigma)$ to $\A$
+      \UPON{receiving $(\fun{return\text{-}sig}, \var{sid})$ from $\A$}
+        \STATE Send $(\fun{signature}, \var{sid}, \sigma)$ to SP    
+        \STATE \COMMENT{Wait for SP to verify and approve release of tx to LC}
+        \UPON{receiving $(\fun{approve\text{-}release}, \var{sid})$ from SP}
+            \IF{$\var{sid} \notin \fun{dom}(\var{sessions})$ or 
+                $\var{sessions}[\var{sid}].\var{status} \neq \fun{completed}$ or 
+                $\var{yesno} \neq 1$}
+              \STATE Halt
+            \ENDIF
+            \STATE \COMMENT{Leak transaction to A}
+            \STATE Send $(\fun{leaked\text{-}tx}, \var{sid})$ to $\A$
+            \UPON{receiving $(\fun{return\text{-}tx}, \var{sid}, \tx)$ from $\A$:}
+              \STATE \COMMENT{Send tx to honest LC via authenticated channel}
+              \STATE Send $(\fun{release\text{-}tx}, \var{sid}, \tx)$ to LC
+              \STATE \COMMENT{how do we indicate halting on receiving other messages than those specified in UPONs}
+            \ENDUPON
+        \ENDUPON
+      \ENDUPON
+    \ENDUPON 
+
+  
+    \UPON{receiving $(\fun{cantbuildtx}, \var{sid})$ from LC:}
+      \IF{$\var{sid} \notin \fun{dom}(\var{sessions})$ or $\var{sessions}[\var{sid}].\var{status} 
+          \neq \fun{awaiting\_decision}$}
+        \STATE Halt
+      \ENDIF
+      \STATE $\var{sessions}[\var{sid}].\var{status} \gets \fun{aborted}$
+      \STATE Send $(\fun{leaked\text{-}rejection}, \var{sid})$ to $\A$
+      \UPON{receiving $(\fun{deliver}, \var{sid})$ from $\A$:}
+        \STATE Send $(\fun{no\text{-}signature}, \var{sid})$ to SP 
+      \ENDUPON 
+    \ENDUPON
+    \STATE Delete $\var{sessions}[\var{sid}]$ 
+  \end{algorithmic} 
+\end{algorithm}
+
+$\Ideal$ does not run on a physical computer, nor does it possess actual private keys. Instead of holding 
+the private key, the $\Ideal$ models the security property that only 
+the LC is authorized to sign. For the given verification key $\var{vk}_c$, it can "magically"
+generate the signature from the corresponding signing key. 
+
+The status of session with id $\var{sid}$ is set to $\fun{completed}$ before messages are sent out to SP 
+and the adversary because an intermediate state would be needed, such as $\fun{awaiting-delivery}$,
+in order to model waiting for the adversary's response. Same with setting the status $\fun{aborted}$
+in the $\fun{cantbuildtx}$ case.
+The message $(\fun{leaked\text{-}rejection}, \var{sid})$ is sent to $\A$ before the 
+signature is sent to SP in order to model the adversary's ability to observe network traffic 
+before it reaches the intended recipient. 
+
+The $\fun{deliver}$ message tag serves as \emph{the adversary's explicit authorization to release a message to its 
+intended recipient}. It models adversarial control over network timing.
+
+\noindent\textit{Description:} This phase models the signing decision. Critically, the full 
+transaction $\tx$ is revealed to $\A$ via $(\fun{leaked\text{-}tx}, \var{sid}, \tx, \sigma)$ 
+\emph{only after} the LC approves. This models our ``weak blindness'' security notion: transactions 
+need only remain private until they are signed and posted to the public blockchain. This is the only 
+point in the protocol where full $\tx$ becomes known to $\A$---even if LC was corrupted earlier, the 
+corrupted state contained only $(\var{int}_{\fun{post}}, \var{vk}_c, \var{sk}_c, \TxAbs)$, not full 
+$\tx$.
+
+\begin{algorithm}[H]
+  \caption{Corruption Handling}
+  \begin{algorithmic}[1] 
+\UPON{receiving $(\fun{corrupt}, P)$ from $\A$ where $P \in \{\text{LC}, \text{SP}\}$:}
+  \STATE $\var{corrupted} \gets \var{corrupted} \cup \{P\}$
+  \IF{$P = \text{LC}$}
+    \STATE For each session $\var{sid}$ where LC is a participant:
+    \STATE \quad Let $(\var{int}_{\fun{post}}, \var{vk}_c, \_, \var{status}) \gets \var{sessions}[
+           \var{sid}]$
+    \STATE \quad Retrieve $\TxAbs$ if LC has received it, else $\bot$
+    \STATE \quad $\var{state}_{\text{LC}} \gets (\var{int}_{\fun{post}}, \var{vk}_c, \var{sk}_c, 
+           \TxAbs, \var{status})$
+    \STATE \quad \textbf{Note:} LC never knows full $\tx$, so $\var{state}_{\text{LC}}$ does not 
+           include it!
+    \STATE \quad Send $(\fun{corrupted\text{-}state}, \text{LC}, \var{state}_{\text{LC}})$ to $\A$
+  \ENDIF
+  \IF{$P = \text{SP}$}
+    \STATE For each session $\var{sid}$ where SP is a participant:
+    \STATE \quad Let $(\_, \_, \tx, \var{status}) \gets \var{sessions}[\var{sid}]$ if exists
+    \STATE \quad $\var{state}_{\text{SP}} \gets (\LState, \tx, \var{status})$ (including any 
+           in-progress data)
+    \STATE \quad Send $(\fun{corrupted\text{-}state}, \text{SP}, \var{state}_{\text{SP}})$ to $\A$
+  \ENDIF
+\ENDUPON
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{NOTE :} The above corruption handling is not correct. 
+To introduce dynamic corruption handling, 
+messages of the form $(\fun{corrupt}, P)$ need to be handled at any time?
+
+
+\noindent\textit{Description:} When a party is corrupted, the adversary learns all that party's 
+internal state and takes full control. Importantly, even when LC is corrupted, the state revealed to 
+$\A$ includes only $\TxAbs$ (the abstract view), \emph{not} the full transaction $\tx$. The full 
+$\tx$ is revealed to $\A$ only via the $(\fun{leaked\text{-}approval}, \var{sid}, \tx, \sigma)$ 
+message after approval occurs. This property holds even under corruption and is key to the weak 
+blindness guarantee.
+
+From this point forward:
+\begin{itemize}
+  \item All inputs from $P$ are actually from $\A$
+  \item All outputs to $P$ are sent to $\A$
+  \item IF $P$ had any pending operations, $\A$ now controls them 
+\end{itemize}
+
+
+The UC proof requires showing that for every real-world adversary, there exists a simulator in the 
+ideal world that produces indistinguishable behavior. When the real-world adversary corrupts a party:
+
+\begin{itemize}
+  \item The simulator must be notified (via the corrupt message)
+  \item The simulator receives the party's state to coordinate with real-world execution
+  \item This ensures the ideal and real worlds remain indistinguishable
+\end{itemize}
+
+
+\subsection{The Real Protocol $\Real$}
+\label{sec:real-protocol}
+
+We now describe the real protocol executed by LC and SP in the presence of adversary $\A$. This 
+protocol uses no trusted third party, relying instead on cryptographic primitives to achieve the 
+security properties captured by $\Ideal$.
+
+\subsubsection{Cryptographic Building Blocks}
+
+The protocol uses the following primitives:
+\begin{itemize}
+  \item \textbf{SDS}: Schnorr digital signature scheme (Definition~8, Section~3)
+  \item \textbf{PKE}: IND-CPA secure public key encryption (Section~3.2)
+  \item \textbf{WBPS}: Weakly blind predicate signature scheme (Appendix~C)
+  \item \textbf{NArg}: Non-interactive argument system for relation $R_{\fun{Cavefish}}$ 
+        (Section~3.3)
+\end{itemize}
+
+Both parties have access to public parameters $\var{par} = (\G, g, q, \hash, \crs, \var{ek})$ where 
+$(\G, g, q)$ defines the group, $\hash$ is a hash function, $\crs$ is the NIZK common reference 
+string, and $\var{ek}$ is the PKE encryption key. In practice, $\var{ek}$ is generated by LC at the 
+start of each session.
+
+\subsubsection{Protocol Description}
+
+The real protocol proceeds in three phases corresponding to the ideal functionality phases:
+
+\begin{algorithm}[H]
+  \caption{Phase 1: Intent Submission (Real Protocol)}
+  \begin{algorithmic}[1] 
+\STATE \textbf{Light Client LC} with input $(\fun{submit}, \var{sid}, \var{int}_{\fun{post}}, 
+       \var{vk}_c)$:
+  \STATE Generate PKE keypair: $(\var{ek}, \var{dk}) \gets \PKE.\Keygen(1^\lambda)$
+  \STATE Send $(\var{int}_{\fun{post}}, \var{vk}_c, \var{ek})$ to SP over secure channel (TLS)
+  \STATE Store $(\var{sid}, \var{int}_{\fun{post}}, \var{vk}_c, \var{sk}_c, \var{dk})$ in local 
+         state
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Phase 2: Transaction Construction and Commitment (Real Protocol)}
+  \begin{algorithmic}[1] 
+\STATE \textbf{Service Provider SP} receives $(\var{int}_{\fun{post}}, \var{vk}_c, \var{ek})$:
+  \STATE Query local ledger state $\LState$ for UTxOs matching $\var{vk}_c$
+  \STATE Construct $\tx \gets \fun{mkToSpec}(\LState, \var{int}_{\fun{post}})$
+  \STATE \COMMENT{Includes: inputs covering payment, outputs satisfying intent, SP fee, network fee}
+  \IF{construction fails (insufficient funds, etc.)}
+    \STATE Send $(\fun{failed}, \var{sid})$ to LC
+    \STATE Abort
+  \ENDIF
+  \STATE Generate random note: $\nt \sample \B^\notelength$
+  \STATE Compute message: $m \gets \tx \| \nt$
+  \STATE Encrypt: $C \gets \PKE.\Enc(\var{ek}, m; \rho)$ for $\rho \sample \mathcal{R}$
+  \STATE Send $\fun{com}_{\tx} = C$ to LC
+  \STATE Store $(\var{sid}, \tx, \nt, \rho)$ in local state
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Phase 3: Weakly Blind Predicate Signature Protocol (Real Protocol)}
+  \begin{algorithmic}[1] 
+\STATE \textbf{Light Client LC} receives $\fun{com}_{\tx} = C$:
+  \STATE Generate \WBPS\ randomness and compute commitment (per \WBPS\ protocol, Appendix~C)
+  \STATE Send \WBPS\ commitment to SP
+
+\STATE \textbf{Service Provider SP}:
+  \STATE Generate $r \sample \Z_q$; compute $R \gets g^r$
+  \STATE Send $R$ to LC
+
+\STATE \textbf{Light Client LC} receives $R$:
+  \STATE The challenge $c$ must satisfy: $c = \hash(R, X, m)$ for unknown $m = \tx \| \nt$
+  \STATE \COMMENT{LC cannot compute $c$ directly as it doesn't know $m$}
+  \STATE Generate NIZK proof $\pi$ proving the relation $R_{\fun{Cavefish}}$:
+  \STATE \quad STATEment $\theta = (X, R, C, \TxAbs, c, \var{int}_{\fun{post}}, \var{ek})$ (public)
+  \STATE \quad Witness $\omega = (\tx, \nt, \rho)$ (private to LC's zero-knowledge)
+  \STATE \quad $\pi \gets \NArg.\Prove(\crs, \theta, \omega)$ proving:
+  \STATE \quad \quad $C = \PKE.\Enc(\var{ek}, \tx \| \nt; \rho)$ \textbf{and}
+  \STATE \quad \quad $\chkSpec{\var{int}_{\fun{post}}}(\fun{mkAbs}(\tx)) = \true$ \textbf{and}
+  \STATE \quad \quad $c = \hash(R, X, \tx \| \nt)$
+  \STATE \COMMENT{LC proves transaction is valid without learning it!}
+  \STATE Send $(c, \pi)$ to SP
+
+\STATE \textbf{Service Provider SP} receives $(c, \pi)$:
+  \STATE Compute statement $\theta = (X, R, C, \TxAbs, c, \var{int}_{\fun{post}}, \var{ek})$
+  \STATE Verify proof: IF $\NArg.\Ver(\crs, \theta, \pi) \neq \true$:
+  \STATE \quad Send $(\fun{invalid\text{-}proof}, \var{sid})$ to LC
+  \STATE \quad Abort
+  \STATE \COMMENT{Proof verifies that LC computed $c$ correctly and $\tx$ satisfies 
+         $\var{int}_{\fun{post}}$}
+  \STATE Complete Schnorr signature: $s \gets (r + c \cdot x) \bmod q$
+  \STATE \COMMENT{where $x$ is secret key for UTxO being spent}
+  \STATE Send $s$ to LC
+
+\STATE \textbf{Light Client LC} receives $s$:
+  \STATE Verify signature: $\sigma = (R, s)$ is valid iff $g^s = R \cdot X^c$
+  \IF{verification succeeds}
+    \STATE Output $(\fun{signature}, \var{sid}, \sigma)$
+  \ELSE
+    \STATE Abort
+  \ENDIF
+
+\STATE \textbf{Service Provider SP}:
+  \STATE Attach signature $\sigma$ to transaction $\tx$
+  \STATE Submit $(\tx, \sigma)$ to blockchain network
+  \STATE Output $(\fun{posted}, \var{sid})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{The NIZK Relation $R_{\fun{Cavefish}}$}
+
+The protocol's security relies on the NIZK proving the relation:
+
+\begin{align*}
+R_{\fun{Cavefish}}(\theta, \omega) := \;&
+  \left( C = \PKE.\Enc(\var{ek}, \tx \| \nt; \rho) \right) \;\land \\
+  &\left( \chkSpec{\var{int}_{\fun{post}}}(\fun{mkAbs}(\tx)) = \true \right) \;\land \\
+  &\left( c = \hash(R, X, \tx \| \nt) \right) \;\land \\
+  &\left( \TxAbs = \fun{mkAbs}(\tx) \right)
+\end{align*}
+
+where $\theta = (X, R, C, \TxAbs, c, \var{int}_{\fun{post}}, \var{ek})$ is public and 
+$\omega = (\tx, \nt, \rho)$ is the witness.
+
+This relation ensures that:
+\begin{enumerate}
+  \item The commitment $C$ correctly encrypts some transaction $\tx$ with note $\nt$
+  \item The transaction $\tx$ satisfies the intent specification when viewed abstractly
+  \item The challenge $c$ was computed correctly using the encrypted transaction
+  \item The abstract view $\TxAbs$ correctly corresponds to $\tx$
+\end{enumerate}
+
+\subsection{Security Theorems}
+\label{sec:security-theorems}
+
+We now state and prove that the real protocol UC-realizes the ideal functionality.
+
+\begin{theorem}[UC Security]
+\label{thm:uc-security}
+Under Assumptions~1--2, the protocol $\Real$ UC-realizes the ideal functionality 
+$\Ideal$ in the $\mathcal{F}_{\fun{SEC}}$-hybrid model in the presence of 
+static malicious adversaries corrupting at most one party.
+\end{theorem}
+
+\noindent Formally: For any PPT real-world adversary $\A$, there exists a PPT ideal-world simulator 
+$\mathcal{S}$ such that for any PPT environment $\mathcal{Z}$:
+\[
+\left| \Pr[\mathrm{REAL}_{\Real,\A,\mathcal{Z}}(1^\lambda) = 1] - 
+\Pr[\mathrm{IDEAL}_{\Ideal,\mathcal{S},\mathcal{Z}}(1^\lambda) = 1] \right|
+\]
+is negligible in $\lambda$.

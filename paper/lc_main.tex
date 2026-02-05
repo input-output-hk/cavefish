@@ -28,6 +28,33 @@
 \usepackage[normalem]{ulem}
 \usepackage{amsthm}
 \usepackage[subtle]{savetrees} 
+% \usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+% \usepackage{algcompatible}
+% \makeatletter
+% \newenvironment{algcompatible*}[1][0]{%
+%   \algcompatible[#1]%
+% }{%
+%   \endalgcompatible
+% }
+% \makeatother
+
+\makeatletter
+% Define the keywords (as before)
+\newcommand{\algorithmicupon}{\textbf{upon}}
+\newcommand{\algorithmicendupon}{\textbf{end upon}}
+
+% Define the \UPON command (as before)
+\newcommand{\UPON}[1]{\ALC@it\algorithmicupon\ {#1} \begin{ALC@if}}
+
+% CORRECTED \ENDUPON Definition:
+% 1. \end{ALC@if} closes the inner block.
+% 2. \ALC@it starts a new line.
+% 3. \algorithmicendupon prints the text.
+\newcommand{\ENDUPON}{\end{ALC@if}\ALC@it\algorithmicendupon}
+\makeatother
+
 
 \theoremstyle{definition} % For upright text
 \newtheorem{assumption}{Assumption}
@@ -135,7 +162,6 @@
 \newcommand\DS{\ensuremath{\mathsf{DS}}}
 \newcommand\Enc{\ensuremath{\mathsf{Enc}}}
 \newcommand\Dec{\ensuremath{\mathsf{Dec}}}
-
 
 \newcommand{\Interval}[1]{\type{Interval}[#1]}
 \newcommand{\nextdef}{\ensuremath{\\[1em]}}
@@ -269,6 +295,17 @@
 \newcommand{\True}{\type{1}}
 \newcommand{\False}{\type{0}}
 
+% \newcommand{\If}{If}
+% \newcommand{\Upon}{Upon}
+% \newcommand{\State}{State}
+% \newcommand{\Comment}{Comment:}
+% \newcommand{\EndIf}{}
+% \newcommand{\EndUpon}{}
+% \newcommand{\Else}{Else}
+\newcommand{\sample}{sample}
+\newcommand{\Ideal}{\mathcal{F}_{\fun{Cavefish}}}
+\newcommand{\Real}{\Pi_{\fun{Cavefish}}}
+
 \newcommand{\leteq}{:=}
 
 \begin{document}
@@ -285,6 +322,7 @@
 \input{sections/proto}
 \input{sections/blindsig}
 \input{sections/analysis}
+\input{sections/uc-analysis}
 \input{sections/implementation}
 \input{sections/conclusion}
 
