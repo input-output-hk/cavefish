@@ -24,6 +24,7 @@ let
 
   packages = {
     cavefish-server = project.hsPkgs.cavefish-server.components.exes.cavefish-server;
+    default = project.hsPkgs.cavefish-server.components.exes.cavefish-server;
   };
 
   devShells = rec {
@@ -52,6 +53,7 @@ in
 
 {
   inherit packages;
+  defaultPackage = packages.cavefish-server;
   inherit devShells;
   inherit hydraJobs;
 }

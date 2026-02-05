@@ -34,7 +34,7 @@ main = do
       message = Message unsignedTx
       messageBits = toBitsPaddedToMaxSize def message
 
-  fixturesDir <- P.makeAbsolute =<< pure ([reldir|wbps/tests/integration/fixtures/commitment|])
+  fixturesDir <- P.makeAbsolute =<< pure ([reldir|packages/wbps/tests/integration/fixtures/commitment|])
   P.ensureDir fixturesDir
   BL8.writeFile (Path.toFilePath (fixturesDir </> [relfile|unsignedTx.json|])) (encode unsignedTx)
   BL8.writeFile (Path.toFilePath (fixturesDir </> [relfile|messageBits.json|])) (encode messageBits)
@@ -51,7 +51,7 @@ main = do
   tmpRoot <- P.getTempDir
   P.withTempDir tmpRoot "wbps-fixture" $ \outDir -> do
     cwd <- P.getCurrentDir
-    let scheme = defaultFileScheme RootFolders {input = cwd </> [reldir|wbps|] </> [reldir|setup|], output = outDir}
+    let scheme = defaultFileScheme RootFolders {input = cwd </> [reldir|packages/wbps/setup|], output = outDir}
     res <- runWBPS scheme $ do
       Scalars.Scalars {Scalars.ekPowRho = ekPowRho'} <- compute ek rho
       CommitmentBuild.build registrationId CommitmentBuild.Input {CommitmentBuild.ekPowRho = ekPowRho', CommitmentBuild.messageBits = messageBits}

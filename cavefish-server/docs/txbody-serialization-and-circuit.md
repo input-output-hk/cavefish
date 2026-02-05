@@ -33,7 +33,7 @@ the txId.
 
 Implementation references:
 
-- `wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/Cardano/UnsignedTx.hs`
+- `packages/wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/Cardano/UnsignedTx.hs`
   uses `CBOR.serialize'` in `txBodyMapByteLength` to measure the ledger TxBody
   map length (canonical CBOR).
 
@@ -41,7 +41,7 @@ Implementation references:
 
 1. The unsigned transaction body (`Api.TxBody`) is serialized:
    - Code: `toBitsPaddedToMaxSize` in
-     `wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/PreparedMessage/Prepare.hs`
+     `packages/wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/PreparedMessage/Prepare.hs`
    - It uses `Cardano.Api.serialiseToCBOR (txUnsigned unsignedTx)`.
 2. The CBOR bytes are converted to bits:
    - Per-byte little-endian bit order (`payloadBits` in the same file).
@@ -54,7 +54,7 @@ The circuit therefore receives a fixed-length bit vector representing the
 
 Inside the circuit:
 
-- `ComputeTxId` in `wbps/setup/relation/relation.circom`:
+- `ComputeTxId` in `packages/wbps/setup/relation/relation.circom`:
   - Converts message bits back to bytes.
   - Extracts the TxBody map bytes from the wrapper.
   - Hashes those bytes with `Blake2b-256`.
@@ -84,11 +84,11 @@ values). The txId computed in-circuit therefore matches
 `Cardano.Api.getTxId` in:
 
 - `txIdFromMessage` in
-  `wbps/lib/WBPS/Core/Session/Steps/Proving/Artefacts/Challenge.hs`
+  `packages/wbps/lib/WBPS/Core/Session/Steps/Proving/Artefacts/Challenge.hs`
 
 ## Example (fixture CBOR)
 
-The fixture in `wbps/tests/integration/fixtures/commitment/unsignedTx.json`
+The fixture in `packages/wbps/tests/integration/fixtures/commitment/unsignedTx.json`
 starts with:
 
 ```
@@ -165,16 +165,16 @@ changes to the circuit (or adding CBOR parsing inside it).
 ## Implementation references (entry points)
 
 - CBOR -> bits -> padding:
-  - `wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/PreparedMessage/Prepare.hs`
+  - `packages/wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/PreparedMessage/Prepare.hs`
     (`toBitsPaddedToMaxSize`, `payloadBits`)
 - TxBody map length:
-  - `wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/Cardano/UnsignedTx.hs`
+  - `packages/wbps/lib/WBPS/Core/Session/Steps/Demonstration/Artefacts/Cardano/UnsignedTx.hs`
     (`txBodyMapByteLength`)
 - Circuit txId:
-  - `wbps/setup/relation/relation.circom` (`ComputeTxId`)
+  - `packages/wbps/setup/relation/relation.circom` (`ComputeTxId`)
 - Haskell txId reference:
-  - `wbps/lib/WBPS/Core/Session/Steps/Proving/Artefacts/Challenge.hs`
+  - `packages/wbps/lib/WBPS/Core/Session/Steps/Proving/Artefacts/Challenge.hs`
     (`txIdFromMessage`, `computeByUsingTxId`)
 - Commitment limb sizing:
-  - `wbps/setup/commitment/BuildCommitment.circom`
-  - `wbps/lib/WBPS/Core/Setup/Circuit/Parameters.hs`
+  - `packages/wbps/setup/commitment/BuildCommitment.circom`
+  - `packages/wbps/lib/WBPS/Core/Setup/Circuit/Parameters.hs`

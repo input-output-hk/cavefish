@@ -13,7 +13,7 @@ import WBPS.Core.Session.Steps.Proving.Artefacts.Challenge (Challenge)
 
 main :: IO ()
 main = do
-  let fixtureDir = "wbps/tests/integration/fixtures/theta-statement"
+  let fixtureDir = "packages/wbps/tests/integration/fixtures/theta-statement"
       statementPath = fixtureDir </> "proved/statement.json"
       challengePath = fixtureDir </> "proved/challenge.json"
       bigRPath = fixtureDir </> "proved/big_r.json"

@@ -1,7 +1,7 @@
 packages:
-  wbps/wbps.cabal
-  cavefish/server/cavefish-server.cabal
-  cavefish/tests/cavefish-tests.cabal
+  packages/wbps/wbps.cabal
+  packages/server/cavefish-server.cabal
+  packages/tests/cavefish-tests.cabal
 
 tests: True
 

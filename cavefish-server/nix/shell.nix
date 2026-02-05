@@ -159,12 +159,12 @@ let
         repo_root="$repo_root/cavefish-server"
       fi
 
-      export WBPS_TEST_INPUT_ROOT="$repo_root/wbps/setup"
+      export WBPS_TEST_INPUT_ROOT="$repo_root/packages/wbps/setup"
       export WBPS_TEST_OUTPUT_ROOT="$repo_root/output/tests"
 
-      if [ -d "$repo_root/wbps/setup" ]; then
-        export PATH="$repo_root/wbps/setup:$PATH"
-        export BABYJUBJUB_KEYGEN="$repo_root/wbps/setup/babyjubjub-keygen"
+      if [ -d "$repo_root/packages/wbps/setup" ]; then
+        export PATH="$repo_root/packages/wbps/setup:$PATH"
+        export BABYJUBJUB_KEYGEN="$repo_root/packages/wbps/setup/babyjubjub-keygen"
       fi
 
       if [ -d "$repo_root/.tools/circom/bin" ]; then
