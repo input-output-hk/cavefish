@@ -29,7 +29,7 @@ jobs:
       CABAL_CACHE_VERSION: "2026-01-15"
       SECP256K1_REF: ac83be33d0956faf6b7f61a60ab524ef7d6a473a
       SECP_CACHE_VERSION: "2022-12-30"
-      WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/cavefish-server/wbps/setup
+      WBPS_TEST_INPUT_ROOT: ${{ github.workspace }}/cavefish-server/packages/wbps/setup
       WBPS_TEST_OUTPUT_ROOT: ${{ github.workspace }}/cavefish-server/output/tests
       CIRCOM_REV: "2eaaa6dface934356972b34cab64b25d382e59de"
       SNARKJS_VERSION: "0.7.6"
@@ -88,10 +88,10 @@ jobs:
 
       - name: Build babyjubjub-keygen (native) and add to PATH
         run: |
-          DEST="$GITHUB_WORKSPACE/cavefish-server/wbps/inputs/babyjubjub-keygen"
+          DEST="$GITHUB_WORKSPACE/cavefish-server/packages/wbps/inputs/babyjubjub-keygen"
           echo "Building babyjubjub-keygen for $(uname -m) -> $DEST"
-          DEST="$DEST" bash "$GITHUB_WORKSPACE/wbps/tooling/gen_babyjubjub_keys.sh"
-          echo "$GITHUB_WORKSPACE/cavefish-server/wbps/inputs" >> "$GITHUB_PATH"
+          DEST="$DEST" bash "$GITHUB_WORKSPACE/zk-wbps/tooling/gen_babyjubjub_keys.sh"
+          echo "$GITHUB_WORKSPACE/cavefish-server/packages/wbps/inputs" >> "$GITHUB_PATH"
 
       - name: Install circom & snarkjs
         run: |
@@ -101,7 +101,7 @@ jobs:
           snarkjs -v || true
 
       - name: Circomlib
-        working-directory: ./wbps
+        working-directory: ./zk-wbps
         run: make deps-circomlib
 
       - name: Validate LFS setup artifacts
@@ -109,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
-          SETUP="$ROOT/cavefish-server/wbps/setup"
+          SETUP="$ROOT/cavefish-server/packages/wbps/setup"
           is_lfs_pointer() {
             local f="$1"
             [ -f "$f" ] && head -n 1 "$f" | grep -q "git-lfs.github.com/spec/v1"
@@ -139,7 +139,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
-          SETUP="$ROOT/cavefish-server/wbps/setup"
+          SETUP="$ROOT/cavefish-server/packages/wbps/setup"
           mkdir -p "$SETUP/commitment" "$SETUP/relation"
 
           is_lfs_pointer() {
@@ -165,8 +165,8 @@ jobs:
             rm -rf "$SETUP/commitment/BuildCommitment_js"
             circom "$SETUP/commitment/BuildCommitment.circom" \
               --r1cs --sym --wasm \
-              -l "$ROOT/wbps/vendor/circomlib" \
-              -l "$ROOT/wbps/vendor/hashing_circuits" \
+              -l "$ROOT/zk-wbps/vendor/circomlib" \
+              -l "$ROOT/zk-wbps/vendor/hashing_circuits" \
               -o "$SETUP/commitment"
           fi
 
@@ -188,8 +188,8 @@ jobs:
             rm -rf "$SETUP/relation/relation_js"
             circom "$SETUP/relation/relation.circom" \
               --r1cs --sym --wasm \
-              -l "$ROOT/wbps/vendor/circomlib" \
-              -l "$ROOT/wbps/vendor/hashing_circuits" \
+              -l "$ROOT/zk-wbps/vendor/circomlib" \
+              -l "$ROOT/zk-wbps/vendor/hashing_circuits" \
               -o "$SETUP/relation"
           fi
 

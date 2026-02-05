@@ -47,7 +47,7 @@ compileBuildCommitment BuildCommitmentCompileScheme {..} =
       siblingRoot = takeDirectory includeRootRoot
       circuitsDirLocal = includeDirClean </> "circuits"
       circuitsDirSibling = includeRoot </> "circuits"
-      circuitsBaseSibling = siblingRoot </> "wbps"
+      circuitsBaseSibling = siblingRoot </> "zk-wbps"
       vendorCircomlibDir = circuitsBaseSibling </> "vendor" </> "circomlib" </> "circuits"
       circomlibDirNode = includeRootRoot </> "node_modules" </> "circomlib" </> "circuits"
    in circom
