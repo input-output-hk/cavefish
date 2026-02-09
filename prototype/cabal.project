@@ -1,0 +1,61 @@
+packages:
+  packages/wbps/wbps.cabal
+  packages/server/cavefish-server.cabal
+  packages/tests/cavefish-tests.cabal
+
+tests: True
+
+package cardano-crypto-praos
+  flags: -external-libsodium-vrf
+
+repository cardano-haskell-packages
+  url: https://chap.intersectmbo.org/
+  secure: True
+  root-keys:
+    3e0cce471cf09815f930210f7827266fd09045445d65923e6d0238a6cd15126f
+    443abb7fb497a134c343faf52f0b659bd7999bc06b7f63fa76dc99d631f9bea1
+    a86a1f6ce86c449c46666bda44268677abf29b5b2d2eb5ec7af903ec2f117a82
+    bcec67e8e99cabfa7764d75ad9b158d72bfacf70ca1d0ec8bc6b4406d1bf8413
+    c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
+    d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
+
+with-compiler: ghc-9.6.6
+
+index-state:
+            , cardano-haskell-packages 2026-01-05T11:07:19Z
+            , hackage.haskell.org 2026-01-08T10:36:27Z
+
+write-ghc-environment-files: never
+
+test-show-details: direct
+
+package cardano-ledger-alonzo
+  optimization: False
+package ouroboros-consensus-cardano
+  optimization: False
+package cardano-api
+  optimization: False
+
+package cardano-crypto-praos
+  flags: -external-libsodium-vrf
+
+constraints:
+  cardano-api == 10.18.1.0
+
+source-repository-package
+    type: git
+    location: https://github.com/intersectMBO/cardano-node-emulator
+    tag: c6e2071bfe1004de2e2ebb9875b5b3b049405a9c
+    --sha256: 0xqazabvvafbvf9k1b7iqn8vpddksn7pqa0kf6044wmd2232nm0p
+    subdir:
+      plutus-script-utils
+      plutus-ledger
+      cardano-node-emulator
+
+source-repository-package
+    type: git
+    location: https://github.com/tweag/cooked-validators
+    tag: v8.0.0
+    --sha256: 02hpvb4d41kv43n90lhn0kddkgdhdq5f0kfin3bf1bzzcrkpyirc
+    subdir:
+      .

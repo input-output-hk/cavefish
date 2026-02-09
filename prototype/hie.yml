@@ -1,0 +1,28 @@
+cradle:
+  cabal:
+    - path: "packages/server/src"
+      component: "lib:cavefish-server"
+
+    - path: "packages/server/app/Main.hs"
+      component: "cavefish-server:exe:cavefish-server"
+
+    - path: "packages/server/test"
+      component: "cavefish-server:test:test"
+
+    - path: "packages/tests/src"
+      component: "lib:cavefish-tests"
+
+    - path: "packages/tests/app/Main.hs"
+      component: "cavefish-tests:exe:cavefish-test-exe"
+
+    - path: "packages/tests/test"
+      component: "cavefish-tests:test:test"
+
+    - path: "packages/wbps/lib"
+      component: "lib:wbps"
+
+    - path: "packages/wbps/tests/unit"
+      component: "wbps:test:wbps-unit-tests"
+
+    - path: "packages/wbps/tests/integration"
+      component: "wbps:test:wbps-integration-tests"

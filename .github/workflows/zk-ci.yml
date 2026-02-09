@@ -4,19 +4,19 @@ on:
   pull_request:
     paths:
       - '.github/workflows/zk-ci.yml'
-      - 'wbps/**'
+      - 'zk-wbps/**'
   push:
     branches: [ main ]
     paths:
       - '.github/workflows/zk-ci.yml'
-      - 'wbps/**'
+      - 'zk-wbps/**'
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: wbps
+        working-directory: zk-wbps
 
     steps:
       - name: Checkout
@@ -51,7 +51,7 @@ jobs:
           snarkjs -v || true
 
       # Your circuit file includes ../vendor/circomlib/... when compiled
-      # from wbps/circuits, so we place the dependency under wbps/vendor/.
+      # from zk-wbps/circuits, so we place the dependency under zk-wbps/vendor/.
       - name: Fetch circomlib (vendor)
         run: |
           mkdir -p vendor
@@ -65,13 +65,13 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wbps-build
+          name: zk-wbps-build
           path: |
-            wbps/build/wbps_cardano/*.r1cs
-            wbps/build/wbps_cardano/*.sym
-            wbps/build/wbps_cardano/wbps_cardano_js/**
-            wbps/build/wbps_cardano/*.wtns
-            wbps/build/wbps_cardano/*proof.json
-            wbps/build/wbps_cardano/*public.json
-            wbps/build/wbps_cardano/*verifkey.json
+            zk-wbps/build/wbps_cardano/*.r1cs
+            zk-wbps/build/wbps_cardano/*.sym
+            zk-wbps/build/wbps_cardano/wbps_cardano_js/**
+            zk-wbps/build/wbps_cardano/*.wtns
+            zk-wbps/build/wbps_cardano/*proof.json
+            zk-wbps/build/wbps_cardano/*public.json
+            zk-wbps/build/wbps_cardano/*verifkey.json
           if-no-files-found: warn

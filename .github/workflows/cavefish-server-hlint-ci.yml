@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "master", "release/**" ]
     paths:
-      - 'cavefish-server/**'
+      - 'prototype/**'
       - '.github/workflows/cavefish-server-hlint-ci.yml'
 
   pull_request:
     branches: [ "**" ]
     paths:
-      - 'cavefish-server/**'
+      - 'prototype/**'
       - '.github/workflows/cavefish-server-hlint-ci.yml'
 
 
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./cavefish-server
+        working-directory: ./prototype
     steps:
       - uses: actions/checkout@v4 # Checkout your repository's code
 
@@ -31,6 +31,6 @@ jobs:
       - name: 'Run HLint'
         uses: haskell-actions/hlint-run@v2
         with:
-          path: cavefish-server/cavefish/
+          path: prototype/packages
           fail-on: never
         # This step can fail without stopping the workflow

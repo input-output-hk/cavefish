@@ -22,7 +22,7 @@ To get started with Cavefish, clone the repository and explore the prototypes or
 2. **Build and Run the WBPS Prototype** (Cryptographic Core):
    The WBPS (Weakly Blind Predicate Signatures) component implements Cardano-style encryption and Schnorr challenge binding over the BabyJubJub curve.
    ```bash
-   cd wbps
+   cd zk-wbps
    make
    ```
    This will:
@@ -46,9 +46,9 @@ To get started with Cavefish, clone the repository and explore the prototypes or
    Follow instructions in `paper/README.md` to compile LaTeX sources and generate a timestamped PDF in `publication/`.
 
 4. **Run the Haskell SP Prototype**:
-   The `cavefish-server/` directory contains a Haskell-based prototype of the Service Provider. Install Haskell (via GHC or Stack), then:
+   The `prototype/` directory contains a Haskell-based prototype of the Service Provider. Install Haskell (via GHC or Stack), then:
    ```bash
-   cd cavefish-server
+   cd prototype
    stack build
    stack exec cavefish-server
    ```
@@ -61,10 +61,10 @@ Prerequisites: Node.js (for tooling), Circom and SnarkJS (for circuits), LaTeX (
 ### Repository Structure
 ```
 cavefish/
-├─ cavefish-server/    # Haskell prototype of SP, Service Provider
+├─ prototype/    # Haskell prototype of SP, Service Provider
 ├─ paper/              # LaTeX sources for the academic paper
 ├─ publication/        # Timestamped PDF builds of the paper
-├─ wbps/               # Circom circuits, tooling, and Makefile for the WBPS prototype
+├─ zk-wbps/            # Circom circuits, tooling, and Makefile for the WBPS prototype
 │  ├─ circuits/        # Cardano WBPS (ElGamal + Schnorr binding)
 │  ├─ examples/        # Example input vectors (JSON)
 │  ├─ tooling/         # Input generator (Node.js, PoseidonEx-based)
@@ -125,15 +125,15 @@ We encourage contributions! This project follows standard GitHub workflows.
 ### Documentation Links
 - Architecture: See the academic paper for protocol details.
 - Coding Conventions: Follow Haskell style (brittany), Circom best practices; use descriptive commits.
-- Testing: Run `make` in wbps/ for circuit tests; add unit tests for Haskell.
+- Testing: Run `make` in zk-wbps/ for circuit tests; add unit tests for Haskell.
 - Cavefish on the [IOG Blog](https://iohk.io/en/blog/posts/2025/12/03/presenting-cavefish/)
 
 ### Making Changes
 1. Fork the repo and create a branch.
 2. Install prerequisites: Haskell (Stack), Node.js, Circom, SnarkJS, LaTeX.
 3. Build/test locally (see Getting Started).
-4. For circuits: Add/modify in `wbps/circuits/`; test with `make`.
-5. For server: Modify in `cavefish-server/`; use Stack for building.
+4. For circuits: Add/modify in `zk-wbps/circuits/`; test with `make`.
+5. For server: Modify in `prototype/`; use Stack for building.
 
 ### Submitting Changes
 - Preferred process: Open an issue first to discuss (e.g., for major changes like new features).
