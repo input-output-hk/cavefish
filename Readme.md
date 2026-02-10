@@ -61,7 +61,7 @@ Prerequisites: Node.js (for tooling), Circom and SnarkJS (for circuits), LaTeX (
 ### Repository Structure
 ```
 cavefish/
-├─ prototype/    # Haskell prototype of SP, Service Provider
+├─ prototype/    # Haskell prototype of Tx-Level Strategt with one Service Provider
 ├─ paper/              # LaTeX sources for the academic paper
 ├─ publication/        # Timestamped PDF builds of the paper
 ├─ zk-wbps/            # Circom circuits, tooling, and Makefile for the WBPS prototype
@@ -76,7 +76,7 @@ cavefish/
 ### Features and Use Cases
 - **Intents-Based Transactions**: LCs specify high-level intents (e.g., "send 10 ADA"), and SPs handle ledger queries and construction.
 - **Blind Signatures**: Uses a novel weakly blind predicate signature scheme for privacy until on-chain posting.
-- **Compatibility**: Works with Schnorr-based UTxO ledgers (Cardano, Bitcoin); integrates with HD wallets and payment channels.
+- **Compatibility**: Works with Schnorr-based UTxO ledgers (Cardano, Bitcoin); integrates with HD wallets.
 - **Efficiency**: Minimal communication (2-3 rounds), low computation; benchmarks show practical proving/verification times.
 - **Incentives**: SPs compensated via transaction fees or channels.
 
@@ -85,7 +85,6 @@ For detailed design, read the academic paper in `publication/`. Key trade-offs i
 FAQ:
 - **Is this production-ready?** No, it's experimental—see disclaimer.
 - **What blockchains are supported?** Primarily Cardano; Bitcoin circuits are legacy but available.
-- **How does it differ from Mithril?** Cavefish focuses on transaction construction/submission; complements Mithril for chain syncing.
 
 Legacy components (e.g., older circuits like `circ_eddsa_cardano.circom`) are archived; WBPS is the canonical implementation.
 
