@@ -1,7 +1,7 @@
 # WBPS — Cardano Encryption & Schnorr Binding Circuit
 
 This folder contains the **Circom circuits** and **Node.js tooling** used in the **Cavefish WBPS (Weakly Blind Predicate Signatures)** prototype.  
-The main circuit, `wbps_cardano.circom`, implements **Cardano-style ElGamal encryption** and **SHA-512 Schnorr challenge binding** under the **BabyJubJub** curve.
+The main circuit, [`wbps_cardano.circom`](./circuits/wbps_cardano.circom), implements **Cardano-style ElGamal encryption** and **SHA-512 Schnorr challenge binding** under the **BabyJubJub** curve.
 
 > ⚠️ **Research prototype only.** Not audited.  
 > Do not reuse proving or verification keys in production.
@@ -67,7 +67,7 @@ Install the following:
 
 ## 🚀 Quick Start
 
-From the `wps` folder, you can build and verify the full proof in one command:
+From [`zk-wbps/`](./), you can build and verify the full proof in one command:
 
 ```bash
 make
@@ -98,7 +98,7 @@ The project supports **two input modes**:
 
 | Mode | Command | Description |
 |------|----------|-------------|
-| **Example Input (default)** | `make` | Uses curated `examples/wbps_cardano_input.json` |
+| **Example Input (default)** | `make` | Uses curated [`examples/wbps_cardano_input.json`](./examples/wbps_cardano_input.json) |
 | **Generated Input** | `make with-generated-input` | Rebuilds input via Poseidon-based JS generator |
 
 To inspect generator output:
@@ -207,7 +207,7 @@ These appear in witness-generation logs (`make witness`) for easier correlation 
 
 ## 🧮 Generator Overview
 
-The JS generator (`tooling/inputgen/gen_wbps_input.js`) produces reproducible Poseidon-based ciphertexts:
+The JS input generator tooling ([`tooling/inputgen/`](./tooling/inputgen/)) produces reproducible Poseidon-based ciphertexts:
 - Uses `PoseidonEx(2,1)` for initial seed.
 - Expands into a stream with chained `PoseidonEx(1,2)` squeezes.
 - Computes `Cmsg[i] = msg[i] + rand[i] mod q`.

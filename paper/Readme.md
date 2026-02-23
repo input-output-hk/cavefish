@@ -13,11 +13,11 @@ with built-in **fair compensation** and **security via weakly blind predicate si
 
 ## 📂 Layout
 
-- `lc_main.tex` — main entry point for the paper.  
-- `sections/` — (if present) individual `.tex` sections.  
-- `figures/` — images, diagrams, plots used in the paper.  
-- `tmp/` — auxiliary build folder (generated automatically).  
-- `../publication/` — final PDFs with timestamped filenames.  
+- [`lc_main.tex`](./lc_main.tex) — main entry point for the paper.  
+- [`sections/`](./sections/) — (if present) individual `.tex` sections.  
+- `figures/` — images, diagrams, plots used in the paper (if present).  
+- [`tmp/`](./tmp/) — auxiliary build folder (generated automatically).  
+- [`../publication/`](../publication/) — final PDFs with timestamped filenames.  
 
 ---
 
@@ -26,16 +26,16 @@ with built-in **fair compensation** and **security via weakly blind predicate si
 We use `latexmk` to simplify compilation.
 
 ### Quick Build
-Run inside `./paper/`:
+Run inside [`paper/`](./):
 ```bash
 make
-````
+```
 
 This will:
 
 1. Compile `lc_main.tex` with LaTeX.
-2. Store all auxiliary files under `./tmp/`.
-3. Copy the final PDF to `../publication/` with a timestamp, e.g.:
+2. Store all auxiliary files under [`tmp/`](./tmp/).
+3. Copy the final PDF to [`../publication/`](../publication/) with a timestamp, e.g.:
 
    ```
    ../publication/cavefish_2025-08-28_1015.pdf
@@ -51,7 +51,7 @@ make clean
 
 ### Distclean
 
-Remove temporary files **and** the `../publication/` folder:
+Remove temporary files **and** the [`../publication/`](../publication/) folder:
 
 ```bash
 make distclean
@@ -75,6 +75,5 @@ make distclean
 ## ℹ️ Notes
 
 * This folder is **only for the paper** sources.
-* The initiative-level documentation (problem statement, innovation, CIP/CPS references, etc.) is described in the **root README.md**.
-* The root-level PDFs under `../publication/` are the canonical builds.
-
+* The initiative-level documentation (problem statement, innovation, CIP/CPS references, etc.) is described in the [root README](../Readme.md).
+* The root-level PDFs under [`../publication/`](../publication/) are the canonical builds.

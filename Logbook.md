@@ -18,8 +18,9 @@ Each entry links to the corresponding **bi-weekly report** in the GitHub Wiki, s
 | 📘 [**W14–15**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-Week-14%E2%80%9315-%7C-December-1%E2%80%9315,-2025) | Dec 1–15 2025 | Demonstrate Commitment · Tests + CI tightened |
 | 📘 [**W16–17**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-Week-16%E2%80%9317-%7C-December-16%E2%80%9331,-2025) | Dec 16–31 2025 | DemonstrateCommitment complete · ZK hashing trade-offs documented |
 | 📘 [**W18–19**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-Week-18%E2%80%9319-%7C-January-1%E2%80%9315,-2026) | Jan 1–15 2026 | Challenge + witness generation · Circuit performance analysis |
-| 📘 [**W20–21**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-Week-20%E2%80%9321-%7C-January-16%E2%80%9331%2C-2026) | Jan 16–31 2026 | Finishing the Prototype |
+| 📘 [**W20–21**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-Week-20%E2%80%9321-%7C-January-16%E2%80%9331%2C-2026) | Jan 16–31 2026 | Verification/signing/submission completion · txId-in-circuit integration · emulator submit + CI stabilization |
+| 📘 [**February 2026 (Closing Report)**](https://github.com/input-output-hk/innovation-cavefish/wiki/%F0%9F%97%93%EF%B8%8F-February-2026-%28Closing-Report%29) | February 2026 | v0.5 flow completed · stream closure/bilan · ZK-circuit roadmap + Intent Layer framing |
 
 ---
 
-*(Next entry to be added: Week 10–11 | Nov 1 – 15 2025)*
+*(Stream status: closed for this phase in February 2026; next entries depend on future reactivation.)*
