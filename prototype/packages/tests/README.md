@@ -1,12 +1,12 @@
-# Cavefish server
-Cavefish tests is the test suite for cavefish server application. It contains integration tests and end-to-end tests to ensure the correctness and reliability of the cavefish server.
+# Cavefish tests
+Cavefish tests is the test suite for the Cavefish server application. It contains integration and end-to-end tests to validate flow correctness.
 
 ## Installing / Getting started
 > Using `nix` is the most convenient way to install all dependencies.  Non nix user, may refer to the [github action script][def] to build their development environment.
 
-From the `packages/tests` folder:
+From [`packages/tests/`](./):
 ```shell
-nix develope
+nix develop
 ```
 
 ## Developing
@@ -20,7 +20,7 @@ To execute the tests:
 ```shell
 cabal test cavefish-tests
 ```
-For continues build, you may use [watchexec](https://github.com/watchexec/watchexec)
+For continuous builds, you may use [watchexec](https://github.com/watchexec/watchexec)
 
 ```shell
 watchexec --clear -w .. 'cabal build all && cabal test cavefish-tests'

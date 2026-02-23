@@ -1,120 +1,206 @@
-# Cavefish-server
-This repository is a work-in-progress Haskell prototype for a Cavefish Server, including an SP server, a light client DSL, and a light client API.
+# Cavefish Prototype (Haskell)
 
-## Editor Setup: Tags Navigation
-This project uses **tags** for fast "go-to-definition" navigation in editors like VS Code, Vim, and Emacs. The setup leverages `fast-tags` for Haskell-aware tag generation and a helper script, `gen-tags.sh`, for reproducible builds.
+This folder contains the Haskell implementation for the Cavefish prototype v0.5:
 
-### 1. Prerequisites
-Ensure you have:
-- **Nix**: Installed to provide a reproducible environment (see [Nix installation guide](https://nixos.org/download.html)).
-- **VS Code**: For the recommended editor experience.
-- A Haskell project with a `cabal.project` file and dependencies.
-- Install [Git Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), LFS.
+- `wbps` library package (core protocol flow and artifacts)
+- `cavefish-server` package (HTTP service provider)
+- `cavefish-tests` package (integration and end-to-end tests)
 
-### 2. Setting Up the Environment
-The following commands will clone the project with LFS support, `cd` to prototype project, and invoke the `nix develop` shell:
+This is a research prototype and is not production-ready.
 
-``` bash
-git lfs clone git@github.com:input-output-hk/innovation-cavefish.git
-cd prototype
-nix develop
-```
-All required tools, including `fast-tags`, `cabal`, and `git lfs`, are provided in the project’s Nix environment.
+## Repository Layout
 
-The nix shell ensures all dependencies are available without global installation.
+- [`packages/wbps/`](./packages/wbps/) - core WBPS domain logic, adapters, and tests
+- [`packages/server/`](./packages/server/) - HTTP server executable and API handlers
+- [`packages/tests/`](./packages/tests/) - integration tests exercising end-to-end flows
+- [`docs/`](./docs/) - additional technical notes
+- [`scripts/`](./scripts/) - helper scripts (formatting, tags, local node runner)
+- [`share/`](./share/) - Cardano node network configs used by [`scripts/node-runner.sh`](./scripts/node-runner.sh)
 
-> Note:
-If you have already `cloned` the project and need to pull the recent changes:
+## Prerequisites
 
-``` bash
-git lfs fetch --all
-git lfs checkout
-```
-This sequence fetches all LFS files from all branches and tags and then replaces the LFS pointers in your working directory with the actual files.
+Recommended:
 
-### 3. Installing the VS Code Extension
-For VS Code, install the **ctagsx** extension:
-- **Purpose**: Provides cross-platform ctags integration.
-- **Features**:
-  - **Go to Definition**: `F12` or `Ctrl+Click` on symbols.
-  - **Search Tags**: `Ctrl+T` (or `Cmd+T` on macOS) to find symbols.
-  - **Jump Back**: `Alt+T` to return to previous location.
-  - **Manual Tag Search**: `Ctrl+Alt+T` to enter a tag manually.
-- **Installation**: Search for "ctagsx" in the VS Code Extensions Marketplace and install.
+- Nix with flakes enabled
 
-### 4. Generating Tags
-The `gen-tags.sh` script generates tags for Haskell source files using `fast-tags`. It scans:
-- **Project Sources**: `./cavefish` directory (if present).
-- **Built Dependencies**: `dist-newstyle/src` (populated by `cabal build`).
-- **Source Repository Packages (SRPs)**: Defined in `cabal.project`.
-- **Hackage Dependencies**: Resolved via `cabal.project.freeze` or `plan.json`.
+Alternative (manual setup):
 
-To generate or update tags:
+- GHC 9.6.6
+- `cabal-install`
+- System dependencies required by Cardano-related Haskell packages
+
+## Quick Start
+
+From this folder:
+
 ```bash
-./gen-tags.sh
-```
-
-This produces:
-- `tags`: For editors like Vim and VS Code.
-- `TAGS`: For Emacs.
-
-#### Notes on Generation
-- **Caching**: Dependencies are cached in `.deps-src/` to avoid redundant fetches.
-- **Performance**: The script fetches dependencies in parallel where possible.
-- **Requirements**: Must be run inside the `nix-shell` to access `fast-tags`.
-
-### 5. Cleaning and Rebuilding Tags
-To start from scratch (e.g., after dependency changes):
-```bash
-./scripts/gen-tags.sh clean
-./scripts/gen-tags.sh
-```
-The `clean` command removes:
-- `.deps-src/` (cached dependency sources).
-- `tags` and `TAGS` files.
-
-### 6. Using Tags in VS Code
-With the `ctagsx` extension installed:
-- **Go to Definition**: Press `F12` or `Ctrl+Click` on a symbol.
-- **Search Symbols**: Use `Ctrl+T` (or `Cmd+T` on macOS) to search tags.
-- **Navigate Back**: Press `Alt+T` to return to the previous location.
-- **Manual Tag Entry**: Use `Ctrl+Alt+T` to manually enter a tag name.
-
-### 7. Troubleshooting
-- **No tags generated**:
-  - Ensure you’re in the `nix-shell` (`fast-tags` must be available).
-  - Verify `cabal.project` and `*.cabal` files exist.
-  - Run `cabal build --only-dependencies` to populate `dist-newstyle/src`.
-- **Missing definitions**:
-  - Check if `tags` or `TAGS` files exist in the project root.
-  - Re-run `./gen-tags.sh` to refresh tags.
-- **Extension issues**:
-  - Confirm `ctagsx` is installed and enabled in VS Code.
-  - Check VS Code’s Output panel (ctagsx channel) for errors.
-- **Git or Hackage failures**:
-  - Ensure internet connectivity.
-  - Inspect `.deps-src/` for incomplete clones or downloads.
-
-### 8. Additional Notes
-- The `gen-tags.sh` script is optimized for Haskell projects and handles complex dependency trees.
-- For Vim/Emacs users, the `tags` file supports native tag navigation (e.g., `:tag` in Vim or `M-.` in Emacs).
-- If you modify `cabal.project` or dependencies, re-run `./gen-tags.sh` to update tags.
-- For large projects, tag generation may take a few minutes due to dependency fetching.
-
-## Build and test the project
-- Build and test from `nix develop` shell
-
-``` bash
 nix develop
 cabal update
-cabal clean && cabal build all
+cabal build all
+```
+
+This builds all local packages defined in [`cabal.project`](./cabal.project).
+
+## Where To Start Reading Code
+
+For the end-to-end Cavefish nominal flow, start with:
+
+- [`packages/tests/test/Cavefish/Nominal.hs`](./packages/tests/test/Cavefish/Nominal.hs)
+
+This is the main integration-spec module wiring the full scenario
+(`register -> demonstrate -> prove -> verify -> blindly-sign -> submit`).
+It is invoked from:
+
+- [`packages/tests/test/Main.hs`](./packages/tests/test/Main.hs)
+
+To execute this entry point:
+
+```bash
+cabal test cavefish-tests:test
+```
+
+Note: there is another nominal test module for WBPS-focused integration only:
+
+- [`packages/wbps/tests/integration/WBPS/Specs/NominalCase.hs`](./packages/wbps/tests/integration/WBPS/Specs/NominalCase.hs)
+
+## Execution Flow (v0.5 Nominal Path)
+
+The executable specification follows this protocol sequence:
+
+1. `register` (create account and registration artefacts)
+2. `demonstrate` (build commitment and selective-disclosure material)
+3. `prove` (generate proof and challenge-related artefacts)
+4. `verify` + `blind-sign` (client-side verification and signature generation)
+5. `submit` (final transaction submission)
+6. `fetchTxStatus` (confirm transaction status)
+
+Main references:
+
+- Scenario: [`packages/tests/test/Cavefish/Nominal.hs`](./packages/tests/test/Cavefish/Nominal.hs)
+- Test entrypoint: [`packages/tests/test/Main.hs`](./packages/tests/test/Main.hs)
+- Write endpoints: [`packages/server/src/Cavefish/Endpoints/Write/`](./packages/server/src/Cavefish/Endpoints/Write/)
+- Read endpoint used in flow: [`packages/server/src/Cavefish/Endpoints/Read/FetchTxStatus.hs`](./packages/server/src/Cavefish/Endpoints/Read/FetchTxStatus.hs)
+
+Execution mode in tests:
+
+- The integration spec spins up the server in-process using `Warp.testWithApplication`
+  (see [`packages/tests/test/Adapter/Cavefish/Client.hs`](./packages/tests/test/Adapter/Cavefish/Client.hs)), so no separate daemon is needed
+  for `cabal test cavefish-tests:test`.
+
+## Architecture (Tx-Level Strategy, Single Service Provider)
+
+The v0.5 prototype is organized around a protocol-first domain model:
+
+- [`packages/wbps/`](./packages/wbps/):
+  protocol/domain core (register, demonstrate, prove, submit), persistence, and adapters
+- [`packages/server/`](./packages/server/):
+  HTTP API surface, endpoint orchestration, and emulator-backed server context
+- [`packages/tests/`](./packages/tests/):
+  executable integration specification and end-to-end validation of the nominal flow
+
+This aligns with the closing presentation framing:
+
+- the protocol is encoded as the domain model
+- infrastructure remains replaceable
+- the implemented scope is Tx-level construction in a single-provider configuration
+
+## Execution Artefacts (Event-Sourcing Trace)
+
+Running the nominal integration flow produces a deterministic artefact trace.
+
+Output root:
+
+- `WBPS_TEST_OUTPUT_ROOT` (set by `nix develop` to an `output/tests` path under [prototype/](./))
+- scenario folder from `setupCavefish`:
+  `integration-cavefish-nominal-flow`
+
+Resulting structure (simplified):
+
+```text
+output/tests/integration-cavefish-nominal-flow/
+├─ performance.jsonl
+└─ accounts/
+   └─ <registration-id>/
+      ├─ registered/
+      │  ├─ user_public_key.hex
+      │  ├─ encryption_keys.json
+      │  ├─ proving_key.zkey
+      │  └─ verification_context.json
+      └─ sessions/
+         └─ <session-id>/
+            ├─ demonstrated/
+            │  ├─ preparedMessage.json
+            │  ├─ scalars.json
+            │  └─ commitment.json
+            ├─ proved/
+            │  ├─ big_r.json
+            │  ├─ challenge.json
+            │  └─ proof.json
+            └─ submitted/
+               ├─ blindSignature.json
+               ├─ txSignature.json
+               └─ submittedTx.json
+```
+
+Why this matters:
+
+- audit by reading artefacts
+- performance analysis from `performance.jsonl` (and generated report)
+- reproducible debugging via session replay
+
+## Run the Service Provider
+
+```bash
+nix develop
+cabal run cavefish-server:exe:cavefish-server
+```
+
+By default, the server loads [`packages/server/config/config.toml`](./packages/server/config/config.toml) and listens on port `8080`.
+
+## Run Tests
+
+Run all tests:
+
+```bash
+nix develop
 cabal test all
 ```
-- Build executable(s) using nix build command:
 
-``` bash
-nix build .#cavefish-server
+Run selected suites:
+
+```bash
+cabal test wbps:wbps-unit-tests
+cabal test wbps:wbps-integration-tests
+cabal test cavefish-server:test
+cabal test cavefish-tests:test
 ```
 
-## Runtime environment
-The nix shell adds the [cardano-nod](https://github.com/IntersectMBO/cardano-node/releases/tag/10.5.1) binary to the PATH. There is also the [node-runner.sh](./scripts/node-runner.sh) script that can be used to start a cardano node with the appropriate parameters for local testing. The [share](./share/) folder contains the correponding cardano-node 1.5.1
+## Optional: Run a Local Cardano Node
+
+Inside the Nix shell, you can launch a local node process:
+
+```bash
+./scripts/node-runner.sh preprod
+```
+
+Supported networks are `preprod`, `preview`, and `mainnet`.  
+The script stores chain data under `var/<network>/` relative to [prototype/](./).
+
+## Developer Utilities
+
+- Format shell helpers:
+  - [`scripts/fourmolize.sh`](./scripts/fourmolize.sh)
+  - [`scripts/cabal-fmt.sh`](./scripts/cabal-fmt.sh)
+- Tag generation for editor navigation:
+  - [`scripts/gen-tags.sh`](./scripts/gen-tags.sh)
+
+## Package-Specific Docs
+
+- Server package notes: [`packages/server/README.md`](./packages/server/README.md)
+- Tests package notes: [`packages/tests/README.md`](./packages/tests/README.md)
+
+## Related Repository Docs
+
+- Project context and closing report: [`../Readme.md`](../Readme.md)
+- ZK circuit implementation: [`../zk-wbps/README.md`](../zk-wbps/README.md)
+- Paper sources and build: [`../paper/Readme.md`](../paper/Readme.md)
