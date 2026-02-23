@@ -77,16 +77,16 @@ High-level architecture path:
 
 ## Stream and Tracking Links
 
-- Milestones overview: <https://github.com/input-output-hk/cavefish/milestones>
-- Delivered milestone (SRL 2 -> 3): <https://github.com/input-output-hk/cavefish/milestone/1>
-- Closed issues for milestone 1: <https://github.com/input-output-hk/cavefish/issues?q=is%3Aissue+milestone%3A1+is%3Aclosed>
-- Historical project board: <https://github.com/input-output-hk/cavefish/projects/1>
-- Wiki: <https://github.com/input-output-hk/cavefish/wiki>
+- [Milestones overview](https://github.com/input-output-hk/cavefish/milestones)
+- [Delivered milestone (SRL 2 -> 3)](https://github.com/input-output-hk/cavefish/milestone/1)
+- [Closed issues for milestone 1](https://github.com/input-output-hk/cavefish/issues?q=is%3Aissue+milestone%3A1+is%3Aclosed)
+- [Historical project board](https://github.com/input-output-hk/cavefish/projects/1)
+- [Wiki](https://github.com/input-output-hk/cavefish/wiki)
 
 ## Closing Presentation
 
-- Video: <https://drive.google.com/file/d/1fJIIsox7dxmQakhVwK-BV-sAgz5b01hV/view>
-- Slides: <https://docs.google.com/presentation/d/1wFhgU2Thje1YqaLPowstpSTw16qzv0NXvAx5-vFaKhA>
+- [Video recording](https://drive.google.com/file/d/1fJIIsox7dxmQakhVwK-BV-sAgz5b01hV/view)
+- [Slides](https://docs.google.com/presentation/d/1wFhgU2Thje1YqaLPowstpSTw16qzv0NXvAx5-vFaKhA)
 
 ## Help and Contributing
 
