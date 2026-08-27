@@ -279,6 +279,13 @@ Registration was dominated by Groth16 proving-key generation (9 959.64 ms of
 and proof generation (2 728.05 ms average). These endpoint and sub-step timings are
 not additive across rows because the sub-steps are nested inside their endpoints.
 
+The test console independently reported the nominal scenario as `PASS` (`1 example,
+0 failures`) in **24.4943 s**, matching the performance-event window after rounding.
+The same console later reported the separate `wbps-integration-tests` suite as
+`PASS` (`5 tests`) in **124.78 s**. That suite duration includes several independent
+integration cases and is recorded as a correctness/test outcome, not as end-to-end
+Cavefish latency.
+
 Run context (27 August 2026): Parallels VM, Ubuntu 24.04 / Linux
 6.8.0-134-generic aarch64, 8 allocated Apple-Silicon vCPUs, 62 GiB RAM, Circom 2.2.2,
 SnarkJS 0.7.6. The checkout was commit `1b8c421` plus a local, behaviour-preserving
@@ -296,7 +303,9 @@ correctness and for privacy/security:
   ([prototype/packages/tests/test/Cavefish/Nominal.hs](../prototype/packages/tests/test/Cavefish/Nominal.hs)):
   it asserts that the proof verifies against the rebuilt statement, completes the
   blind signature, submits the transaction and checks that it is accepted by the
-  emulated chain (`TxStatusSubmitted`). Unit and integration suites:
+  emulated chain (`TxStatusSubmitted`). In the reference execution above, both the
+  nominal scenario (1 example) and the separate WBPS integration suite (5 tests)
+  passed. Unit and integration suites:
   `cabal test all` (see [prototype/README.md](../prototype/README.md#run-tests)).
 - **Privacy / security properties** (weak blindness, unforgeability, selective
   disclosure, private-until-posted) - analysed, rather than established by these
