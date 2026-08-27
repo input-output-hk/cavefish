@@ -2,14 +2,14 @@ cabal-version:   3.12
 name:            cavefish-tests
 version:         0.1.0.0
 
--- synopsis:
--- description:
-license:         MIT
+synopsis:        Cavefish end-to-end integration tests (executable nominal-flow spec)
+homepage:        https://github.com/input-output-hk/cavefish
+bug-reports:     https://github.com/input-output-hk/cavefish/issues
+license:         Apache-2.0
 license-file:    LICENSE
-
--- author:
--- maintainer:
--- copyright:
+author:          Nicolas Henin
+maintainer:      nicolas.henin@iohk.io
+copyright:       2025-2026 Input Output Global, Inc.
 build-type:      Simple
 extra-doc-files: CHANGELOG.md
 

@@ -11,8 +11,13 @@ port = 8080
 path = "wbps"
 
 ## Intent Service Provider Fee
+## Both keys are required (see `Cavefish.Services.TxBuilding.ServiceFee`):
+## - `amount`: fee in lovelace, paid by the user's transaction to the service provider
+## - `paymentAddress`: Cardano address receiving the fee (the emulator-backed
+##   server uses testnet/preprod addresses; replace with your own)
 [serviceProviderFee]
 amount = 200
+paymentAddress = "addr_test1vz7f5342waaath9xwc2uryqyjxgxa5nuhrpm0qv76f7ytmstsfwfx"
 
 ## Transaction Expiry
 [transactionExpiry]

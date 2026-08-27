@@ -50,6 +50,11 @@ package.json
 output/
 
 # ====================================================
+# host-specific helper binaries installed by scripts/install-babyjubjub-keygen.sh
+# ====================================================
+.tools/babyjubjub-keygen/
+
+# ====================================================
 # emacs, Make emacs projectile happy with monorepos
 # ====================================================
 .projectile

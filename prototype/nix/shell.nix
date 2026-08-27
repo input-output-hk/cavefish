@@ -162,9 +162,14 @@ let
       export WBPS_TEST_INPUT_ROOT="$repo_root/packages/wbps/setup"
       export WBPS_TEST_OUTPUT_ROOT="$repo_root/output/tests"
 
-      if [ -d "$repo_root/packages/wbps/setup" ]; then
-        export PATH="$repo_root/packages/wbps/setup:$PATH"
-        export BABYJUBJUB_KEYGEN="$repo_root/packages/wbps/setup/babyjubjub-keygen"
+      # babyjubjub-keygen: select the prebuilt binary matching this host
+      # (packages/wbps/setup/bin/babyjubjub-keygen-<arch>-<os>) or build it natively,
+      # and expose it as `babyjubjub-keygen` on PATH.
+      if "$repo_root/scripts/install-babyjubjub-keygen.sh"; then
+        export PATH="$repo_root/.tools/babyjubjub-keygen/bin:$PATH"
+        export BABYJUBJUB_KEYGEN="$repo_root/.tools/babyjubjub-keygen/bin/babyjubjub-keygen"
+      else
+        echo "WARNING: babyjubjub-keygen is not available; registration steps will fail." >&2
       fi
 
       if [ -d "$repo_root/.tools/circom/bin" ]; then
