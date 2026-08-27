@@ -184,7 +184,8 @@ Why this matters:
 - audit by reading artefacts
 - performance analysis from `performance.jsonl` and the generated
   `performance-report.txt` (per-step timings of the nominal flow; the report is
-  also printed at the end of `cabal test cavefish-tests:test`)
+  also printed at the end of `cabal test cavefish-tests:test`); consolidated results
+  and reproduction guidance are in [`../docs/benchmarks.md`](../docs/benchmarks.md)
 - reproducible debugging via session replay
 
 ## Run the Service Provider

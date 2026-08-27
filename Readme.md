@@ -48,6 +48,8 @@ Prerequisites and platform notes (prebuilt helper binaries) are listed in
 Implementation onboarding is maintained in component-level READMEs:
 
 - Haskell prototype (build, run, test): [prototype/README.md](./prototype/README.md)
+- Consolidated performance results and reproduction notes: [docs/benchmarks.md](./docs/benchmarks.md)
+- ZK component-benchmark harness: [benchmarks/README.md](./benchmarks/README.md)
 - ZK circuits and WBPS flow: [zk-wbps/README.md](./zk-wbps/README.md)
 - Academic paper build flow: [paper/Readme.md](./paper/Readme.md)
 
