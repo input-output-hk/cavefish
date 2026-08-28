@@ -1,0 +1,8 @@
+{
+    "blake2b": "pragma circom 2.1.2;\ninclude \"blake2b_templ.circom\";\ncomponent main = blake2b_templ({str_config});",
+    "sha256_bytes": "pragma circom 2.1.2;\ninclude \"sha256_bytes_templ.circom\";\ncomponent main = sha256_bytes_templ({str_config});",
+    "sha512_bytes": "pragma circom 2.1.2;\ninclude \"sha512_bytes_templ.circom\";\ncomponent main = sha512_bytes_templ({str_config});",
+    "sha256_bits": "pragma circom 2.1.2;\ninclude \"sha256_bits_templ.circom\";\ncomponent main = sha256_bits_templ({str_config});",
+    "poseidon2_rate1": "pragma circom 2.1.2;\ninclude \"poseidon2_rate1_templ.circom\";\ncomponent main = poseidon2_rate1_templ({str_config});",
+    "scalarmulany": "pragma circom 2.1.2;\ninclude \"scalarmulany_templ.circom\";\ncomponent main = scalarmulany_templ({str_config});"
+}

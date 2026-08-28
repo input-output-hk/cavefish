@@ -22,18 +22,55 @@ This is a research prototype and is not production-ready.
 Recommended:
 
 - Nix with flakes enabled
+- Git LFS. The circuit artefacts under [`packages/wbps/setup/`](./packages/wbps/setup/)
+  (`*.r1cs`, `*.sym`, `*.wasm`, `powersOfTauPrepared.ptau`) are stored in Git LFS
+  (see [`../.gitattributes`](../.gitattributes)). Without them the tests fail at
+  `snarkjs groth16 setup` with an "invalid format" error on the `.ptau` file.
+  After cloning:
+
+  ```bash
+  git lfs install
+  git lfs pull
+  ```
+
+  If Git LFS is not an option, the artefacts can be regenerated from the `.circom`
+  sources with `circom` + `snarkjs`; the exact commands are in the
+  "Generate WBPS setup artifacts (no LFS)" step of
+  [`../.github/workflows/cavefish-server-linux-ci.yml`](../.github/workflows/cavefish-server-linux-ci.yml).
 
 Alternative (manual setup):
 
 - GHC 9.6.6
 - `cabal-install`
 - System dependencies required by Cardano-related Haskell packages
+- `git-lfs` (see above), `node`/`snarkjs` 0.7.6, `circom` 2.1.9
+- `cargo` (only needed to rebuild the helper binaries below on platforms without a prebuilt one)
+
+### Prebuilt helper binaries (platform note)
+
+The registration step calls `babyjubjub-keygen` (a small Rust program, see
+[`../zk-wbps/tooling/gen_babyjubjub_keys.sh`](../zk-wbps/tooling/gen_babyjubjub_keys.sh)).
+Prebuilt Linux binaries are shipped in [`packages/wbps/setup/bin/`](./packages/wbps/setup/bin/):
+
+| File | Platform |
+| --- | --- |
+| `babyjubjub-keygen-x86_64-linux` | Linux x86_64 (static, musl) |
+| `babyjubjub-keygen-aarch64-linux` | Linux aarch64 (glibc) |
+
+`nix develop` runs [`scripts/install-babyjubjub-keygen.sh`](./scripts/install-babyjubjub-keygen.sh),
+which selects the binary matching `uname -m`, checks that it runs, exposes it as
+`babyjubjub-keygen` on the `PATH` (via `.tools/babyjubjub-keygen/bin/`) and, when no
+prebuilt binary works on the host (e.g. macOS), builds it natively with
+`gen_babyjubjub_keys.sh` (requires `cargo` and network access). Outside of Nix, run
+the script manually and add `.tools/babyjubjub-keygen/bin` to your `PATH`.
+The CI workflow always builds the binary natively.
 
 ## Quick Start
 
 From this folder:
 
 ```bash
+git lfs pull        # once, fetches the circuit artefacts (see Prerequisites)
 nix develop
 cabal update
 cabal build all
@@ -145,7 +182,10 @@ output/tests/integration-cavefish-nominal-flow/
 Why this matters:
 
 - audit by reading artefacts
-- performance analysis from `performance.jsonl` (and generated report)
+- performance analysis from `performance.jsonl` and the generated
+  `performance-report.txt` (per-step timings of the nominal flow; the report is
+  also printed at the end of `cabal test cavefish-tests:test`); consolidated results
+  and reproduction guidance are in [`../docs/benchmarks.md`](../docs/benchmarks.md)
 - reproducible debugging via session replay
 
 ## Run the Service Provider
@@ -156,6 +196,15 @@ cabal run cavefish-server:exe:cavefish-server
 ```
 
 By default, the server loads [`packages/server/config/config.toml`](./packages/server/config/config.toml) and listens on port `8080`.
+
+Configuration keys (all required):
+
+| Table | Keys | Notes |
+| --- | --- | --- |
+| `[httpServer]` | `host`, `port` | listening address |
+| `[wbps]` | `path` | WBPS artefacts root |
+| `[serviceProviderFee]` | `amount`, `paymentAddress` | fee (lovelace) and the Cardano address it is paid to |
+| `[transactionExpiry]` | `seconds` | validity window of built transactions |
 
 ## Run Tests
 

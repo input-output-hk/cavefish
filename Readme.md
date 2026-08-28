@@ -40,9 +40,16 @@ For more on IOG: [iohk.io](https://iohk.io/).
 
 ## Getting Started (Developer Entry Points)
 
+Before building anything, fetch the Git LFS artefacts (circuit files under
+`prototype/packages/wbps/setup/`): `git lfs install && git lfs pull`.
+Prerequisites and platform notes (prebuilt helper binaries) are listed in
+[prototype/README.md](./prototype/README.md#prerequisites).
+
 Implementation onboarding is maintained in component-level READMEs:
 
 - Haskell prototype (build, run, test): [prototype/README.md](./prototype/README.md)
+- Consolidated performance results and reproduction notes: [docs/benchmarks.md](./docs/benchmarks.md)
+- ZK component-benchmark harness: [benchmarks/README.md](./benchmarks/README.md)
 - ZK circuits and WBPS flow: [zk-wbps/README.md](./zk-wbps/README.md)
 - Academic paper build flow: [paper/Readme.md](./paper/Readme.md)
 

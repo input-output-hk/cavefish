@@ -9,11 +9,13 @@ name:            wbps
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
 version:         0.1.0.0
-homepage:        https://github.com/input-output-hk/innovation-cavefish
+homepage:        https://github.com/input-output-hk/cavefish
+bug-reports:     https://github.com/input-output-hk/cavefish/issues
 license:         Apache-2.0
 license-file:    LICENSE
 author:          Nicolas Henin
-maintainer:      mr.henin@gmail.com
+maintainer:      nicolas.henin@iohk.io
+copyright:       2025-2026 Input Output Global, Inc.
 category:        Cryptography
 build-type:      Simple
 extra-doc-files: CHANGELOG.md
